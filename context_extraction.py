@@ -4,8 +4,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
+from mri import mri
 from scipy import stats
 from scipy.ndimage.filters import convolve
+
+import h5py
+
 
 data_dir = 'C:/MRI/MS-LAQ/'
 
@@ -13,30 +17,6 @@ malf_classes = ['bg', 'bs', 'cgm', 'crblr_gm', 'crblr_wm', 'csf', 'dgm', 'lv', '
 modalities = ['t1p', 't2w', 'pdw', 'flr']
 good_malf_classes = ['cgm', 'dgm', 'wm']
 
-class mri:
-    t1p = ''
-    lesions = ''
-    
-    malf = {}
-    
-    folder = ''
-    
-    priors = {}    
-    def __init__(self, t1p_image):
-        
-        tokens = t1p_image.split('_')
-        
-        self.folder = data_dir + tokens[2] + '_' + tokens[3] + '/m0/'
-        
-        self.priors['t1p'] = self.folder + 'MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m0_t1p_ISPC-stx152lsq6.mnc.gz'
-        self.priors['t2w'] = self.folder + 'MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m0_t2w_ISPC-stx152lsq6.mnc.gz'
-        self.priors['pdw'] = self.folder + 'MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m0_pdw_ISPC-stx152lsq6.mnc.gz'
-        self.priors['flr'] = self.folder + 'MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m0_flr_ISPC-stx152lsq6.mnc.gz'          
-        
-        self.lesions = self.folder + 'MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m0_ct2f_ISPC-stx152lsq6.mnc.gz'
-
-        for tissue in malf_classes:
-            self.malf[tissue] = self.folder + 'malf/MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m0_prior_' + tissue + '_ISPC-stx152lsq6.mnc.gz'
 
 mri_list = []
 
@@ -51,19 +31,30 @@ malf_tissues = {}
 
 scales = [1,2,3,4,5]
 
-feature_map = np.zeros((np.shape(mri_list[0].priors['t1p'])[0], np.shape(mri_list[0].priors['t1p'])[1], np.shape(mri_list[0].priors['t1p'][2]), len(scales)))
 
-for img in mri_list:
-    print img.priors['t1p']
+size = nib.load(mri_list[0].priors['t1p'])
+
+
+feature_map = np.zeros(shape=(np.shape(size)[0], np.shape(size)[1], np.shape(size)[2], len(malf_classes), len(scales)))
+
+
+f = h5py.File(data_dir + "features2.hdf5", "w")
+for i, img in enumerate(mri_list):
+    print i, '/', len(mri_list), img.uid
 
     tissues = {}
     for mod in modalities:
         tissues[mod] = nib.load(img.priors[mod]).get_data()
 
-    for m in malf_classes:
+    for j, m in enumerate(malf_classes):
         malf_tissues[m] = nib.load(img.malf[m]).get_data()
 #        malf_thresh[m] = np.greater_equal(malf_tissues[m], 0.7)
         for s in scales:
-            feature_map = convolve(malf_tissues[m],np.ones((s,s,s)))
+            feature_map[:,:,:,j,s-1] = convolve(malf_tissues[m],np.ones((s,s,s)))
+    
+    dset = f.create_dataset(img.uid, np.shape(feature_map), dtype='f', compression="gzip")
+    dset[...] = feature_map
+
+f.close()
 
 print 'done'
