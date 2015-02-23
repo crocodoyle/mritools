@@ -41,6 +41,8 @@ num_train = 15
 num_test = 5
 
 
+
+
 training_vector = np.zeros(shape=(num_train, image_pixels*(priors*feature_scales+num_mods)))
 print 'train_vector', np.shape(training_vector)
 
