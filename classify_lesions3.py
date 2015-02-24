@@ -9,17 +9,45 @@ import numpy as np
 import os
 import h5py
 
-import dtcwt
-
-from mri import mri
 from scipy.ndimage.filters import gaussian_filter
 from sklearn.mixture import GMM
+from sklearn.ensemble import RandomForestClassifier
 
-data_dir = 'C:/MRI/MS-LAQ/'
+
+
+data_dir = 'G:/MRI/MS-LAQ/'
 
 malf_classes = ['bg', 'bs', 'cgm', 'crblr_gm', 'crblr_wm', 'csf', 'dgm', 'lv', 'ov', 'wm']
 modalities = ['t1p', 't2w', 'pdw', 'flr']
 good_malf_classes = ['cgm', 'dgm', 'wm']
+
+class mri:
+    t1p = ''
+    lesions = ''
+    
+    priors = {}
+    
+    folder = ''
+    uid = ''
+    
+    images = {}    
+    def __init__(self, t1p_image):
+        
+        tokens = t1p_image.split('_')
+        
+        self.folder = data_dir + tokens[2] + '_' + tokens[3] + '/m0/'
+        
+        self.uid = tokens[2] + tokens[3]        
+        
+        self.images['t1p'] = self.folder + 'MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m0_t1p_ISPC-stx152lsq6.mnc.gz'
+        self.images['t2w'] = self.folder + 'MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m0_t2w_ISPC-stx152lsq6.mnc.gz'
+        self.images['pdw'] = self.folder + 'MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m0_pdw_ISPC-stx152lsq6.mnc.gz'
+        self.images['flr'] = self.folder + 'MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m0_flr_ISPC-stx152lsq6.mnc.gz'          
+        
+        self.lesions = self.folder + 'MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m0_ct2f_ISPC-stx152lsq6.mnc.gz'
+
+        for tissue in malf_classes:
+            self.priors[tissue] = self.folder + 'malf/MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m0_prior_' + tissue + '_ISPC-stx152lsq6.mnc.gz'
 
 
 mri_list = []
@@ -78,15 +106,21 @@ test_labels = labels[len(features)/2:]
 
 print "done getting features & labels"
 
+
+print np.shape(training_features)
+
 for g in [1,2,3,4,5]:
     
-    print np.shape(training_features), np.shape(training_labels)
-    mix_model = GMM(n_components=g)
-    mix_model.fit(training_features, training_labels)
+    #mix_model = GMM(n_components=g)
+    #mix_model.fit(training_features)
+    #predictions = mix_model.predict(test_features)
     
-    
-    predictions = mix_model.predict(test_features)
 
+    forest = RandomForestClassifier(n_estimators=g*100)    
+    forest.fit(training_features, training_labels)
+    forest.predict(test_features)
+    
+    
     print "done predictions at level", g
     
     tp = 0
@@ -102,6 +136,9 @@ for g in [1,2,3,4,5]:
             fp+=1
         if p == 0.0 and test_labels[i] > 0.0:
             fn+=1
+    tp = 0
+    fp = 0
+    fn = 0
             
     print "true positives: ", tp
     print "false positives: ", fp
