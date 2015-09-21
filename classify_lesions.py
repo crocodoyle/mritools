@@ -12,7 +12,7 @@ import h5py
 from mri import mri
 from sklearn.ensemble import RandomForestClassifier
 
-data_dir = 'C:/MRI/MS-LAQ/'
+data_dir = '/usr/local/data/adoyle/mri_data/MS-LAQ/'
 
 malf_classes = ['bg', 'bs', 'cgm', 'crblr_gm', 'crblr_wm', 'csf', 'dgm', 'lv', 'ov', 'wm']
 modalities = ['t1p', 't2w', 'pdw', 'flr']
