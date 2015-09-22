@@ -22,7 +22,6 @@ def getLesionSizes(mri_list):
     
     lesionSize = []
     
-    
     print 'Counting lesions'
     for i, scan in enumerate(mri_list):
     #    lesionSize.append(len(scan.lesionList))
@@ -55,8 +54,6 @@ def loadLesionTextures(mri_list, numLesions):
                     featureString = red.get(scan.uid + ':lbp:' + mod + ':scale' + str(scale) + ':lesion' + str(j))
                     
                     dataDecoded = jsonDecoder.decode(featureString)
-                    
-                    
                     data[lesionIndex, k, l, :] = dataDecoded
             lesionIndex += 1
     print 'Loaded textures'
@@ -67,7 +64,7 @@ def cluster(data, numClusters):
     print 'Clustering...'
     
     startTime = time.time()
-    kmeans = KMeans(n_clusters=numClusters, n_jobs=8)
+    kmeans = KMeans(n_clusters=numClusters, n_jobs=6)
     kmeans.fit_predict(data)
     endTime = time.time()
     
@@ -75,8 +72,6 @@ def cluster(data, numClusters):
     print "Total time elapsed:", elapsed/3600, 'hours', elapsed/60, 'minutes'
 
     return kmeans
-
-
 
 
 #lesionSizeGroups = []
@@ -98,7 +93,17 @@ def countLesionTypes(mri_list, clusters, flattenedData, numLesions):
            lesionTypes[i, np.argmin(clusterDistances)] += 1.0 / float(len(scan.lesionList))
 
     return lesionTypes
-
+    
+    
+def bic(data, k, n):
+    nCluster = np.shape(data)[0]
+    variance = np.var(data)
+    dims = np.shape(data)[1]
+    
+    logLikelihood = -(nCluster/2)*np.log(2*np.pi) - ((nCluster*dims)/2)*np.log(variance) - (nCluster - k)/2 + nCluster*np.log(nCluster) - nCluster*np.log(n)
+    
+    info = logLikelihood - k*dims*np.log(n)
+    return info
 
 def compareLesionClusterings(stopAt):
     print 'Loading patient data'
@@ -111,26 +116,41 @@ def compareLesionClusterings(stopAt):
     print 'Reshaping...'
     flattenedData = np.reshape(data, (np.shape(data)[0], 32*len(modalities)*len(scales)))
 
-    allClustersError = []
+#    allClustersError = []
     numClusters = []
+    
+    bics = []
+
     for i in range(3,stopAt):
         print i
         results = cluster(flattenedData, i)
+        
+        clusterBics = []
 
         for j in range(i):
-            localClusterError = np.zeros(i)
-
-            clusterSize = np.shape(flattenedData[results.labels_==j])[0]
+            clusterData = flattenedData[results.labels_==j]
             
-            localClusterError[j] = np.sum(((flattenedData[results.labels_==j] - results.cluster_centers_[j,:])**2) / clusterSize)       
+            clusterBics.append(bic(clusterData, i, np.shape(flattenedData)[0]))
+            
+            # calculate average distance from cluster centre
+#            localClusterError = np.zeros(i)
+#            clusterSize = np.shape(flattenedData[results.labels_==j])[0]
+#            localClusterError[j] = np.sum(((flattenedData[results.labels_==j] - results.cluster_centers_[j,:])**2) / clusterSize)       
+            
+        numClusters.append(i)
+        bics.append(np.sum(clusterBics))
         
-        numClusters.append(i)            
+        print bics
+        
+        
+        plt.plot(numClusters, bics)
+        plt.show()
 #            for point in :
 #                localClusterError[j] += np.sum(np.square()) / clusterSize
 #            
-        allClustersError.append(np.mean(localClusterError))
-        plt.plot(numClusters, allClustersError)
-        plt.show()    
+#        allClustersError.append(np.mean(localClusterError))
+#        plt.plot(numClusters, allClustersError)
+#        plt.show()    
 
 
 def main():
@@ -176,5 +196,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
-#    compareLesionClusterings(5000)
+    #main()
+    compareLesionClusterings(100)

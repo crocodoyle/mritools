@@ -23,6 +23,8 @@ import time
 
 import redis
 
+from random import shuffle
+
 #import sys
 
 
@@ -31,9 +33,7 @@ threads = 8
 recompute = False
 
 
-def bic(L, k, n):
-    info = -2*np.log(L) + k*np.log(n)
-    return info
+
     
 def gabor(rotationTheta, rotationPhi, sinSpacing, gaussianWidth):
     sig = gaussianWidth
@@ -167,14 +167,12 @@ def getLBPFeatures(scan):
 def getGaborFeatures(scan):
     red = redis.StrictRedis(host='localhost', port=6379, db=0)
 
-
-
     imageStartTime = time.time()
 
     if len(scan.lesionList) == 0:
         lesionList = scan.separateLesions()
     else:
-        lesionList = scan.lesionList    
+        lesionList = scan.lesionList
     
     modalities = ['t1p', 't2w', 'pdw', 'flr']
     rotTheta = np.linspace(0,180, num=4, endpoint=False)
@@ -188,11 +186,12 @@ def getGaborFeatures(scan):
     
     for j, m in enumerate(modalities):
         print scan.uid, m
+        if not recompute and red.exists(scan.uid + ':gabResponseScore:' + str(m) + ':lesion:0'):
+            break
         images[m] = nib.load(scan.images[m]).get_data()
         
         for l, lesionPoints in enumerate(lesionList):
-            if recompute and red.exists(scan.uid + ':gabResponseScore:' + str(m) + ':lesion:' + str(l)):
-                break
+
             
             gaborResponses = np.zeros((len(lesionPoints), len(rotTheta), len(rotPhi), len(gaborWidth), len(gaborSpacing)))
             for i, [x, y, z] in enumerate(lesionPoints):
@@ -220,8 +219,9 @@ def getFeaturesOfList(mri_list):
 
 def chunks(l, n):
     """Yield successive n-sized chunks from l."""
+    l = shuffle(l)
     for i in xrange(0, len(l), n):
-        yield l[i:i+n]    
+        yield l[i:i+n]
     
 
 def main():
