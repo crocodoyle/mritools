@@ -210,7 +210,7 @@ def getGaborFeatures(scan):
 
     imageEndTime = time.time()
     elapsed = imageEndTime - imageStartTime
-    print elapsed/(60), "minutes", elapsed%60, "seconds"
+    print elapsed/(60), "minutes"
 
 
 def getFeaturesOfList(mri_list):
@@ -219,7 +219,7 @@ def getFeaturesOfList(mri_list):
 
 def chunks(l, n):
     """Yield successive n-sized chunks from l."""
-    l = shuffle(l)
+    shuffle(l)
     for i in xrange(0, len(l), n):
         yield l[i:i+n]
     

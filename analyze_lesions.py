@@ -16,6 +16,10 @@ import sys
 modalities = ['t1p', 't2w', 'pdw', 'flr']
 scales = [1,2,3]
 
+redisHost = '132.206.73.115'
+redisPort = 6379
+
+threads = 8
 
 def getLesionSizes(mri_list):
     numLesions = 0
@@ -38,7 +42,7 @@ def getLesionSizes(mri_list):
 
 
 def loadLesionTextures(mri_list, numLesions):
-    red = redis.StrictRedis(host='localhost', port=6379, db=0)
+    red = redis.StrictRedis(host=redisHost, port=redisPort, db=0)
 
     data = np.zeros((numLesions, len(modalities), len(scales), 32), dtype='float')
     
@@ -64,7 +68,7 @@ def cluster(data, numClusters):
     print 'Clustering...'
     
     startTime = time.time()
-    kmeans = KMeans(n_clusters=numClusters, n_jobs=6)
+    kmeans = KMeans(n_clusters=numClusters, n_jobs=threads)
     kmeans.fit_predict(data)
     endTime = time.time()
     
@@ -95,15 +99,16 @@ def countLesionTypes(mri_list, clusters, flattenedData, numLesions):
     return lesionTypes
     
     
-def bic(data, k, n):
+def ics(data, k, n):
     nCluster = np.shape(data)[0]
     variance = np.var(data)
     dims = np.shape(data)[1]
     
     logLikelihood = -(nCluster/2)*np.log(2*np.pi) - ((nCluster*dims)/2)*np.log(variance) - (nCluster - k)/2 + nCluster*np.log(nCluster) - nCluster*np.log(n)
     
-    info = logLikelihood - k*dims*np.log(n)
-    return info
+    bic = logLikelihood - k*dims*np.log(n)
+    aic = logLikelihood - 2*dims
+    return bic, aic
 
 def compareLesionClusterings(stopAt):
     print 'Loading patient data'
@@ -120,17 +125,22 @@ def compareLesionClusterings(stopAt):
     numClusters = []
     
     bics = []
+    aics = []
 
     for i in range(3,stopAt):
         print i
         results = cluster(flattenedData, i)
         
         clusterBics = []
-
+        clusterAics = []
+        
         for j in range(i):
             clusterData = flattenedData[results.labels_==j]
             
-            clusterBics.append(bic(clusterData, i, np.shape(flattenedData)[0]))
+            
+            information = ics(clusterData, i, np.shape(flattenedData)[0])
+            clusterBics.append(information[0])
+            clusterAics.append(information[1])            
             
             # calculate average distance from cluster centre
 #            localClusterError = np.zeros(i)
@@ -139,11 +149,15 @@ def compareLesionClusterings(stopAt):
             
         numClusters.append(i)
         bics.append(np.sum(clusterBics))
+        aics.append(np.sum(clusterAics))
+        print bics, aics
         
-        print bics
         
-        
-        plt.plot(numClusters, bics)
+        plt.plot(numClusters, bics, label='BIC')
+        plt.plot(numClusters, aics, label='AIC')
+        plt.xlabel('# lesion clusters')
+        plt.ylabel('information')
+        plt.title('Evaluating K in K-means')
         plt.show()
 #            for point in :
 #                localClusterError[j] += np.sum(np.square()) / clusterSize
@@ -185,7 +199,7 @@ def main():
         lesionIndex += numLesions    
 
     print 'Finding brain types...'
-    kmeans = KMeans(n_clusters=numBrainTypes, n_jobs=8)
+    kmeans = KMeans(n_clusters=numBrainTypes, n_jobs=threads)
     kmeans.fit_predict(lesionTypeFeature)
     print 'Done'
 
