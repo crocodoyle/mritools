@@ -8,9 +8,8 @@ import numpy as np
 #good_malf_classes = ['cgm', 'dgm', 'wm']
 
 
-
 class mri(object):
- 
+    
     def __init__(self, t1p_image):
         
         tokens = t1p_image.split('_')
@@ -31,9 +30,13 @@ class mri(object):
         self.transformToICBM = self.folder[0:-3] + 'stx152lsq6/MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_patient_stx152lsq6-to-stx152lsq6_nl.xfm'
 
         self.lesionList = []
+        self.tissues = ['csf', 'wm', 'gm', 'lesion']
+        self.priors = {}
+        
+        self.lesionPriorXfm = self.folder + 'MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m0_t1p-to-stx152lsq6.xfm'
 
-#        for tissue in malf_classes:
-#            self.priors[tissue] = self.folder + 'malf/MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m0_prior_' + tissue + '_ISPC-stx152lsq6.mnc.gz'
+        for tissue in self.tissues:
+            self.priors[tissue] = self.folder[0:-3] + 'stx152lsq6/MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_patient_avg_ANAT-' + tissue + '-cerebrum_ISPC-stx152lsq6.mnc.gz'
 
     def separateLesions(self):
         lesionImage = nib.load(self.lesions).get_data()
