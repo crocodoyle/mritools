@@ -4,6 +4,10 @@ import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.cluster import SpectralClustering
 from sklearn.neighbors import NearestNeighbors
+from sklearn.ensemble import RandomForestClassifier
+
+
+from scipy.spatial.distance import euclidean
 
 
 import time
@@ -16,11 +20,16 @@ import vtk
 import nibabel as nib
 
 import matplotlib.cm as cm
+import transformations as t
+import os
+import collections
 
 modalities = ['t1p', 't2w', 'pdw', 'flr']
+tissues = ['csf', 'wm', 'gm', 'lesion']
+lbpRadii = [1,2,3]
+riftRadii = [2,4,6]
 
-
-threads = 1
+threads = 8
 
 dbIP = 'localhost'
 dbPort = 27017
@@ -54,13 +63,12 @@ def loadRIFT(mri_list, numLesions):
     dbClient = MongoClient(dbIP, dbPort)
     db = dbClient['MSLAQ']
 
-    radii = [2, 4, 6]
     numBinsTheta = 8
     numBinsPhi = 4
     
 #   feature = np.zeros((len(lesion), len(radii), numBinsTheta*numBinsPhi))
     
-    data = np.zeros((numLesions, len(modalities), len(radii), numBinsTheta*numBinsPhi))
+    data = np.zeros((numLesions, len(modalities), len(riftRadii), numBinsTheta*numBinsPhi))
     
     lesionIndex = 0
     for i, scan in enumerate(mri_list):
@@ -72,8 +80,16 @@ def loadRIFT(mri_list, numLesions):
                     data[lesionIndex, m, :, :] = pickle.loads(bsonData[mod])
                 
                 lesionIndex += 1
-        
-    return data    
+
+
+    for m, mod in enumerate(modalities):
+        for r, rad in enumerate(riftRadii):
+            normalizingFactor = np.max(data[:, m, r, :])
+            
+            for f, feature in enumerate(data):
+                data[f, m, r, :] = np.divide(data[f, m, r, :], normalizingFactor)
+
+    return data
 
 def loadGabor(mri_list, numLesions):
     dbClient = MongoClient(dbIP, dbPort)
@@ -108,16 +124,19 @@ def loadContext(mri_list, numLesions):
                 j=0
                 
                 for tissue in scan.tissues:
-#                    print tissue
                     if not 'pv' in tissue:
                         try:
                             data[lesionIndex, j] = pickle.loads(bsonData[tissue])
                             j+=1
                         except:
                             pass
-#                print data[lesionIndex, :]
-                lesionIndex+=1
-
+                lesionIndex+=1 
+    
+    for tissIndex in range(np.shape(data)[1]):
+        normalizingFactor = np.max(data[:,tissIndex])
+        
+        for d, dat in enumerate(data):
+            data[d,tissIndex] = np.divide(data[d,tissIndex], normalizingFactor)
                 
     return data
 
@@ -125,9 +144,9 @@ def loadLBP(mri_list, numLesions):
     dbClient = MongoClient(dbIP, dbPort)
     db = dbClient['MSLAQ']
     
-    radii = [1,2,3]
+    lbpRadii = [1,2,3]
 
-    data = np.zeros((numLesions, len(modalities), len(radii), 32), dtype='float')
+    data = np.zeros((numLesions, len(modalities), len(lbpRadii), 32), dtype='float')
     
     lesionIndex = 0
         
@@ -137,7 +156,7 @@ def loadLBP(mri_list, numLesions):
                 bsonData = db['lbp'].find_one({'_id': scan.uid + '_' + str(j)})
     
                 for k, mod in enumerate(modalities):
-                    for l, radius in enumerate(radii):
+                    for l, radius in enumerate(lbpRadii):
                         data[lesionIndex, k, l, :] = pickle.loads(bsonData[mod][str(radius)])
                 lesionIndex += 1
     
@@ -158,7 +177,7 @@ def cluster(data, numClusters):
     
 def spectralCluster(data, numClusters):
     startTime = time.time()
-    spectralCluster = SpectralClustering(n_clusters=numClusters, affinity='nearest_neighbors', n_neighbors=10)
+    spectralCluster = SpectralClustering(n_clusters=numClusters, affinity='nearest_neighbors', n_neighbors=5)
     
     spectralCluster.fit_predict(data)
     endTime = time.time()
@@ -423,167 +442,315 @@ def lesionType(Ks):
         plt.show()
 
 
-def normalizeDataVectors(dataVectors):
+def normalizeDataVectors(dataVectors):    
     dimensions = 0
     
     for i in range(len(dataVectors)):
-        dataVectors[i] = np.divide(dataVectors[i], np.max(dataVectors[i]))
         
-        totalDims = 1
+        oneDataSourceDims = 1
         for dim in np.shape(dataVectors[i]):
-            totalDims = totalDims * dim
-        totalDims = totalDims / np.shape(dataVectors[i])[0]
+            oneDataSourceDims *= dim
+        oneDataSourceDims /= np.shape(dataVectors[i])[0]
         
-        dimensions += totalDims
+        dimensions += oneDataSourceDims
+        dataVectors[i] = np.reshape(dataVectors[i], (np.shape(dataVectors[i])[0], oneDataSourceDims))
+
+        print 'feature dimensions:', dimensions
         
-        dataVectors[i] = np.reshape(dataVectors[i], (np.shape(dataVectors[i])[0], totalDims))
+        
         
     for i in range(len(dataVectors)):
         otherDims = dimensions - np.shape(dataVectors[i])[1]
-        dataVectors[i] = np.multiply(dataVectors[i], float(otherDims)/float(dimensions))
+        
+        if not otherDims == 0:
+            dataVectors[i] = np.multiply(dataVectors[i], float(otherDims)/float(dimensions))
     
-#    data = np.hstack((dataVectors[0], dataVectors[1], dataVectors[2], dataVectors[3]))
-    data = dataVectors[0]
+    if len(dataVectors) == 1:
+        data = dataVectors[0]
+    if len(dataVectors) == 2:
+        data = np.hstack((dataVectors[0], dataVectors[1]))
+    if len(dataVectors) == 3:
+        data = np.hstack((dataVectors[0], dataVectors[1], dataVectors[2]))
+    if len(dataVectors) == 4:
+        data = np.hstack((dataVectors[0], dataVectors[1], dataVectors[2], dataVectors[3]))
     
-    return data        
+    
+    return data
+
+def getNClosest(candidate, n, allLesionFeatures):
+
+    distance = np.zeros((np.shape(allLesionFeatures)[0]))
+
+    for i, lesionFeatures in enumerate(allLesionFeatures):
+        distance[i] = euclidean(candidate, lesionFeatures)
+    
+    nClosest = distance.argsort()[:n+1]
+
+    return nClosest
+    
     
 def hierarchicalClustering():
     print 'Loading patient data'
     mri_list = pkl.load(open('/usr/local/data/adoyle/mri_list.pkl', 'rb'))
     print 'Loaded patient data'
-
+        
     numLesions, lesionSizes, lesionCentroids, brainUids = getLesionSizes(mri_list)
 
-    contextData = loadContext(mri_list, numLesions)
-    contextData = contextData
-    
-    lbpData = loadLBP(mri_list, numLesions)
-    gaborData = loadGabor(mri_list, numLesions)
-    riftData = loadRIFT(mri_list, numLesions)    
-
-    dataVectors= []
-#    dataVectors.append(lbpData)
-    dataVectors.append(contextData)
-#    dataVectors.append(gaborData)
-#    dataVectors.append(riftData)
-
-#    data = normalizeDataVectors(dataVectors)
-    data = contextData[:,0:3]
-
-
-    del dataVectors
-    del lbpData
-    del gaborData
-    del riftData
-
-
+    experiments = ['context', 'rift', 'lbp', 'context-lbp', 'context-rift', 'rift-lbp', 'context-lbp-rift']
+      
     masks = []
-    smallMask = np.asarray(lesionSizes) <= 12
-    medMask = (np.asarray(lesionSizes) > 12) & (np.asarray(lesionSizes) <= 100)
+    tinyMask = np.asarray(lesionSizes) <= 10
+    smallMask = (np.asarray(lesionSizes) > 10) & (np.asarray(lesionSizes) <= 25)
+    medMask = (np.asarray(lesionSizes) > 25) & (np.asarray(lesionSizes) <= 100)
     bigMask = np.asarray(lesionSizes) > 100
-    
+        
+    masks.append(tinyMask)
     masks.append(smallMask)
     masks.append(medMask)
     masks.append(bigMask)
-
-    maskName = ['small', 'medium', 'large']
-
-
-    print len(contextData[smallMask])
-    print len(contextData[medMask])
-    print len(contextData[bigMask])
     
+    maskName = ['tiny', 'small', 'medium', 'large']    
+    
+    
+    for experiment in experiments:  
+        contextData = loadContext(mri_list, numLesions)
+        lbpData = loadLBP(mri_list, numLesions)
+    #    gaborData = loadGabor(mri_list, numLesions)
+        riftData = loadRIFT(mri_list, numLesions)        
+            
+        dataVectors = []
+        labels = []
+        if 'context' in experiment:
+            dataVectors.append(contextData)
+            labels.append(('context', 4))
+        if 'rift' in experiment:
+            dataVectors.append(riftData)
+            labels.append(('rift', ))
+        if 'lbp' in experiment:
+            dataVectors.append(lbpData)
+            labels.append('lbp')
+            
+        data = normalizeDataVectors(dataVectors)
+        
+        del contextData
+        del dataVectors
+        del lbpData
+    #    del gaborData
+        del riftData
 
-#    labelNum = 0
-    finalResults = []
-    for m, mask in enumerate(masks):
-        bics = []
-        numClusters = []
+        queryLesionIndices = []      
+        
+        for m, mask in enumerate(masks):
+            lesionHighLevel = data[mask]
+            
+            uids = np.asarray(brainUids)[mask]
+            centroids = np.asarray(lesionCentroids)[mask]
+            sizes = np.asarray(lesionSizes)[mask]
+            
+            #  to choose k
+    #        for i in range(1, 20):
+    #            results = cluster(lesionHighLevel, i)
+    #    #        results = spectralCluster(contextData, i)
+    #            clusterBics = []
+    #            numClusters.append(i)
+    #            
+    #            for j in range(i):
+    #                clusterData = lesionHighLevel[results.labels_==j]
+    #                information = ics(clusterData, i, np.shape(clusterData)[0])
+    #                
+    #                clusterBics.append(information[0])
+    #                
+    #            bics.append(np.sum(clusterBics))
+    #            
+    #            print 'optimal clusters:', numClusters[np.argmax(bics)]
+    #            print numClusters
+    #            
+    #        plt.plot(numClusters, bics)
+    #
+    #        plt.xlabel('# brain clusters')
+    #        plt.ylabel('information')
+    #        plt.title('Evaluating K')
+    #        plt.show()
+    #    
+    #        optimalClusters = numClusters[np.argmax(bics)]
+    #        finalResults.append(cluster(contextData, optimalClusters))
+    #        labelNum += optimalClusters
+            
+            
+            optimalClusters = [3,3,3,3]
+            results = cluster(lesionHighLevel, optimalClusters[m])        
+            distances = results.transform(lesionHighLevel)
 
-        lesionHighLevel = data[mask]
-        print 'feature vector for', maskName[m], 'mask'
-        print np.shape(lesionHighLevel)
-        print np.asarray(lesionSizes)[mask]
-        
-        uids = np.asarray(brainUids)[mask]
-        centroids = np.asarray(lesionCentroids)[mask]
-        sizes = np.asarray(lesionSizes)[mask]        
-        
-        
-        #  to choose k
-#        for i in range(1, 20):
-#            results = cluster(lesionHighLevel, i)
-#    #        results = spectralCluster(contextData, i)
-#            clusterBics = []
-#            numClusters.append(i)
-#            
-#            for j in range(i):
-#                clusterData = lesionHighLevel[results.labels_==j]
-#                information = ics(clusterData, i, np.shape(clusterData)[0])
-#                
-#                clusterBics.append(information[0])
-#                
-#            bics.append(np.sum(clusterBics))
-#            
-#            print 'optimal clusters:', numClusters[np.argmax(bics)]
-#            print numClusters
-#            
-#        plt.plot(numClusters, bics)
-#
-#        plt.xlabel('# brain clusters')
-#        plt.ylabel('information')
-#        plt.title('Evaluating K')
-#        plt.show()
-#    
-#        optimalClusters = numClusters[np.argmax(bics)]
-#        finalResults.append(cluster(contextData, optimalClusters))
-#        labelNum += optimalClusters
-        
-        
-        optimalClusters = 3
-        results = cluster(lesionHighLevel, optimalClusters)
-        distances = results.trainsform(lesionHighLevel)
-        
-        print np.shape(distances)        
-        exampleLesions = []
-        for clusters in range(optimalClusters):
-            exampleLesions.append([])
-        
-        for i, lesionCluster in enumerate(results.labels_):
-            for lesionType in range(optimalClusters):
-                if lesionCluster == lesionType:
-                    exampleLesions[lesionCluster].append((uids[i], centroids[i], sizes[i]))
-        
-        for lesionCluster in range(optimalClusters):
-            examples = 1
-            print len(exampleLesions[lesionCluster]), 'lesions in cluster'
-            for i in range(len(exampleLesions[lesionCluster])):
-                for scan in mri_list:
-                    results.transform()
+            featureSelection(lesionHighLevel, results, experiment, maskName[m])
+            
+            exampleLesions = []
+            clusterDistance = []
+            features = []
+            
+            for clusters in range(optimalClusters[m]):
+                exampleLesions.append([])
+                clusterDistance.append([])
+                features.append([])
+                queryLesionIndices.append([])
+            
+            for i, lesionCluster in enumerate(results.labels_):
+                for lesionType in range(optimalClusters[m]):
+                    if lesionCluster == lesionType:
+                        exampleLesions[lesionCluster].append((uids[i], centroids[i], sizes[i]))
+                        clusterDistance[lesionCluster].append(distances[i, lesionCluster])
+                        features[lesionCluster].append(lesionHighLevel[i])
+    
+    
+            for lesionCluster in range(optimalClusters[m]):
+                examples = 1
+                
+                n = 5
+#                nBest = np.asarray(clusterDistance[lesionCluster]).argsort()[:n]
+                
+                if os.path.exists('/usr/local/data/adoyle/lesionIndices.pkl'):
+                    queryLesionIndices = pkl.load(open('/usr/local/data/adoyle/lesionIndices.pkl'))
+                else:
+                    query = np.random.randint(len(features[lesionCluster]))
+                    for i, feature in enumerate(lesionHighLevel):
+                        if (feature == features[lesionCluster][query]).all():
+                            queryLesionIndices[m].append(i)
+    
+    
+#                print 'query: ', queryLesionIndices[m][lesionCluster]
+#                print 'feature: ', lesionHighLevel[queryLesionIndices[m][lesionCluster]]
+                
+                nClosest = getNClosest(lesionHighLevel[queryLesionIndices[m][lesionCluster]], n, lesionHighLevel)
+                n=len(nClosest)
+                
+                plt.figure()
+                
+                for goodOne in nClosest:
                     
-                    if scan.uid in exampleLesions[lesionCluster][i][0] and i%100 == 0:
-                        
-                        img = nib.load(scan.images['flr']).get_data()
-#                       print exampleLesions[lesionCluster][i]
-                        x, y, z = exampleLesions[lesionCluster][i][1]
-                        patch = img[x, y-20:y+20, z-20:z+20]
-                        
-#                        print exampleLesions[lesionCluster][i][2]
-                        
-                        plt.subplot(4, 4, examples)
-                        plt.axis('off')
-                        plt.imshow(patch, cmap = cm.Greys_r)
-                        plt.subplots_adjust(wspace=0.01,hspace=0.01)
+                    for scan in mri_list:
+                        if scan.uid in uids[goodOne]:
+                            img = nib.load(scan.images['flr']).get_data()
+                            t2img = nib.load(scan.images['t2w']).get_data()
+                            
+                            x, y, z = centroids[goodOne]
+    
+                            lesionMaskImg = np.zeros((np.shape(img)))
+                            
+                            for lesion in scan.lesionList:
+                                xx, yy, zz = [int(np.mean(xxx)) for xxx in zip(*lesion)]
+                                if [xx, yy, zz] == [x,y,z]:
+                                    for point in lesion:
+                                        lesionMaskImg[point[0], point[1], point[2]] = 1
+                                    break
+                            
+                            maskImg = np.ma.masked_where(lesionMaskImg == 0, np.ones((np.shape(lesionMaskImg)))*5000)                      
+                            maskSquare = np.zeros((np.shape(img)))
+                            maskSquare[x, y-10:y+10, z+10] = 1
+                            maskSquare[x, y-10:y+10, z-10] = 1
+                            maskSquare[x, y-10, z-10:z+10] = 1
+                            maskSquare[x, y+10, z-10:z+10] = 1
+                            
+                            square = np.ma.masked_where(maskSquare == 0, np.ones(np.shape(maskSquare))*5000)
+    
+                            lesionMaskPatch = maskImg[x, y-20:y+20, z-20:z+20]
+                            ax = plt.subplot(4, n, examples)
+                            ax.axis('off')
+                            ax.imshow(img[x,20:200,20:200], cmap = plt.cm.gray, interpolation = 'nearest',origin='lower')
+                            ax.imshow(maskImg[x, 20:200,20:200], cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.2, origin='lower')
+                            ax.imshow(square[x, 20:200, 20:200], cmap = plt.cm.autumn, interpolation = 'nearest', origin='lower')
+                            
+                            ax2 = plt.subplot(4, n, examples+n)
+                            ax2.axis('off')                        
+                            ax2.imshow(t2img[x, 20:200, 20:200], cmap = plt.cm.gray, interpolation = 'nearest', origin='lower')
+                            ax2.imshow(maskImg[x, 20:200,20:200], cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.2, origin='lower')
+                            ax2.imshow(square[x, 20:200, 20:200], cmap = plt.cm.autumn, interpolation = 'nearest', origin='lower')
                             
                             
-                        examples +=1
-                        if examples > 16:
+                            ax3 = plt.subplot(4, n, examples+2*n)
+                            ax3.axis('off')
+                            ax3.imshow(img[x, y-20:y+20, z-20:z+20], cmap = plt.cm.gray, interpolation = 'nearest', origin='lower')
+                            ax3.imshow(lesionMaskPatch, cmap = plt.cm.autumn, alpha = 0.2, interpolation = 'nearest', origin='lower')
+                            
+                            ax4 = plt.subplot(4, n, examples + 3*n)
+                            ax4.imshow(t2img[x, y-20:y+20, z-20:z+20], cmap = plt.cm.gray, interpolation = 'nearest', origin='lower')
+                            ax4.imshow(lesionMaskPatch, cmap = plt.cm.autumn, alpha = 0.2, interpolation = 'nearest', origin='lower')
+                            ax4.set_frame_on(False)
+                            ax4.axes.get_yaxis().set_visible(False)
+                            ax4.set_xticks([])
+                            plt.xlabel(results.labels_[goodOne] + 1)
+                            
+                            examples +=1
                             break
-
-                if examples > 16:
-                    break
-            print 'mask:', m, 'cluster:', lesionCluster
-            plt.show()
+                        
+    #            print maskName[m], ' lesions, cluster:', lesionCluster
+                
+                title = 'closest lesions in ' + maskName[m][0] + str(lesionCluster + 1)
+                plt.suptitle(title, fontsize=14)
+                plt.subplots_adjust(wspace=0.01,hspace=0.01)
+                plt.savefig('/usr/local/data/adoyle/images/closest-' + experiment + '-' + maskName[m] + str(lesionCluster) + '.png', dpi=600)
+                plt.show()
+                
+        pkl.dump(queryLesionIndices, open('/usr/local/data/adoyle/lesionIndices.pkl', 'wb'))
+    
+#            plt.figure()
+#            
+#            n = n-1
+##            print nBest
+#            
+#            examples = 1
+#            for goodOne in nBest:
+#                for scan in mri_list:
+#                    if scan.uid in exampleLesions[lesionCluster][goodOne][0]:
+#                        img = nib.load(scan.images['flr']).get_data()
+#                        x, y, z = exampleLesions[lesionCluster][goodOne][1]
+#
+#                        lesionMaskImg = np.zeros((np.shape(img)))
+#                        
+#                        for lesion in scan.lesionList:
+#                            xx, yy, zz = [int(np.mean(xxx)) for xxx in zip(*lesion)]
+#                            if [xx, yy, zz] == [x,y,z]:
+#                                for point in lesion:
+#                                    lesionMaskImg[point[0], point[1], point[2]] = 1
+#                                
+##                                print 'lesion size:', len(lesion)
+#                                break
+##                        print 'lesions matched:', lesionsMatched
+#                        
+#                        maskImg = np.ma.masked_where(lesionMaskImg == 0, np.ones((np.shape(lesionMaskImg)))*5000)                      
+#                        maskSquare = np.zeros((np.shape(img)))
+#                        maskSquare[:, y-10:y+10, z+10] = 1
+#                        maskSquare[:, y-10:y+10, z-10] = 1
+#                        maskSquare[:, y-10, z-10:z+10] = 1
+#                        maskSquare[:, y+10, z-10:z+10] = 1
+#                        
+#                        square = np.ma.masked_where(maskSquare == 0, np.ones(np.shape(maskSquare))*5000)
+#                        
+#                        lesionMaskPatch = maskImg[x, y-20:y+20, z-20:z+20]
+#
+#                        plt.subplot(2, n, examples)
+#                        plt.axis('off')
+#                        plt.imshow(img[x,20:180,20:180], cmap = plt.cm.gray)
+#                        plt.subplots_adjust(wspace=0.01,hspace=0.01)
+##                        plt.tight_layout()And Dodig wasn't just talking about innovators focused on the high-tech sector. He pointed out that technological breakthroughs also key to the success of traditional industries like manufacturing and natural resources.
+#
+#
+#                        plt.imshow(maskImg[x, 20:180,20:180], cmap = plt.cm.autumn, alpha = 0.2)
+#                        plt.imshow(square[x, 20:180, 20:180], cmap = plt.cm.autumn, interpolation = 'nearest')
+#                        
+#                        plt.subplot(2, n, examples+n)
+#                        plt.axis('off')
+#                        plt.imshow(img[x, y-20:y+20, z-20:z+20], cmap = plt.cm.gray)
+#                        plt.imshow(lesionMaskPatch, cmap = plt.cm.autumn, alpha = 0.2)
+#                        plt.subplots_adjust(wspace=0.01, hspace=0.01)
+#                        
+#                        examples +=1
+#                        break
+#                    
+##            print maskName[m], ' lesions, cluster:', lesionCluster
+#            
+#            title = maskName[m] + ' lesions, cluster ' + str(lesionCluster + 1)
+#            plt.suptitle(title, fontsize=14)
+#            plt.savefig('/usr/local/data/adoyle/images/' + experiment + '-' + maskName[m] + str(lesionCluster) + '.png')
+#            plt.show()
             
             
 
@@ -653,7 +820,111 @@ def hierarchicalClustering():
 ##    plt.yticks(range(9), ylabels)
 #    plt.show()
     
+def featureSelection(features, results, experiment, lesionSize):
+    rf = RandomForestClassifier(n_estimators=50)
     
+    rf.fit(features, results.labels_)
+    
+    plotIndex = 0
+    plotWidth = 0    
+    data = collections.OrderedDict()
+    
+    if 'context' in experiment:
+        plotWidth += 2
+        data['context'] = collections.OrderedDict()
+        for i, tiss in enumerate(tissues):
+            data['context'][tiss[0]] = collections.OrderedDict()
+            data['context'][tiss[0]][tiss] = rf.feature_importances_[plotIndex]
+            plotIndex += 1
+            
+    if 'lbp' in experiment:
+        plotWidth += 80
+        for m, mod in enumerate(modalities):
+            data['lbp-' + mod] = collections.OrderedDict()
+            for r, rad in enumerate(lbpRadii):
+                data['lbp-' + mod][str(rad)] = collections.OrderedDict()
+                for x in range(32):
+                    data['lbp-'+mod][str(rad)][str(x)] = rf.feature_importances_[plotIndex]
+                    plotIndex += 1
+    
+    if 'rift' in experiment:
+        plotWidth += 80
+        for m, mod in enumerate(modalities):
+            data['rift-' + mod] = collections.OrderedDict()
+            for r, rad in enumerate(riftRadii):
+                data['rift-' + mod][str(rad)] = collections.OrderedDict()
+                for x in range(32):
+                    data['rift-' + mod][str(rad)][str(x)] = rf.feature_importances_[plotIndex]
+                    plotIndex +=1
+    
+    
+    fig = plt.figure(figsize=(plotWidth, 3), dpi=100)
+    ax = fig.add_subplot(1,1,1)
+    
+    label_group_bar(ax, data)     
+    
+    fig.savefig('/usr/local/data/adoyle/images/featureImportance-' + experiment + '-' + lesionSize + '.png', dpi=100, bbox_inches='tight')
+    fig.show()     
+
+def mk_groups(data):
+    try:
+        newdata = data.items()
+    except:
+        return
+
+    thisgroup = []
+    groups = []
+    for key, value in newdata:
+        newgroups = mk_groups(value)
+        if newgroups is None:
+            thisgroup.append((key, value))
+        else:
+            thisgroup.append((key, len(newgroups[-1])))
+            if groups:
+                groups = [g + n for n, g in zip(newgroups, groups)]
+            else:
+                groups = newgroups
+    return [thisgroup] + groups
+
+def add_line(ax, xpos, ypos):
+    line = plt.Line2D([xpos, xpos], [ypos + .1, ypos],
+                      transform=ax.transAxes, color='black')
+    line.set_clip_on(False)
+    ax.add_line(line)
+
+def label_group_bar(ax, data):
+    groups = mk_groups(data)
+    xy = groups.pop()
+    x, y = zip(*xy)
+    ly = len(y)
+    xticks = range(1, ly + 1)
+
+    ax.bar(xticks, y, align='center')
+    ax.set_xticks(xticks)
+    ax.set_xticklabels(x)
+    
+    ax.set_xlim(.5, ly + .5)
+    ax.yaxis.grid(True)
+    
+    for tick in ax.xaxis.get_major_ticks():
+        tick.label.set_fontsize(8)
+        tick.label.set_rotation('vertical')
+
+    scale = 1. / ly
+    for pos in xrange(ly + 1):
+        add_line(ax, pos * scale, -.1)
+    ypos = -.2
+    while groups:
+        group = groups.pop()
+        pos = 0
+        for label, rpos in group:
+            lxpos = (pos + .5 * rpos) * scale
+            ax.text(lxpos, ypos, label, ha='center', transform=ax.transAxes)
+            add_line(ax, pos * scale, ypos)
+            pos += rpos
+        add_line(ax, pos * scale, ypos)
+        ypos -= .1
+
 
 def vtkViz(features, clusterMembership):
     points = vtk.vtkPoints()
