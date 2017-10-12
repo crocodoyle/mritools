@@ -5,7 +5,6 @@ import matplotlib.cm as cm
 import os
 import multiprocessing as mp
 
-import vtk
 
 from mri import mri
 #from scipy import stats
@@ -14,6 +13,11 @@ from mri import mri
 from scipy.ndimage.interpolation import rotate
 from scipy.ndimage.interpolation import zoom
 from scipy.ndimage.interpolation import map_coordinates
+
+from scipy.ndimage.filters import gaussian_filter
+from scipy.stats import norm
+
+
 
 import cPickle as pickle
 
@@ -26,18 +30,19 @@ from bson.binary import Binary
 import pymongo
 
 
-from scipy.ndimage.morphology import binary_erosion
-from scipy.ndimage.morphology import binary_hit_or_miss
 
-from scipy.ndimage.morphology import distance_transform_edt
-from scipy.ndimage.measurements import center_of_mass
 
-from scipy.spatial import Voronoi
+import skeletons
 
 import matplotlib.pyplot as plt
 import transformations as t
 
 import bitstring 
+
+#sys.path.append('/usr/local/data/adoyle/SHTOOLS')
+#import pyshtools as shtools
+
+
 
 icbmRoot = '/usr/local/data/adoyle/trials/quarantine/common/models/icbm_avg_152_'
 data_dir = '/usr/local/data/adoyle/trials/MS-LAQ-302-STX/'
@@ -48,10 +53,13 @@ threads = 8
 recompute = False
 reconstruct = False
 
+doShape = False
 doGabors = False
+
 doLBP = True
-doContext = False
-doRIFT = False
+doContext = True
+doRIFT = True
+doIntensity = True
 
 reload_list = False
 multithreaded = False
@@ -64,9 +72,13 @@ modalities = ['t1p', 't2w', 'pdw', 'flr']
 dbIP = '132.206.73.115'
 dbPort = 27017
 
+riftRadii = [1,2,3]
+lbpRadii = [1,2,3]
 
 lbpBinsTheta = 6
 lbpBinsPhi = 4
+
+thinners = skeletons.thinningElements()
 
 
 def convertToNifti(mri_list):
@@ -78,8 +90,7 @@ def convertToNifti(mri_list):
                 scan.images[mod] = scan.images[mod][0:-7] + '.nii'
                 subprocess.call(['gzip', scan.images[mod]])
                 scan.images[mod] += '.gz'                
-                
-                
+                            
         for prior in scan.tissues:
             if not '.nii' in scan.priors[prior]:
                 subprocess.call(['mnc2nii', scan.priors[prior], scan.priors[prior][0:-7]+'.nii'])
@@ -94,25 +105,27 @@ def convertToNifti(mri_list):
     outfile.close()
     
     return new_list
-        
-def getLesionSizes(mri_list):
-    numLesions = 0
-    
-    lesionSizes = []
-    brainUids = []
-    lesionCentroids = []
-    
-    for i, scan in enumerate(mri_list):
-        for j, lesion in enumerate(scan.lesionList):
-            numLesions += 1
-            lesionSizes.append(len(lesion))
-            brainUids.append(scan.uid)
-                
-            x, y, z = [int(np.mean(x)) for x in zip(*lesion)]
-            lesionCentroids.append((x, y, z))
-                
-    return numLesions, lesionSizes, lesionCentroids, brainUids
 
+def invertLesionCoordinates(mri_list):
+    new_list = []
+    for scan in mri_list:
+        new_lesion_list = []
+        for lesion in scan.lesionList:
+            new_lesion = []
+            for point in lesion:
+                x = point[2]
+                y = point[1]
+                z = point[0]
+                new_lesion.append([x, y, z])
+            new_lesion_list.append(new_lesion)
+        scan.lesionList = new_lesion_list
+        new_list.append(scan)
+    
+    outfile = open('/usr/local/data/adoyle/new_mri_list.pkl', 'wb')
+    pickle.dump(new_list, outfile)
+    outfile.close()    
+
+    return new_list
 
 def getBoundingBox(mri_list):
     lesTypes = ['tiny', 'small', 'medium', 'large']    
@@ -188,7 +201,6 @@ def generateGabors():
 
 
 def gabor(rotationTheta, rotationPhi, width, freq, sigX, sigY, sigZ):
-
     gabor_range = range(-int(width)/2, int(width)/2+1)
     
     sigX *= float(width/4)
@@ -213,6 +225,150 @@ def gabor(rotationTheta, rotationPhi, width, freq, sigX, sigY, sigZ):
     gab = zoom(gab, [1, 1, 1.0/3.0])
     
     return gab
+    
+def uniformLBP(image, lesion, radius):
+    lbp = bitstring.BitArray('0b00000000')
+    
+    size = ""
+    if (len(lesion) > 2) and (len(lesion) < 11):
+        size = 'tiny'
+    elif (len(lesion) > 10) and (len(lesion) < 26):
+        size = 'small'
+    elif (len(lesion) > 25) and (len(lesion) < 101):
+        size = 'medium'
+    elif (len(lesion) > 100):
+        size = 'large'
+    
+    r = radius
+    
+    
+    if size == 'tiny' or size == 'small':
+        uniformPatterns = np.zeros((9))
+        
+        for i, [x,y,z] in enumerate(lesion):
+            threshold = image[x,y,z]
+            
+            lbp.set(image[x-r, y, z] > threshold, 0)
+            lbp.set(image[x-r, y+r, z] > threshold, 1)
+            lbp.set(image[x, y+r, z] > threshold, 2)
+            lbp.set(image[x+r, y+r, z] > threshold, 3)
+            lbp.set(image[x+r, y, z] > threshold, 4)
+            lbp.set(image[x+r, y-r, z] > threshold, 5)
+            lbp.set(image[x, y-r, z] > threshold, 6)
+            lbp.set(image[x-r, y-r, z] > threshold, 7)
+        
+            transitions = 0
+            for bit in range(len(lbp)-1):
+                if not lbp[bit] == lbp[bit+1]:
+                    transitions += 1
+    
+            if not lbp[0] == lbp[-1]:
+                transitions += 1
+                
+            ones = lbp.count(1)
+            
+            if transitions <= 2:
+                uniformPatterns[ones] += 1.0 / float(len(lesion))
+            else:
+                uniformPatterns[8] += 1.0 / float(len(lesion))
+                
+    elif size == 'medium' or size == 'large':
+#        uniformPatterns = np.zeros((8, 9))
+#        quadrants = lesionQuadrants(lesion, downSample=1)
+        uniformPatterns = np.zeros((9))
+        garbage, skeleton = skeletons.hitOrMissThinning(lesion, thinners)
+        
+#        for q, quadrant in enumerate(quadrants):
+#            for i, [x,y,z] in enumerate(quadrant):
+        for i, [x,y,z] in enumerate(skeleton):
+                threshold = image[x,y,z]
+                
+                lbp.set(image[x-r, y, z] > threshold, 0)
+                lbp.set(image[x-r, y+r, z] > threshold, 1)
+                lbp.set(image[x, y+r, z] > threshold, 2)
+                lbp.set(image[x+r, y+r, z] > threshold, 3)
+                lbp.set(image[x+r, y, z] > threshold, 4)
+                lbp.set(image[x+r, y-r, z] > threshold, 5)
+                lbp.set(image[x, y-r, z] > threshold, 6)
+                lbp.set(image[x-r, y-r, z] > threshold, 7)
+            
+                transitions = 0
+                for bit in range(len(lbp)-1):
+                    if not lbp[bit] == lbp[bit+1]:
+                        transitions += 1
+        
+                if not lbp[0] == lbp[-1]:
+                    transitions += 1
+                    
+                ones = lbp.count(1)
+                
+                if transitions <= 2:
+#                    uniformPatterns[q, ones] += 1.0 / float(len(lesion))
+                    uniformPatterns[ones] += 1.0 / float(len(lesion))
+                else:
+#                    uniformPatterns[q, 8] += 1.0 / float(len(lesion))
+                    uniformPatterns[8] += 1.0 / float(len(lesion))
+                
+    return uniformPatterns
+    
+    
+def simpleLBP(image, lesion, radius):
+    numQuadrants = 8
+    
+    size = ""
+    if (len(lesion) > 2) and (len(lesion) < 11):
+        size = 'tiny'
+    elif (len(lesion) > 10) and (len(lesion) < 26):
+        size = 'small'
+    elif (len(lesion) > 25) and (len(lesion) < 101):
+        size = 'medium'
+    elif (len(lesion) > 100):
+        size = 'large'
+        
+    lbp = bitstring.BitArray('0b00000000')
+
+    r = radius    
+    lbpHist = []
+    
+    if size == "tiny" or size == "small":
+        lbpHist = np.zeros((2**8), dtype='short')
+        for i, [x,y,z] in enumerate(lesion):
+            threshold = image[x,y,z]
+            
+            lbp.set(image[x-r, y, z] > threshold, 0)
+            lbp.set(image[x-r, y+r, z] > threshold, 1)
+            lbp.set(image[x, y+r, z] > threshold, 2)
+            lbp.set(image[x+r, y+r, z] > threshold, 3)
+            lbp.set(image[x+r, y, z] > threshold, 4)
+            lbp.set(image[x+r, y-r, z] > threshold, 5)
+            lbp.set(image[x, y-r, z] > threshold, 6)
+            lbp.set(image[x-r, y-r, z] > threshold, 7)
+            
+            lbpPattern = minimumLBPPattern(lbp)
+            
+            lbpHist[lbpPattern] += 1
+
+    elif size == "medium" or size == "large":
+        lbpHist = np.zeros((numQuadrants, 2**8), dtype='short')
+        quadrants = lesionQuadrants(lesion, downSample=4)
+        for q, quadrant in enumerate(quadrants):
+            for i, [x,y,z] in enumerate(quadrant):
+                threshold = image[x,y,z]
+                
+                lbp.set(image[x-r, y, z] > threshold, 0)
+                lbp.set(image[x-r, y+r, z] > threshold, 1)
+                lbp.set(image[x, y+r, z] > threshold, 2)
+                lbp.set(image[x+r, y+r, z] > threshold, 3)
+                lbp.set(image[x+r, y, z] > threshold, 4)
+                lbp.set(image[x+r, y-r, z] > threshold, 5)
+                lbp.set(image[x, y-r, z] > threshold, 6)
+                lbp.set(image[x-r, y-r, z] > threshold, 7)
+                
+                lbpPattern = minimumLBPPattern(lbp)
+                
+                lbpHist[q, lbpPattern] += 1
+        
+    return lbpHist
 
 def lbp(image, lesionPoints, radius):
     lbpPatterns = np.zeros((len(lesionPoints), lbpBinsTheta*lbpBinsPhi), dtype='float')
@@ -231,6 +387,64 @@ def lbp(image, lesionPoints, radius):
         lbpFeature += lbpPatterns[l,:] / float(len(lesionPoints))
 
     return lbpFeature
+
+def lbpTop(image, lesionPoints, radius):
+    lbpXY = bitstring.BitArray('0b00000000')
+    lbpXZ = bitstring.BitArray('0b00000000')
+    lbpYZ = bitstring.BitArray('0b00000000')
+    
+    lbpTopHist = np.zeros((2**8 + 2**8 + 2**8), dtype='float')
+    r = radius
+    
+    for i, [x,y,z] in enumerate(lesionPoints):
+        threshold = image[x,y,z]
+        
+        lbpXY.set(image[x-r, y, z] > threshold, 0)
+        lbpXY.set(image[x-r, y+r, z] > threshold, 1)
+        lbpXY.set(image[x, y+r, z] > threshold, 2)
+        lbpXY.set(image[x+r, y+r, z] > threshold, 3)
+        lbpXY.set(image[x+r, y, z] > threshold, 4)
+        lbpXY.set(image[x+r, y-r, z] > threshold, 5)
+        lbpXY.set(image[x, y-r, z] > threshold, 6)
+        lbpXY.set(image[x-r, y-r, z] > threshold, 7)
+        
+        xy = minimumLBPPattern(lbpXY)
+        lbpTopHist[xy] += (1.0 / len(lesionPoints))
+        
+        lbpXZ.set(image[x-r, y, z] > threshold, 0)
+        lbpXZ.set(image[x-r, y, z+r] > threshold, 1)
+        lbpXZ.set(image[x, y, z+r] > threshold, 2)
+        lbpXZ.set(image[x+r, y, z+r] > threshold, 3)
+        lbpXZ.set(image[x+r, y, z] > threshold, 4)
+        lbpXZ.set(image[x+r, y, z-r] > threshold, 5)
+        lbpXZ.set(image[x, y, z-r] > threshold, 6)
+        lbpXZ.set(image[x-r, y, z-r] > threshold, 7)
+        xz = minimumLBPPattern(lbpXZ)
+        lbpTopHist[2**8 + xz] += (1.0 / len(lesionPoints))
+        
+        lbpYZ.set(image[x, y-r, z] > threshold, 0)
+        lbpYZ.set(image[x, y-r, z+r] > threshold, 1)
+        lbpYZ.set(image[x, y, z+r] > threshold, 2)
+        lbpYZ.set(image[x, y+r, z+r] > threshold, 3)
+        lbpYZ.set(image[x, y+r, z] > threshold, 4)
+        lbpYZ.set(image[x, y+r, z-r] > threshold, 5)
+        lbpYZ.set(image[x, y, z-r] > threshold, 6)
+        lbpYZ.set(image[x, y-r, z-r] > threshold, 7)
+        yz = minimumLBPPattern(lbpYZ)
+        lbpTopHist[2**8 + 2**8 + yz] += (1.0 / len(lesionPoints))
+        
+        return lbpTopHist
+
+def minimumLBPPattern(lbpPattern):
+    
+    minVal = lbpPattern.uint
+    for i in range(1,8):
+        lbpPattern.ror(1)
+        if lbpPattern.uint < minVal:
+            minVal = lbpPattern.uint
+        
+    return minVal
+        
     
 def regionLBP(image, regionPoints, radius):
     lbp = bitstring.BitArray('0b000000000000000000000000')
@@ -247,12 +461,11 @@ def regionLBP(image, regionPoints, radius):
         allLBP.append(lbp.uint)
 
 
-    lbpHist = np.zeros((2**(lbpBinsTheta*lbpBinsPhi)))
+    lbpHist = np.zeros((2**(lbpBinsTheta*lbpBinsPhi)), dtype=np.uint8)
     for val in allLBP:
         lbpHist[val] += 1
     
     return lbpHist
-    
 
 #generates a lookup table of points to sample for RIFT function
 def generateRIFTRegions(radii):
@@ -264,23 +477,154 @@ def generateRIFTRegions(radii):
     for x in range(-np.max(radii), np.max(radii)):
         for y in range(-np.max(radii), np.max(radii)):
             for z in range(-np.max(radii), np.max(radii)):
-                distance = np.sqrt((x)**2 + y**2 + (z*(1.0/3.0))**2)
+                distance = np.sqrt(x**2 + y**2 + (z*(1.0/3.0))**2)
                 
                 if distance < radii[0]:
                     pointLists[0].append([x, y, z])
-                if distance >= radii[0] and distance < radii[1]:
+                elif distance >= radii[0] and distance < radii[1]:
                     pointLists[1].append([x, y, z])
-                if distance >= radii[1] and distance < radii[2]:
+                elif distance >= radii[1] and distance < radii[2]:
                     pointLists[2].append([x, y, z])
     
     return pointLists
+    
+def generateRIFTRegions2D(radii):
+    pointLists = []
+    
+    for r in range(len(radii)):
+        pointLists.append([])
+        
+    for x in range(-np.max(radii), np.max(radii)):
+        for y in range(-np.max(radii), np.max(radii)):
+            distance = np.sqrt(x**2 + y**2)
+            
+            if distance <= radii[0]:
+                pointLists[0].append([x, y])
+            elif distance > radii[0] and distance <= radii[1]:
+                pointLists[1].append([x, y])
+            if distance > radii[1] and distance <= radii[2]:
+                pointLists[2].append([x, y])
 
-
-def getRIFTFeatures(scan, riftRegions):
+    return pointLists
+    
+def getRIFTFeatures2D(scan, riftRegions, img):
     dbClient = MongoClient(dbIP, dbPort)
     db = dbClient['MSLAQ']
     
-    radii = [2, 4, 6]
+    numBinsTheta = 8
+    numQuadrants = 8
+    
+    sigma = np.sqrt(2)
+    
+    binsTheta = np.linspace(0, 2*np.pi, num=numBinsTheta+1, endpoint=True)
+    
+    grad_x = {}
+    grad_y = {}
+    grad_z = {}
+
+    mag = {}
+    theta = {}
+    
+    for mod in modalities:
+        grad_x[mod], grad_y[mod], grad_z[mod] = np.gradient(img[mod])
+    
+        mag[mod] = np.sqrt(np.square(grad_x[mod]) + np.square(grad_y[mod]))
+        theta[mod] = np.arctan2(grad_y[mod], grad_x[mod])
+        
+    feature = np.zeros((1, len(riftRadii), numQuadrants, numBinsTheta))
+    for l, lesion in enumerate(scan.lesionList):
+        size = ""
+        if (len(lesion) > 2) and (len(lesion) < 11):
+            size = 'tiny'
+        elif (len(lesion) > 10) and (len(lesion) < 26):
+            size = 'small'
+        elif (len(lesion) > 25) and (len(lesion) < 101):
+            size = 'medium'
+#            quadrants = lesionQuadrants(lesion, downSample=1)
+        elif (len(lesion) > 100):
+            size = 'large'
+#            quadrants = lesionQuadrants(lesion, downSample=1)
+        else:
+            continue
+        
+        saveDocument = {}
+        saveDocument['_id'] = scan.uid + '_' + str(l)        
+
+        for mod in modalities:
+            if size == 'tiny' or size == 'small':
+                feature = np.zeros((len(riftRadii), numBinsTheta))
+                for pIndex, point in enumerate(lesion):
+                    xc, yc, zc = point
+                        
+                    for r, region in enumerate(riftRegions):
+                        gradientData = np.zeros((len(region), 2))
+    
+                        for p, evalPoint in enumerate(region):
+                            x = xc + evalPoint[0]
+                            y = yc + evalPoint[1]
+                            z = zc
+                            
+                            relTheta = np.arctan2((y - yc), (x - xc))
+                            
+                            outwardTheta = (theta[mod][x,y,z] - relTheta + 2*np.pi)%(2*np.pi)
+    
+                            gaussianWindow = 1/(sigma * np.sqrt(2 * np.pi)) * np.exp( - (np.square(y-yc) + np.square(x-xc)) / (2 * sigma**2))
+                            gradientData[p,:] = [outwardTheta, mag[mod][x,y,z]*gaussianWindow]
+                                                        
+
+                        hist, bins = np.histogram(gradientData[:, 0], bins=binsTheta, range=(0, np.pi), weights=gradientData[:,1])
+                        hist = np.divide(hist, sum(hist))   
+                        if not np.isnan(np.min(hist)):
+                            feature[r, :] += hist / float(len(lesion))
+  
+            elif size == 'medium' or size == 'large':
+#                feature = np.zeros((len(riftRadii), numQuadrants, numBinsTheta))
+                feature = np.zeros((len(riftRadii), numBinsTheta))
+
+                garbage, skeleton = skeletons.hitOrMissThinning(lesion, thinners)
+#                for q, quadrant in enumerate(quadrants):
+#                    for pIndex, point in enumerate(quadrant):
+                for pIndex, point in enumerate(skeleton):
+                        xc, yc, zc = point
+                            
+                        for r, region in enumerate(riftRegions):
+                            gradientData = np.zeros((len(region), 2))
+        
+                            for p, evalPoint in enumerate(region):
+                                x = xc + evalPoint[0]
+                                y = yc + evalPoint[1]
+                                z = zc
+                                
+                                relTheta = np.arctan2((y - yc), (x - xc))
+                                
+                                outwardTheta = (theta[mod][x,y,z] - relTheta + 2*np.pi)%(2*np.pi)
+        
+                                gaussianWindow = 1/(sigma * np.sqrt(2 * np.pi)) * np.exp( - (np.square(y-yc) + np.square(x-xc)) / (2 * sigma**2))
+                                gradientData[p,:] = [outwardTheta, mag[mod][x,y,z]]
+                            
+        #                    print 'theta', np.max(gradientData[:,0]) / np.pi, np.min(gradientData[:, 0]) / np.pi
+        #                    print 'phi', np.max(gradientData[:,1]) / np.pi, np.min(gradientData[:,1]) / np.pi
+      
+                            hist, bins = np.histogram(gradientData[:, 0], bins=binsTheta, range=(0, np.pi), weights=gradientData[:,1])
+                            hist = np.divide(hist, sum(hist))
+                            if not np.isnan(np.min(hist)):
+                                feature[r, :] += hist / float(len(skeleton))
+
+            saveDocument[mod] = Binary(pickle.dumps(feature)) 
+        for i in range(30):
+            try:
+                db['rift'].update_one({'_id' : scan.uid + '_' + str(l)}, {"$set": saveDocument}, upsert=True)
+                break
+            except pymongo.errors.AutoReconnect:
+                dbClient = MongoClient(dbIP, dbPort)
+                db = dbClient['MSLAQ']
+                time.sleep(2*i)
+                
+                
+def getRIFTFeatures3D(scan, riftRegions, img):
+    dbClient = MongoClient(dbIP, dbPort)
+    db = dbClient['MSLAQ']
+    
     
     numBinsTheta = 8
     numBinsPhi = 4    
@@ -298,8 +642,6 @@ def getRIFTFeatures(scan, riftRegions):
     phi = {}
     
     for mod in modalities:
-        img[mod] = nib.load(scan.images[mod]).get_data()
-
         grad_x[mod], grad_y[mod], grad_z[mod] = np.gradient(img[mod])
     
         mag[mod] = np.sqrt(np.square(grad_x[mod]) + np.square(grad_y[mod]) + np.square(grad_z[mod]))
@@ -314,7 +656,7 @@ def getRIFTFeatures(scan, riftRegions):
         saveDocument['_id'] = scan.uid + '_' + str(l)        
         
         for mod in modalities:
-            feature = np.zeros((len(lesion), len(radii), numBinsTheta*numBinsPhi))
+            feature = np.zeros((len(lesion), len(riftRadii), numBinsTheta*numBinsPhi))
             
             for pIndex, point in enumerate(lesion):
                 xc, yc, zc = point
@@ -351,13 +693,6 @@ def getRIFTFeatures(scan, riftRegions):
                 dbClient = MongoClient(dbIP, dbPort)
                 db = dbClient['MSLAQ']
                 time.sleep(2*i)
-        
-def bool2int(x):
-    y = 0
-    for i,j in enumerate(x):
-        if j: y += int(j)<<i
-    return y
-    
     
 def loadMRIList():
     total = 0    
@@ -365,14 +700,17 @@ def loadMRIList():
     mri_list = []
     for root, dirs, filenames in os.walk(data_dir):
         for f in filenames:
+            if total > 3:
+                break
             if f.endswith('_m0_t1p.mnc.gz'):
                 scan = mri(f)
-
+                
                 if os.path.isfile(scan.lesions) and os.path.isfile(scan.images['t1p']) and os.path.isfile(scan.images['t2w']) and  os.path.isfile(scan.images['pdw']) and os.path.isfile(scan.images['flr']):
                     scan.separateLesions()
                     mri_list.append(scan)
                     total += 1
                     
+                    print total, '/', len(filenames)
                     print scan.images['t1p']
     return mri_list
 
@@ -392,55 +730,45 @@ def lbpSphere(radius, centre, pointsTheta, pointsPhi):
     return np.asarray(np.transpose(sampleAt))
 
 
-def getICBMContext(scan): 
+def getICBMContext(scan, images): 
     dbClient = MongoClient(dbIP, dbPort)
     db = dbClient['MSLAQ']
-        
-    tissueContext = {}
-        
-    img = {}
+                
+    contextMin = {"csf": -0.001, "wm": -0.001, "gm": -0.001, "pv": -0.001, "lesion": -0.001}
+    contextMax = {'csf': 1.001, 'wm': 1.001, 'gm': 1.001, 'pv': 1.001, 'lesion': 0.348}
     
-#    print 'mincresample -transformation', scan.lesionPriorXfm, '-invert_transformation', lesion_atlas, scan.priors['lesion'], '-like', scan.priors['wm']
-
-#    if not os.path.exists(scan.lesionPriorXfm):
-#        print 'transform file missing'
-#    if not os.path.exists(lesion_atlas):
-#        print 'lesion atlas doesnt exist'
-    
-#    return_value = subprocess.call(['mincresample', '-transformation', scan.lesionPriorXfm, '-invert_transformation', lesion_atlas, scan.priors['lesion'], '-like', scan.priors['wm']])
-
-#    print 'mincresample return value:', return_value
-        
-#    if not os.path.exists(scan.priors['lesion']):
-#    subprocess.call(['mv', scan.priors['lesion'], scan.priors['lesion'][0:-3]])
-#    print 'mv', scan.priors['lesion'], scan.priors['lesion'][0:-3]
-#    subprocess.call(['mincresample', '-transformation', scan.lesionPriorXfm, '-invert_transformation', lesion_atlas, scan.priors['lesion'], '-like', scan.priors['wm']])
-#    subprocess.call(['gzip', '-f', scan.priors['lesion'][0:-3]])
-    
+    numBins = 4
     
     for tissue in scan.tissues:
         filename = scan.priors[tissue]
         try:
-            img[tissue] = nib.load(filename).get_data()
+            images[tissue] = nib.load(filename).get_data()
         except Exception as e:
             print 'Error for tissue', tissue, ':', e
 
     for l, lesion in enumerate(scan.lesionList):
-        
         saveDocument = {}
         saveDocument['_id'] = scan.uid + '_' + str(l)
             
         for tissue in scan.tissues:
-            try:
-                tissueContext[tissue] = []
+            context = []
 
-                for p in lesion:
-                    tissueContext[tissue].append(img[tissue][p[0], p[1], p[2]])
+            for p in lesion:
+                context.append(images[tissue][p[0], p[1], p[2]])
                 
-                saveDocument[tissue] = Binary(pickle.dumps(np.mean(tissueContext[tissue]), protocol=2))
-            except:
-#                print 'Couldnt load context for', tissue
-                pass
+            contextHist = np.histogram(context, numBins, (contextMin[tissue], contextMax[tissue]))
+            contextHist = contextHist[0] / np.sum(contextHist[0], dtype='float')
+            
+            if np.isnan(contextHist).any():
+                contextHist = np.zeros((numBins))
+                contextHist[0] = 1
+        
+            filteredContextHist = gaussian_filter(contextHist, float(numBins)/30.0)
+#            print 'context', tissue, contextHist
+#            print 'context', tissue, filteredContextHist
+##            sys.stdout.flush()
+            saveDocument[tissue] = Binary(pickle.dumps([np.mean(context), np.var(context)], protocol=2))
+
         
         for i in range(30):
             try:
@@ -452,98 +780,175 @@ def getICBMContext(scan):
                 time.sleep(2*i)
         
 
-def getLBPRegions(box, centroid):
-    lbpRegions = [[],[],[],[],[],[],[],[],[]]
-    regionMasks = [[],[],[],[],[],[],[],[],[]]
+#def lesionQuadrants(box, centroid, downSample=1):
+#    quadrantPoints = [[],[],[],[],[],[],[],[],[]]
+#    regionMasks = [[],[],[],[],[],[],[],[],[]]
+#
+#    bigBox = np.zeros((box[0]*box[1]*box[2], 3), dtype=np.uint8)
+#    
+#    index = 0
+#    for z in range(centroid[2] - box[2]/2, centroid[2] + box[2]/2):
+#        for i, x in enumerate(range(centroid[0] - box[0]/2, centroid[0] + box[0]/2)):
+#            for j, y in enumerate(range(centroid[1] - box[1]/2, centroid[1] + box[1]/2)):
+#                bigBox[index, ...] = x, y, z
+#                index += 1
+#                    
+#    for i in range(box[0]*box[1]*box[2], index, -1):
+#        bigBox = np.delete(bigBox, (i-1), axis=0)
+#
+#    regionMasks[0] = (bigBox[:, 0] < centroid[0] + 1) & (bigBox[:, 1] < centroid[1] + 1) & (bigBox[:,2] < centroid[2] + 1)
+#    regionMasks[1] = (bigBox[:, 0] > centroid[0]) & (bigBox[:, 1] < centroid[1] + 1) & (bigBox[:,2] < centroid[2] + 1)
+#    regionMasks[2] = (bigBox[:, 0] < centroid[0] + 1) & (bigBox[:, 1] > centroid[1]) & (bigBox[:,2] < centroid[2] + 1)
+#    regionMasks[3] = (bigBox[:, 0] < centroid[0] + 1) & (bigBox[:, 1] < centroid[1] + 1) & (bigBox[:,2] > centroid[2])
+#    regionMasks[4] = (bigBox[:, 0] > centroid[0]) & (bigBox[:, 1] > centroid[1]) & (bigBox[:,2] < centroid[2] + 1)
+#    regionMasks[5] = (bigBox[:, 0] > centroid[0]) & (bigBox[:, 1] < centroid[1] + 1) & (bigBox[:,2] > centroid[2])
+#    regionMasks[6] = (bigBox[:, 0] < centroid[0] + 1) & (bigBox[:, 1] > centroid[1]) & (bigBox[:,2] > centroid[2])
+#    regionMasks[7] = (bigBox[:, 0] > centroid[0]) & (bigBox[:, 1] > centroid[1]) & (bigBox[:,2] > centroid[2])
+#
+#    for i in range(8):
+#        quadrantPoints[i] = bigBox[regionMasks[i]]
+#        
+##    for i in range(len(quadrantPoints[0]), np.shape(quadrantPoints[0])[0], -1):
+#        
+#
+#    print quadrantPoints[0]
+#    return quadrantPoints
 
-    bigBox = np.zeros((box[0]*box[1]*box[2], 3))
+def lesionQuadrants(lesion, downSample=1):
+    quadrants = [[],[],[],[],[],[],[],[]]
     
-    index = 0
-    for z in range(centroid[0] - box[0]/2, centroid[0] + box[0]/2):
-        for y in range(centroid[1] - box[1]/2, centroid[1] + box[1]/2):
-            for x in range(centroid[2] - box[2]/2, centroid[2] + box[2]/2):
-                bigBox[index, ...] = z, y, x
-                index += 1
+    les = np.asarray(lesion)
+    xMin = np.amin(les[:,0])
+    xMax = np.amax(les[:,0])
 
-    regionMasks[0] = (bigBox[:, 0] < centroid[0] + 1) & (bigBox[:, 1] < centroid[1] + 1) & (bigBox[:,2] < centroid[2] + 1)
-    regionMasks[1] = (bigBox[:, 0] > centroid[0]) & (bigBox[:, 1] < centroid[1] + 1) & (bigBox[:,2] < centroid[2] + 1)
-    regionMasks[2] = (bigBox[:, 0] < centroid[0] + 1) & (bigBox[:, 1] > centroid[1]) & (bigBox[:,2] < centroid[2] + 1)
-    regionMasks[3] = (bigBox[:, 0] < centroid[0] + 1) & (bigBox[:, 1] < centroid[1] + 1) & (bigBox[:,2] > centroid[2])
-    regionMasks[4] = (bigBox[:, 0] > centroid[0]) & (bigBox[:, 1] > centroid[1]) & (bigBox[:,2] < centroid[2] + 1)
-    regionMasks[5] = (bigBox[:, 0] > centroid[0]) & (bigBox[:, 1] < centroid[1] + 1) & (bigBox[:,2] > centroid[2])
-    regionMasks[6] = (bigBox[:, 0] < centroid[0] + 1) & (bigBox[:, 1] > centroid[1]) & (bigBox[:,2] > centroid[2])
-    regionMasks[7] = (bigBox[:, 0] > centroid[0]) & (bigBox[:, 1] > centroid[1]) & (bigBox[:,2] > centroid[2])
+    yMin = np.amin(les[:,1])
+    yMax = np.amax(les[:,1])
+    
+    zMin = np.amin(les[:,2])
+    zMax = np.amax(les[:,2])
+    
+    xc, yc, zc = [int(np.mean(xx)) for xx in zip(*lesion)]
+    
+    for i in range(xc, xMax, downSample):
+        for j in range(yc, yMax, downSample):
+            for k in range(zc, zMax, 1):
+                if [i,j,k] in lesion:
+                    quadrants[0].append([i,j,k])
+                
+            for k in range(zc, zMin, -1):
+                if [i,j,k] in lesion:
+                    quadrants[1].append([i,j,k])
+    
+        for j in range(yc, yMin, -downSample):
+            for k in range(zc, zMax, 1):
+                if [i,j,k] in lesion:
+                    quadrants[2].append([i, j, k])
+            for k in range(zc, zMin, -1):
+                if [i,j,k] in lesion:
+                    quadrants[3].append([i,j,k])
+        
+    for i in range(xc, xMin, -downSample):
+        for j in range(yc, yMax, downSample):
+            for k in range(zc, zMax, 1):
+                if [i,j,k] in lesion:
+                    quadrants[4].append([i,j,k])
+                
+            for k in range(zc, zMin, -1):
+                if [i,j,k] in lesion:
+                    quadrants[5].append([i,j,k])
+    
+        for j in range(yc, yMin, -downSample):
+            for k in range(zc, zMax, 1):
+                if [i,j,k] in lesion:
+                    quadrants[6].append([i, j, k])
+            for k in range(zc, zMin, -1):
+                if [i,j,k] in lesion:
+                    quadrants[7].append([i,j,k])
+    
+    for q in quadrants:
+        if len(q) == 0:
+            q.append([xc,yc,zc])
+    return quadrants
 
-    for i in range(8):
-        lbpRegions[i] = bigBox[regionMasks[i]]
 
-    return lbpRegions
-
-
-
-def getLBPFeatures(scan, boundingBoxes):
+def getLBPFeatures(scan, boundingBoxes, images):
     dbClient = MongoClient(dbIP, dbPort)
     db = dbClient['MSLAQ']
-    
-    imageStartTime = time.time()
-
-    images = {}
-
-    lbpRadii = [1, 2, 3]
-    
-    
-    for j, mod in enumerate(modalities):
-        print scan.uid, mod
-        images[mod] = nib.load(scan.images[mod]).get_data()
-        print np.shape(images[mod])
-
-    for l, lesionPoints in enumerate(scan.lesionList):
+        
+    for l, lesion in enumerate(scan.lesionList):
         saveDocument = {}
         saveDocument['_id'] = scan.uid + '_' + str(l)
         
         #centroid
-        centroidZ, centroidY, centroidX = [int(np.mean(x)) for x in zip(*lesionPoints)]
-
+#        centroidX, centroidY, centroidZ = [int(np.mean(x)) for x in zip(*lesionPoints)]
+#
+#        
+#        if (len(lesionPoints) > 2) & (len(lesionPoints) < 11):
+#            box = boundingBoxes['tiny']
+#            print 'using tiny bounding box'
+#        if (len(lesionPoints) > 10) & (len(lesionPoints) < 26):
+#            box = boundingBoxes['small']
+#            print 'using small bounding box'
+#        if (len(lesionPoints) > 25) & (len(lesionPoints) < 101):
+#            box = boundingBoxes['medium']
+#            print 'using med bounding box'
+#        if (len(lesionPoints) > 100):
+#            box = boundingBoxes['large']
+#            print 'using lg bounding box'
+#        if (len(lesionPoints) < 3):
+#            continue
+#        
+#        regions = getLBPRegions(box, [centroidX, centroidY, centroidZ])
         
-        if (len(lesionPoints) > 2) & (len(lesionPoints) < 11):
-            box = boundingBoxes['tiny']
-        if (len(lesionPoints) > 10) & (len(lesionPoints) < 26):
-            box = boundingBoxes['small']
-        if (len(lesionPoints) > 25) & (len(lesionPoints) < 101):
-            box = boundingBoxes['medium']
-        if (len(lesionPoints) > 100):
-            box = boundingBoxes['large']
-        if (len(lesionPoints) < 3):
+        if len(lesion) > 100:
+            size = 'large'
+        elif len(lesion) > 25:
+            size = 'medium'
+        elif len(lesion) > 10:
+            size = 'small'
+        elif len(lesion) > 2:
+            size = 'tiny'
+        else:
             continue
-        
-        regions = getLBPRegions(box, [centroidZ, centroidY, centroidX])
-        
+            
+        if size == 'large' or size == 'medium':
+            feature = np.zeros((len(lbpRadii), 9))
+        elif size == 'small' or size == 'tiny':
+            feature = np.zeros((len(lbpRadii), 9))
+        else:
+            continue
+            
         for j, mod in enumerate(modalities):
             saveDocument[mod] = {}
             
             for r, radius in enumerate(lbpRadii):
+#                lbpHist = np.zeros((len(regions), 2**(lbpBinsTheta*lbpBinsPhi)), np.uint8)
+#                for i, reg in enumerate(regions):
+#                    lbpHist[i, :] = rotationInvariantLBP(images[mod], reg, radius)
+#                    
+#                lbpVector = np.hstack((lbpHist[0], lbpHist[1], lbpHist[2], lbpHist[3], lbpHist[4], lbpHist[5], lbpHist[6], lbpHist[7]))
+#                del lbpHist
+            
+            
+#                lbpHist = simpleLBP(images[mod], lesion, radius)
+                feature[r, ...] = uniformLBP(images[mod], lesion, radius)
                 
-                lbpHist = np.zeros((len(regions), 2**(lbpBinsTheta*lbpBinsPhi)))
-                for i, reg in enumerate(regions):
-                    lbpHist[i, :] = regionLBP(images[mod], reg, radius)
-                    
-                lbpVector = np.hstack((lbpHist[0], lbpHist[1], lbpHist[2], lbpHist[3], lbpHist[4], lbpHist[5], lbpHist[6], lbpHist[7]))
-                saveDocument[mod][str(radius)] = Binary(pickle.dumps(lbpVector, protocol=2))
+#                lbpVector = lbpTop(images[mod], lesionPoints, radius)
+                saveDocument[mod] = Binary(pickle.dumps(feature, protocol=2))
      
+
         for i in range(30):
             try:
+#                db['lbp'].insert_one({'_id': scan.uid+'_'+str(l)})
                 db['lbp'].update_one({'_id' : scan.uid + '_' + str(l)}, {"$set": saveDocument}, upsert=True)
                 break
-            except pymongo.errors.AutoReconnect:
+            except pymongo.errors.AutoReconnect as error:
+                print error
                 dbClient = MongoClient(dbIP, dbPort)
                 db = dbClient['MSLAQ']
                 time.sleep(2*i)
-                
-    imageEndTime = time.time()
-    elapsed = imageEndTime - imageStartTime
-    print elapsed/(60), "minutes", elapsed%60, "seconds"
 
-def getGaborFeatures(scan, gabors, nBest):
+def getGaborFeatures(scan, gabors, nBest, images):
     dbClient = MongoClient(dbIP, dbPort)
     db = dbClient['MSLAQ']
     
@@ -555,11 +960,6 @@ def getGaborFeatures(scan, gabors, nBest):
 
     gaborWidth = [1, 2.5, 4.5]
     gaborSpacing = [0.01, 0.2, 2]
-    
-    images = {}
-
-    for j, m in enumerate(modalities):
-        images[m] = nib.load(scan.images[m]).get_data()
     
     for l, lesionPoints in enumerate(scan.lesionList):
         saveDocument = {}
@@ -601,24 +1001,79 @@ def getGaborFeatures(scan, gabors, nBest):
     imageEndTime = time.time()
     elapsed = imageEndTime - imageStartTime
     print elapsed/(60), "minutes"
+            
+def getIntensityFeatures(scan, images):
+    dbClient = MongoClient(dbIP, dbPort)
+    db = dbClient['MSLAQ']
+    
+    
+    intensityMin = {"t1p": 32.0, "t2w": 10.0, "flr": 33.0, "pdw": 49.0}
+    intensityMax = {'t1p': 1025.0, 't2w': 1000.0, 'flr': 1016.0, 'pdw': 1018.0}
 
+    for l, lesion in enumerate(scan.lesionList):
+        saveDocument = {}
+        saveDocument['_id'] = scan.uid + '_' + str(l)
+        
+        histBins = 4
+        
+        for m in modalities:
+            intensities = []
+            for point in lesion:
+                intensities.append(images[m][point[0], point[1], point[2]])
+            
+            intensityHist = np.histogram(intensities, histBins, (intensityMin[m], intensityMax[m]))
+            intensityHist = intensityHist[0] / np.sum(intensityHist[0], dtype='float')
+            
+            if np.isnan(intensityHist).any():
+                intensityHist = np.zeros((histBins))
+                intensityHist[0] = 1
+            
+            filteredIntensityHist = gaussian_filter(intensityHist, float(histBins)/30.0)
+#            print 'intensity', m, filteredIntensityHist
+#            print 'intensity', m, intensityHist
+            saveDocument[m] = Binary(pickle.dumps([np.mean(intensities), np.var(intensities)], protocol=2))
+        
+        for i in range(30):
+            try:
+                db['intensity'].update_one({'_id' : scan.uid + '_' + str(l)}, {"$set": saveDocument}, upsert=True)
+                break
+            except pymongo.errors.AutoReconnect:
+                print 'error writing results, tyring again'
+                dbClient = MongoClient(dbIP, dbPort)
+                db = dbClient['intensity']
+                time.sleep(2*i)	
+        			
 
 def getFeaturesOfList(mri_list, gabors, riftRegions, boundingBoxes):
-    
     for i, scan in enumerate(mri_list):
+        images = {}
+        for j, m in enumerate(modalities):
+            images[m] = nib.load(scan.images[m]).get_data()
+        
         print scan.uid, i, '/', len(mri_list)
+        startTime = time.time()
+        
+        sys.stdout.flush()
         if doContext:
-            getICBMContext(scan)
+            getICBMContext(scan, images)
 
         if doGabors:
-            getGaborFeatures(scan, gabors, 10)
+            getGaborFeatures(scan, gabors, 10, images)
 
         if doLBP:
-            getLBPFeatures(scan, boundingBoxes)
+            getLBPFeatures(scan, boundingBoxes, images)
         
         if doRIFT:
-            getRIFTFeatures(scan, riftRegions)
-
+            getRIFTFeatures2D(scan, riftRegions, images)
+            
+        if doShape:
+            getShapeFeatures(scan)
+        
+        if doIntensity:
+            getIntensityFeatures(scan, images)
+            
+        elapsed = time.time() - startTime
+        print elapsed, "seconds"
 
 def chunks(l, n):
     shuffle(l)
@@ -649,14 +1104,13 @@ def main():
     
     print 'MRI list loaded'
     
-    mri_list = convertToNifti(mri_list)
+#    mri_list = convertToNifti(mri_list)
 #    mri_list = gzipNiftiFiles(mri_list)
-    numLesions, lesionSizes, lesionCentroids, brainUids = getLesionSizes(mri_list)
     
-    boundingBoxes = getBoundingBox(mri_list)    
-    
+#    mri_list = invertLesionCoordinates(mri_list)
+    boundingBoxes = getBoundingBox(mri_list)   
     gabors = generateGabors()    
-    riftRegions = generateRIFTRegions([2,4,6])
+    riftRegions = generateRIFTRegions2D(riftRadii)
     
     
     if multithreaded:
@@ -700,402 +1154,130 @@ def displayBrains():
     mri_list = pickle.load(infile)
     infile.close()
     
-    lesionSizes = []
     lesionsInBrain = []
+    
+    lesionBins = [0, 0, 0, 0, 0]
+
+    fig, (ax, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(9,6))    
     
     for scan in mri_list:
         lesionsInBrain.append(len(scan.lesionList))
         
-        lesionBins = [0, 0, 0]
+        
         for lesion in scan.lesionList:
-            if len(lesion) > 2:
-                
-                if len(lesion) <= 25:
-                    lesionBins[0] +=1
-                elif len(lesion) <= 1500:
-                    lesionBins[1] += 1
-                else:
-                    lesionBins[2] += 1
-                
-                lesionSizes.append(len(lesion))
+            if len(lesion) < 3:
+                lesionBins[0] += 1
+            elif len(lesion) <= 10:
+                lesionBins[1] += 1
+            elif len(lesion) <= 25:
+                lesionBins[2] += 1
+            elif len(lesion) <= 100:
+                lesionBins[3] += 1
+            else:
+                lesionBins[4] += 1
+
             
-    print len(lesionSizes)
-    plt.bar(range(len(lesionBins)), lesionBins)
-    plt.title('Distribution of Lesion Sizes')
-    xticks = ['<25', '<1500', '1500+']
-    plt.xlabel('Lesion Size (voxels)')
-    plt.xticks(range(len(xticks)), xticks)
+    ax.bar(range(len(lesionBins)), lesionBins, 0.35)
+    ax.set_title('Distribution of Lesion Sizes')
+    xticks = ['< 3', '3-10', '11-25', '25-100', '> 101']
+    ax.set_xlabel('Lesion Size (voxels)')
+    ax.set_xticks(np.add(range(len(xticks)), 0.2))
+    ax.set_xticklabels(xticks)
+    
+    ax2.hist(lesionsInBrain)
+    ax2.set_title('Distribution of Lesions per Brain')
+    ax2.set_xlabel('Lesions in Brain')
+    
+    plt.tight_layout()
     plt.show()
     
-    plt.hist(lesionsInBrain)
-    plt.title('Distribution of Lesions per Brain')
-    plt.xlabel('Lesions in Brain')
-    plt.show()
-    
-    
-    for scan in mri_list[0:5]:
-        mri_data = nib.load(scan.images['flr']).get_data()
-        plt.imshow(mri_data[30,:, :], cmap = cm.Greys_r)
-        plt.axis('off')        
-        plt.show()
+    for t in scan.tissues:    
+#    for mod in modalities:
+        intensities = []
+        context = []
+        for scan in mri_list:
 
+            mri_data = nib.load(scan.priors[t]).get_data()
+#            
+#            
+            for lesion in scan.lesionList:
+                for p in lesion:
+                    context.append(mri_data[p[0],p[1],p[2]])
+#            print t, np.min(context), np.max(context)
 
-def hitOrMissThinning(lesion):
-    img = np.zeros((60, 256, 256), dtype='bool')
-    
-    for point in lesion:
-        img[point[0], point[1], point[2]] = 1
+#            mri_data = nib.load(scan.images[mod]).get_data()
+#            plt.imshow(mri_data[:,:,30].T, cmap = cm.Greys_r)
+#            plt.axis('off')        
+#            plt.show()
+            
+            
+#            for lesion in scan.lesionList:
+#                for p in lesion:
+#                    intensities.append(mri_data[p[0], p[1], p[2]])
         
-    elem = np.zeros((3, 3, 3), dtype='bool')
-    elem[1,1,1] = 1
-    elem[1,0,:] = 1
-    
-    elemConv = np.zeros((3, 3, 3), dtype='bool')
-    elemConv[1,2,:] = 1
-    
-    
-    elem2 = np.zeros((3, 3, 3), dtype='bool')
-    elem2[1,1,1] = 1
-    elem2[1,0,1] = 1
-    elem2[1,1,0] = 1
-    elem2[2,1,1] = 1
-    elem2[0,1,1] = 1
-    
-    elem2Conv = np.zeros((3, 3, 3), dtype='bool')
-    elem2Conv[1,1,2] = 1
-    elem2Conv[1,2,2] = 1
-    elem2Conv[1,2,1] = 1
-    
-#    elem2Conv[0,1,1] = 1
-#    elem2Conv[2,1,1] = 1    
-#    
-#    
-#    elem2Conv[2,1,2] = 1
-#    elem2Conv[0,1,2] = 1
-#    elem2Conv[2,2,1] = 1
-#    elem2Conv[0,2,1] = 1
-    
-    
-    rotationsTheta = [0, np.pi/2, np.pi, 3*np.pi/2]
-    rotationsPhi = [np.pi/2]
-    
-    iteration = 1
-    
-    origImg = np.zeros(np.shape(img))
-    while not np.sum(origImg) == np.sum(img):
-          
-        for r in rotationsTheta:
-            R = t.rotation_matrix(r, (1, 0, 0), point=(1,1,1))[0:3, 0:3]
-            
-            e1 = R*elem
-            e1Conv = R*elemConv
-            
-            e2 = R*elem2
-            e2Conv = R*elem2Conv
-            
-            remove = binary_hit_or_miss(img, e1, e1Conv)
-            img = img - remove
-            remove = binary_hit_or_miss(img, e2, e2Conv)
-            img = img - remove
-            
-#            if iteration % 3 == 0:
-#                eZ1 = R*elem
-#                eZ1Conv = R*elemConv
-#                
-#                eZ2 = R*elem2
-#                eZ2Conv = R*elem2Conv
-                
-            for r in rotationsPhi:
-                    
-                R = t.rotation_matrix(r, (0, 1, 0), point=(1,1,1))[0:3, 0:3]
-                e1 = R*e1
-                e1Conv = R*e1Conv
-                
-                e2 = R*e2
-                e2Conv = R*e2Conv
-                    
-                remove = binary_hit_or_miss(img, e1, e1Conv)
-                img = img - remove
-                remove = binary_hit_or_miss(img, e2, e2Conv)
-                img = img - remove
-                
-        iteration += 1
-        origImg = img
-    
-    print np.sum(img), '/', len(lesion)
-    return img
-
-def voroSkeleton(lesion):
-    
-    skeleton = []
-
-    vor = Voronoi(lesion)
         
-    for region in vor.regions:
-        if region.all() >= 0:
-            for pointIndex in region:
-                skeleton.append(vor.vertices[pointIndex])
+#        print mod, np.min(intensities), np.max(intensities)
+        print t, np.min(context), np.max(context)
 
-def getLesionSkeleton(scan):
-#        flair = nib.load(self.images['t1p']).get_data()
 
-    struct = np.zeros((3, 3, 3))
-    struct[1, 1, 1] = 1
-    struct[2, 1, 1] = 1
-    struct[1, 2, 1] = 1
-    struct[1, 1, 2] = 1
-    struct[0, 1, 1] = 1
-    struct[1, 0, 1] = 1
-    struct[1, 1, 0] = 1
+def getShapeFeatures(scan):
+    dbClient = MongoClient(dbIP, dbPort)
+    db = dbClient['MSLAQ']    
+    
+    bins = np.linspace(0, 20, num=21)    
+    
+    for l, lesion in enumerate(scan.lesionList):
+        saveDocument = {}
+        saveDocument['_id'] = scan.uid + '_' + str(l)        
 
-    structNoZ = struct
-    structNoZ[0, 1, 1] = 0
-    structNoZ[2, 1, 1] = 0
-
-    for lesion in scan.lesionList:
-        hitMissSkele = hitOrMissThinning(lesion)
-#                vorImg = np.zeros((60, 256, 256))
-#                vor = Voronoi(lesion)                
-#                
-#                goodVertices = []
-#                
-     
-#                for ridge_index in vor.ridge_vertices:
-#                    if np.all(ridge_index > 0):
-#                        for index in ridge_index:
-#                            if vor.vertices[index][0] > 0 and vor.vertices[index][1] > 0 and vor.vertices[index][2] > 0:
-#                                point = (int(vor.vertices[index][0]), int(vor.vertices[index][1]), int(vor.vertices[index][2]))
-#                                vorImg[point] = 1     
-#                                goodVertices.append(point)
-#                                
-#                
-#                for v in vor.vertices:
-#                    vorImg[int(v[0]), int(v[1]), int(v[2])] = 1
-                
-        img = np.zeros((60, 256, 256), dtype='float')
+        img = np.zeros((256, 256, 60), dtype='float')
                 
         for point in lesion:
             img[point[0], point[1], point[2]] = 1
-            
-        keepGoing = True
-        iteration = 0
-        prevImg = img
-        while keepGoing:
-            keepGoing = False
-            if iteration%3 == 0:
-                newImg = binary_erosion(prevImg, structure=struct)
-            else:
-                newImg = binary_erosion(prevImg, structure=structNoZ)
                 
-            skeletonPoints = np.transpose(np.nonzero(newImg))
+#        centroid = center_of_mass(img)
+        boundaryDistance = distance_transform_edt(img, sampling=[1, 1, 3])
+
+        #perimeterPoints = img[boundaryDistance==1]
+        #print perimeterPoints
+        #print np.shape(perimeterPoints)[0]
+
+        #distances = []
+        #for perimeterPoint in perimeterPoints:
+        #    distances.append(distance.euclidean(perimeterPoint, centroid))
             
-            if len(skeletonPoints) < 1:
-                newImg = prevImg
-                keepGoing = False
-            else:
-                prevImg = newImg
-                for point in skeletonPoints:
-                    connectedPoints = 0
-                    for point2 in skeletonPoints:
-                        if np.abs(point[0] - point2[0]) <= 1 and np.abs(point[1] - point2[1]) <= 1 and np.abs(point[2] - point[2]) <= 1:
-                            connectedPoints += 1
-                    if connectedPoints > 3:
-                        keepGoing = True
-                        break
-        
-        boundaryDistance = distance_transform_edt(img, sampling=[3, 1, 1])
-        
-        point = center_of_mass(img)
-        
-        centrePoint = (int(point[0]), int(point[1]), int(point[2]))
-        distanceGrad = np.abs(np.gradient(boundaryDistance))
-        
-        sumGrads = distanceGrad[0] + distanceGrad[1] + distanceGrad[2]
-        sumGrads = np.multiply(img, sumGrads)
-        
-    #           plt.imshow(img[centrePoint[0], centrePoint[1]-5:centrePoint[1]+5, centrePoint[2]-5:centrePoint[2]+5])
-    #           plt.show()
-        
-    #           boundaryDistance = np.multiply(boundaryDistance, img)
-        if len(lesion) > 10:
+        #sphereness = np.mean(distances) / np.std(distances)
 
-            skeletonPointsThin = np.transpose(np.nonzero(hitMissSkele))
-            
-            displaySkeleton3D(lesion, skeletonPointsThin, np.transpose(np.nonzero(newImg)))
-            
-            
-            plt.subplot(1, 4, 1)     
-            plt.axis('off')
-            plt.imshow(newImg[centrePoint[0], centrePoint[1]-10:centrePoint[1]+10, centrePoint[2]-10:centrePoint[2]+10], cmap = plt.cm.gray, interpolation = 'nearest')
-            
-    #               plt.subplot(1, 6, 1)
-    #               plt.axis('off')
-    #               plt.imshow(distanceGrad[0][centrePoint[0], centrePoint[1]-5:centrePoint[1]+5, centrePoint[2]-5:centrePoint[2]+5], cmap = plt.cm.gray, interpolation = 'nearest')
-    #   #            plt.colorbar()
-    #               plt.subplot(1, 6, 2)
-    #               plt.axis('off')
-    #               plt.imshow(distanceGrad[1][centrePoint[0], centrePoint[1]-5:centrePoint[1]+5, centrePoint[2]-5:centrePoint[2]+5], cmap = plt.cm.gray, interpolation = 'nearest')
-    #   #            plt.colorbar()            
-    #               plt.subplot(1, 6, 3)
-    #               plt.axis('off')
-    #               plt.imshow(distanceGrad[2][centrePoint[0], centrePoint[1]-5:centrePoint[1]+5, centrePoint[2]-5:centrePoint[2]+5], cmap = plt.cm.gray, interpolation = 'nearest')
-    #            plt.colorbar()
-            plt.subplot(1, 4, 2)     
-            plt.axis('off')
-            plt.imshow(boundaryDistance[centrePoint[0], centrePoint[1]-10:centrePoint[1]+10, centrePoint[2]-10:centrePoint[2]+10], cmap = plt.cm.gray, interpolation = 'nearest')
-    #            plt.colorbar()
-            plt.subplot(1, 4, 3)     
-            plt.axis('off')
-            plt.imshow(img[centrePoint[0], centrePoint[1]-10:centrePoint[1]+10, centrePoint[2]-10:centrePoint[2]+10], cmap = plt.cm.gray, interpolation = 'nearest')            
-    #            plt.colorbar()
-    #               plt.subplot(1, 6, 6)
-    #               plt.axis('off')
-    #               plt.imshow(sumGrads[centrePoint[0], centrePoint[1]-5:centrePoint[1]+5, centrePoint[2]-5:centrePoint[2]+5], cmap = plt.cm.gray, interpolation = 'nearest')
-    #             
-            plt.subplot(1, 4, 4)     
-            plt.axis('off')
-            plt.imshow(hitMissSkele[centrePoint[0], centrePoint[1]-10:centrePoint[1]+10, centrePoint[2]-10:centrePoint[2]+10], cmap = plt.cm.gray, interpolation = 'nearest')            
-            
-            
-            plt.show()
- 
-def displaySkeleton3D(lesion, skeleton, skeleton2):
-    
-    points = vtk.vtkPoints()
-    vertices = vtk.vtkCellArray()
+        #les = np.asarray(lesion)
+        #print les
+        #xRange = np.amax(les[:,0]) - np.amin(les[:,0]) + 1
+        #yRange = np.amax(les[:,1]) - np.amin(les[:,1]) + 1
+        #zRange = np.amax(les[:,2]) - np.amin(les[:,2]) + 1
 
-    points2 = vtk.vtkPoints()
-    vertices2 = vtk.vtkCellArray()     
+        #rectangularity = float(len(lesion)) / float(xRange*yRange*zRange)
 
-    points3 = vtk.vtkPoints()
-    vertices3 = vtk.vtkCellArray()     
-    
-    
-    Colors = vtk.vtkUnsignedCharArray()
-    Colors.SetNumberOfComponents(3)
-    Colors.SetName("Colors")
-    Colors2 = vtk.vtkUnsignedCharArray()
-    Colors2.SetNumberOfComponents(3)
-    Colors2.SetName("Colors2")
-    Colors3 = vtk.vtkUnsignedCharArray()
-    Colors3.SetNumberOfComponents(3)
-    Colors3.SetName("Colors3")
-    
-    for point in lesion:
-        pointId = points.InsertNextPoint(point)
-        vertices.InsertNextCell(1)
-        vertices.InsertCellPoint(pointId)
-        Colors.InsertNextTuple3(255,255,255)
-
-    for point in skeleton:
-        pointId = points2.InsertNextPoint(point)
-        vertices2.InsertNextCell(1)
-        vertices2.InsertCellPoint(pointId)
-        Colors2.InsertNextTuple3(0,255,0)
-        
-    for point in skeleton2:
-        pointId = points3.InsertNextPoint(point)
-        vertices3.InsertNextCell(1)
-        vertices3.InsertCellPoint(pointId)
-        Colors3.InsertNextTuple3(255,0,0)
-                
-
-    poly = vtk.vtkPolyData()
-    poly2 = vtk.vtkPolyData()
-    poly3 = vtk.vtkPolyData()
-
-    poly.SetPoints(points)
-    poly.SetVerts(vertices)
-    poly.GetPointData().SetScalars(Colors)
-    poly.Modified()
-    poly.Update()
-
-
-#    delaunay = vtk.vtkDelaunay2D()
-#    delaunay.SetInput(poly)
-#    delaunay.SetSource(poly)
-#    delaunay.SetAlpha(0.5)
-#    delaunay.Update()
-#    
-#    delMapper = vtk.vtkDataSetMapper()
-#    delMapper.SetInputConnection(delaunay.GetOutputPort())
-#    
-#    delActor = vtk.vtkActor()
-#    delActor.SetMapper(delMapper)
-#    delActor.GetProperty().SetInterpolationToFlat()
-#    delActor.GetProperty().SetRepresentationToWireframe()
-
-    poly2.SetPoints(points2)
-    poly2.SetVerts(vertices2)
-    poly2.GetPointData().SetScalars(Colors2)
-    poly2.Modified()
-    poly2.Update()
-    
-    poly3.SetPoints(points3)
-    poly3.SetVerts(vertices3)
-    poly3.GetPointData().SetScalars(Colors3)
-    poly3.Modified()
-    poly3.Update()
-
-    
-    ren = vtk.vtkRenderer()
-    renWin = vtk.vtkRenderWindow()
-    renWin.AddRenderer(ren)
-    iren = vtk.vtkRenderWindowInteractor()
-    iren.SetRenderWindow(renWin)
-     
-    renWin.SetSize(500, 500)
-
-    mapper = vtk.vtkPolyDataMapper()
-    mapper2 = vtk.vtkPolyDataMapper()
-    mapper3 = vtk.vtkPolyDataMapper()
-    mapper.SetInput(poly)
-    mapper2.SetInput(poly2)
-    mapper3.SetInput(poly3)
-    
-    
-    transform1 = vtk.vtkTransform()
-    transform1.Translate(0.0, 0.1, 0.0)
-    transform2 = vtk.vtkTransform()
-    transform2.Translate(0.0, 0.0, 0.1)    
-    
-    
-    
-    actor = vtk.vtkActor()
-    actor.SetMapper(mapper)
-    
-    actor.GetProperty().SetPointSize(5)
-    
-    actor2 = vtk.vtkActor()
-    actor2.SetMapper(mapper2)
-    actor2.SetUserTransform(transform1)
-    actor2.GetProperty().SetPointSize(5)
-
-    actor3 = vtk.vtkActor()
-    actor3.SetMapper(mapper3)
-    actor3.SetUserTransform(transform2)
-    actor3.GetProperty().SetPointSize(5)
-    
-    ren.AddActor(actor)
-    ren.AddActor(actor2)
-    ren.AddActor(actor3)
-#    ren.AddActor(delActor)
-    ren.SetBackground(.2, .3, .4)
-    
-    renWin.Render()
-    iren.Start()
-
+        #hull = ConvexHull(lesion)
+        #convexity = float(hull.Area / len(perimeterPoints))
+        #solidity = float(len(lesion) / hull.Volume)
            
-def displaySkeletons():
-    infile = open('/usr/local/data/adoyle/mri_list.pkl', 'rb')
-    mri_list = pickle.load(infile)
-    infile.close()
-    
-    
-    for scan in mri_list[0:10]:
-        getLesionSkeleton(scan)
-    
+        shapeHistogram, binEdges = np.histogram(boundaryDistance[boundaryDistance > 0], bins=bins, normed=True)    
 
+        #saveDocument['sphereness'] = Binary(sphereness)
+        #saveDocument['rectangularity'] = Binary(rectangularity)
+        #saveDocument['convexity'] = Binary(convexity)
+        #saveDocument['solidity'] = Binary(solidity)
+        saveDocument['shapeHistogram'] = Binary(pickle.dumps(shapeHistogram))
+            
+        for i in range(30):
+            try:
+                db['shape'].update_one({'_id' : scan.uid + '_' + str(l)}, {"$set": saveDocument}, upsert=True)
+                break
+            except pymongo.errors.AutoReconnect:
+                print 'error writing results, tyring again'
+                dbClient = MongoClient(dbIP, dbPort)
+                db = dbClient['shape']
+                time.sleep(2*i)
+                    
 if __name__ == "__main__":
 #    infile = open('/usr/local/data/adoyle/mri_list.pkl', 'rb')
 #    mri_list = pickle.load(infile)
@@ -1107,6 +1289,8 @@ if __name__ == "__main__":
 
 #    displayGabors() 
     main()
+    import analyze_lesions
+    analyze_lesions.justTreatmentGroups()
 
 
 #    convertToNifti(mri_list)
