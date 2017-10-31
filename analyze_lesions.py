@@ -427,7 +427,7 @@ def createRepresentationSpace(mri_list, dataVectors, lesionSizes, numWithClinica
 #                                title = 'Examples of Same Lesion-Type'
 #                                plt.suptitle(title, fontsize=32)
                             plt.subplots_adjust(wspace=0.01,hspace=0.01)
-                            plt.savefig('/usr/local/data/adoyle/images/lesions-'+ size + '-' + ''.join((str(f1),str(f2),str(f3),str(f4))) + '.png', dpi=500)
+                            plt.savefig('/usr/local/data/adoyle/images/t2lesions-'+ size + '-' + ''.join((str(f1),str(f2),str(f3),str(f4))) + '.png', dpi=500)
 #                            plt.show()
 
 
