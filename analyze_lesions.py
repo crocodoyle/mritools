@@ -33,7 +33,6 @@ mpl.use('Agg')
 
 import matplotlib.pyplot as plt
 
-import vtk
 import nibabel as nib
 
 import os
@@ -47,12 +46,7 @@ import sys
 import context_extraction, load_data
 import bol_classifiers
 
-reload(context_extraction)
-reload(load_data)
-reload(bol_classifiers)
-
 import subprocess
-
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -60,7 +54,7 @@ warnings.filterwarnings("ignore")
 
 modalities = ['t1p', 't2w', 'pdw', 'flr']
 tissues = ['csf', 'wm', 'gm', 'pv', 'lesion']
-#metrics = ['newT1', 'newT2', 'newT1andT2'] 
+
 metrics = ['newT2']
 feats = ["Context", "RIFT", "LBP", "Intensity"]
 sizes = ["tiny", "small", "medium", "large"]
@@ -76,11 +70,7 @@ letters = ['(a)', '(b)', '(c)', '(d)', '(e)', '(f)', '(g)', '(h)', '(i)', '(j)',
 
 treatments = ['Placebo', 'Laquinimod', 'Avonex']
 
-threads = 1
-
-dbIP = '132.206.73.115'
-#dbIP = '127.0.0.1'
-dbPort = 27017
+threads = 8
 
 plotFeats = False
 usePCA = False
@@ -92,7 +82,7 @@ def cluster(data, numClusters):
     endTime = time.time()
     
     elapsed = endTime - startTime
-    print "Total time elapsed:", elapsed/60, 'minutes'
+    print("Total time elapsed:", elapsed/60, 'minutes')
 
     return kmeans
 
@@ -106,11 +96,7 @@ def countLesionTypes(mri_list, clusters, flattenedData, numLesions):
 
     return lesionTypes
     
-    #    for d in data:
-#        plt.plot(np.ndarray.flatten(d))
-#    
-#    plt.title('context')
-#    plt.show() 
+
 def ics(data, k, n):
     nCluster = np.shape(data)[0]
     variance = np.var(data)
@@ -120,6 +106,7 @@ def ics(data, k, n):
     
     bic = logLikelihood - k*dims*np.log(n)
     aic = logLikelihood - 2*dims
+
     return bic, aic
 
 
@@ -127,7 +114,6 @@ def normalizeDataVectors(dataVectors):
     dimensions = 0
     
     for i in range(len(dataVectors)):
-        
         oneDataSourceDims = 1
         for dim in np.shape(dataVectors[i]):
             oneDataSourceDims *= dim
@@ -136,9 +122,8 @@ def normalizeDataVectors(dataVectors):
         dimensions += oneDataSourceDims
         dataVectors[i] = np.reshape(dataVectors[i], (np.shape(dataVectors[i])[0], oneDataSourceDims))
 
-        print 'feature dimensions:', dimensions
-        
-        
+        print('feature dimensions:', dimensions)
+
     for i in range(len(dataVectors)):
         otherDims = dimensions - np.shape(dataVectors[i])[1]
         
@@ -160,6 +145,7 @@ def normalizeDataVectors(dataVectors):
     
     return data
 
+
 def getNClosest(candidate, n, allLesionFeatures):
 
     distance = np.zeros((np.shape(allLesionFeatures)[0]))
@@ -171,77 +157,26 @@ def getNClosest(candidate, n, allLesionFeatures):
 
     return nClosest
 
+
 def getNClosestMahalanobis(candidate, n, allLesionFeatures):
-#    print 'initializing...'
-#    sys.stdout.flush()    
     distances = np.zeros(np.shape(allLesionFeatures)[0])
-#    print 'calculating variance'
-#    sys.stdout.flush() 
     variance = np.var(allLesionFeatures, axis=0)
-#    print np.shape(variance)
-#    print 'calculated variance'
-#    sys.stdout.flush() 
+
     for i, example in enumerate(allLesionFeatures):
-#        print 'distance', i, '/', len(allLesionFeatures)
         distances[i] = np.sum(np.divide((candidate - example), variance)**2)
         sys.stdout.flush()
-#    print 'calculated distance'
-#    sys.stdout.flush()
+
     nClosest = distances.argsort()[:n]
-#    print 'sorted distances'
-#    sys.stdout.flush()
+
     return nClosest    
-    
-def selectFeatures(features, experiment, lesionSize):
-    totalFeatures = np.shape(features)[1]
-    
-    mi_scores = np.ones((totalFeatures, totalFeatures))
-    
-    clusterLabels = np.zeros((np.shape(features)[0], np.shape(features)[1]))
-    
-    print 'computing labels...'
-    for i in range(totalFeatures):
-#        print 'computing labels for feature', i, '/', totalFeatures
-        cluster = clusterEM(features[:,i], 5)
-        clusterLabels[:,i] = cluster.predict(features[:,i])
-        
-    print 'computing mutual information...'
-    for i in range(totalFeatures):
-        for j in range(totalFeatures)[i+1:]:
-#            print 'computer mutual information for features', i, j
-            mi_scores[i,j] = mutual_info_score(clusterLabels[:,i], clusterLabels[:,j])
-            mi_scores[j,i] = mi_scores[i,j]
-    
-    plt.imshow(mi_scores, interpolation='nearest')
-    plt.colorbar()
-    plt.title('Feature MI for ' + experiment + ' predicting ' + lesionSize + ' lesions')
-    plt.savefig('/usr/local/data/adoyle/images/mi-' + experiment + '-' + lesionSize + '.png', dpi=100)
-#    plt.show()     
 
-def clusterEM(data, numClusters):
-    clusterer = GMM(n_components = numClusters, covariance_type='full')
-    c = clusterer.fit(data)
-
-    return c
 
 def createRepresentationSpace(mri_list, dataVectors, lesionSizes, numWithClinical, lesionCentroids, examineClusters=False):
-    subtypeShape = []
-
-    clusters = []
-    lesionTypes = []
-    
-    brainIndices = {}
-    lesionIndices = {}
-    
-    brainsOfType = {}
-    lesionsOfType = {}
+    subtypeShape, clusters, lesionTypes = [], [], []
+    brainIndices, lesionIndices, brainsOfType, lesionsOfType = {}, {}, {}, {}
     
     for m, size in enumerate(sizes):
-        brainIndices[size] = defaultdict(list)
-        lesionIndices[size] = defaultdict(list)
-        
-        brainsOfType[size] = defaultdict(list)
-        lesionsOfType[size] = defaultdict(list)
+        brainIndices[size], lesionIndices[size], brainsOfType[size], lesionsOfType[size] = defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list)
 
     for m, size in enumerate(sizes):
         subtypeShape.append( () )
@@ -253,22 +188,16 @@ def createRepresentationSpace(mri_list, dataVectors, lesionSizes, numWithClinica
 
         for d, data in enumerate(dataVectors):
             lesionFeatures = data[size]
-            print "START OF", sizes[m], feats[d]
-            print np.shape(lesionFeatures)
+            print("START OF", sizes[m], feats[d])
+            print('lesion feature shape:', np.shape(lesionFeatures))
    
-            numClusters = []
-            bics = []
-            aics = []
-            scores = []
-            silhouette = []
-            clustSearch = []
+            numClusters, bics, aics, scores, clustSearch = [], [], [], [], []
             clustSearch.append("")
             clustSearch.append("")
             
-#            if feats[d] != 'Intensity':
             clusterData, validationData = train_test_split(lesionFeatures, test_size=0.3, random_state=5)
             for k in range(2,4):
-                print 'trying ' + str(k) + ' clusters...'
+                print('trying ' + str(k) + ' clusters...')
                 clustSearch.append(GMM(n_components = k, covariance_type = 'full'))
                 clustSearch[k].fit(clusterData)
                             
@@ -276,10 +205,7 @@ def createRepresentationSpace(mri_list, dataVectors, lesionSizes, numWithClinica
                 bics.append(clustSearch[k].bic(validationData))
                 aics.append(clustSearch[k].aic(validationData))
                 scores.append(np.mean(clustSearch[k].score(validationData)))
-                
-#                print np.shape(validationData)
-#                sil = silhouette_score(validationData, clustSearch[k].predict(validationData), metric='mahalanobis')             
-#                silhouette.append(sil)
+
                 
             nClusters = numClusters[np.argmin(bics)]
 #            nClusters = numClusters[np.argmax(silhouette)]
@@ -309,7 +235,7 @@ def createRepresentationSpace(mri_list, dataVectors, lesionSizes, numWithClinica
 #            else:
 #                nClusters = 5
             
-            print "Selected " + str(nClusters) + " clusters for " + feats[d] + " in " + sizes[m] + " lesions"
+            print("Selected " + str(nClusters) + " clusters for " + feats[d] + " in " + sizes[m] + " lesions")
             sys.stdout.flush()
             
             c = GMM(n_components = nClusters, covariance_type = 'full')
@@ -320,49 +246,18 @@ def createRepresentationSpace(mri_list, dataVectors, lesionSizes, numWithClinica
             clusterAssignments.append(c.predict(lesionFeatures))
             clusterProbabilities.append(c.predict_proba(lesionFeatures))
             clusters[m].append(c)
-            
-            
-#            fig, (ax, ax2, ax3) = plt.subplots(1,3, figsize=(12,4))            
-#            
-#            #visualize lesion sub-type distribution
-#            hist, bins = np.histogram(clusterAssignments[-1], nClusters)
-#            ax.plot(np.add(range(nClusters),1), hist)
-#            ax.set_xlabel(feats[d] + ' ML sub-type lesion distribution')
-#            ax.set_ylabel('number of ' + sizes[m] + ' lesions')
-#
-#            entropies = []
-#            for l in lesionFeatures:
-#                if not np.isnan(stats.entropy(l)).any():
-#                    entropies.append(stats.entropy(l))
-#                
-#            hist, bins = np.histogram(entropies)
-#            ax2.plot(hist)
-#            ax2.set_xlabel('entropy value for ' + feats[d] + ' features')
-#            ax2.set_ylabel('number of ' + sizes[m] + ' lesions')
-#        
-#            hist, bins = np.histogram(lesionFeatures, 100)
-#            ax3.plot(hist, label=sizes[m] + " - " + feats[d])
-#            ax3.set_xlabel("value of feature")
-#            ax3.set_ylabel("number of lesions")
-#            ax3.legend()
-#            
-#            plt.tight_layout()
-#            plt.show() 
-#            plt.close()
-        
-        
+
         lesionTypes.append(np.zeros(subtypeShape[m]))
         
 #        randomLesionType = (np.random.randint(shape[1]), np.random.randint(shape[2]), np.random.randint(shape[3]), np.random.randint(shape[4]), m)
 
-        print "Subtypes for " + sizes[m] + ": ", subtypeShape[m] 
+        print("Subtypes for " + sizes[m] + ": ", subtypeShape[m])
+        print("Combining lesion subtypes...")
 
-        print "Combining lesion subtypes..."
         lesionIndex = 0
         for i, scan in enumerate(mri_list):
             for j, lesion in enumerate(scan.lesionList):
-                if (len(lesion) > 2 and len(lesion) < 11 and m == 0) or (len(lesion) > 10 and len(lesion) < 26 and m == 1) or (len(lesion) > 25 and len(lesion) < 101 and m == 2) or (len(lesion) > 100 and m == 3):     
-
+                if (len(lesion) > 2 and len(lesion) < 11 and m == 0) or (len(lesion) > 10 and len(lesion) < 26 and m == 1) or (len(lesion) > 25 and len(lesion) < 101 and m == 2) or (len(lesion) > 100 and m == 3):
                     for f1 in range(subtypeShape[m][1]):
                         for f2 in range(subtypeShape[m][2]):
                             for f3 in range(subtypeShape[m][3]):
@@ -374,7 +269,6 @@ def createRepresentationSpace(mri_list, dataVectors, lesionSizes, numWithClinica
 
                     lesionIndex += 1
 
-
         if visualizeAGroup:
             n = 6
             
@@ -384,17 +278,11 @@ def createRepresentationSpace(mri_list, dataVectors, lesionSizes, numWithClinica
                         for f4 in range(subtypeShape[m][4]):
                             lesionToViz = ''.join((str(f1),str(f2),str(f3),str(f4)))
                             plt.figure(figsize=(8.5,2.5))
-            
 
                             for i, (brainIndex, lesionIndex) in enumerate(zip(brainIndices[size][lesionToViz][0:n], lesionIndices[size][lesionToViz][0:n])):
                                 scan = mri_list[brainIndex]
-#                                    img = nib.load(scan.images['flr']).get_data()
                                 img = nib.load(scan.images['t2w']).get_data()
                                 lesionMaskImg = np.zeros((np.shape(img)))
-                                
-#                                for lesion in scan.lesionList:
-#                                    for point in lesion:
-#                                        lesionMaskImg[point[0], point[1], point[2]] = 1
                                 
                                 for point in scan.lesionList[lesionIndex]:
                                     lesionMaskImg[point[0], point[1], point[2]] = 1
@@ -423,18 +311,14 @@ def createRepresentationSpace(mri_list, dataVectors, lesionSizes, numWithClinica
                                 ax3.axes.get_yaxis().set_visible(False)
                                 ax3.set_xticks([])
                                 ax3.set_xlabel(letters[i])
-                               
-#                                title = 'Examples of Same Lesion-Type'
-#                                plt.suptitle(title, fontsize=32)
+
                             plt.subplots_adjust(wspace=0.01,hspace=0.01)
-                            plt.savefig('/usr/local/data/adoyle/images/t2lesions-'+ size + '-' + ''.join((str(f1),str(f2),str(f3),str(f4))) + '.png', dpi=500)
-#                            plt.show()
+                            plt.savefig('/usr/local/data/adoyle/images/t2lesions-'+ size + '-' + ''.join((str(f1),str(f2),str(f3),str(f4))) + '.png', dpi=600)
 
+    pcas, lesionFlat = [], []
 
-    pcas = []
-    lesionFlat = []
     if usePCA:
-        print "applying PCA..."
+        print("applying PCA...")
         
         pcaTransformedData = []
         for m, size in enumerate(sizes):
@@ -457,9 +341,7 @@ def createRepresentationSpace(mri_list, dataVectors, lesionSizes, numWithClinica
             
         data = np.hstack((lesionFlat[0], lesionFlat[1], lesionFlat[2], lesionFlat[3]))
 
-
     data = data[:, 0:numWithClinical, ...]
-    
     
     for m, size in enumerate(sizes):
         lesionType = 0
@@ -478,9 +360,7 @@ def testRepresentationSpace(mri_list, dataVectors, lesionSizes, clusters, pcas):
     subtypeShape = []
     lesionTypes = []
 
-
     for m, size in enumerate(sizes):
-#        clusterAssignments = []
         clusterProbabilities = []
         
         subtypeShape.append( () )
@@ -494,7 +374,6 @@ def testRepresentationSpace(mri_list, dataVectors, lesionSizes, clusters, pcas):
             lesionFeatures = data[size]
             c = clusters[m][d]
             
-#            clusterAssignments.append(c.predict(lesionFeatures))
             clusterProbabilities.append(c.predict_proba(lesionFeatures))
 
         lesionIndex = 0
@@ -529,220 +408,9 @@ def testRepresentationSpace(mri_list, dataVectors, lesionSizes, clusters, pcas):
             lesionFlat.append(np.reshape(lesionTypes[m], (len(mri_list), lesionBins)))
             
         data = np.hstack((lesionFlat[0], lesionFlat[1], lesionFlat[2], lesionFlat[3]))
-        
-        
+
     return data
 
-def analyzeClinical(mri_list, clusterAssignments):
-    patientIndex = {}
-    atrophy = {}
-    newT1 = {}
-    newT2 = {}
-    
-    for treatment in treatments:
-        patientIndex[treatment] = 0
-        atrophy[treatment] = []
-        newT1[treatment] = []
-        newT2[treatment] = []    
-        for i in range(len(set(clusterAssignments['Placebo']))):
-            atrophy[treatment].append([])
-            newT1[treatment].append([])
-            newT2[treatment].append([])
-
-        
-    for i, scan in enumerate(mri_list):
-        atrophy[scan.treatment][clusterAssignments[scan.treatment][patientIndex[scan.treatment]]].append(scan.atrophy)
-        newT1[scan.treatment][clusterAssignments[scan.treatment][patientIndex[scan.treatment]]].append(scan.newT1)
-        newT2[scan.treatment][clusterAssignments[scan.treatment][patientIndex[scan.treatment]]].append(scan.newT2)
-        patientIndex[scan.treatment] += 1
-        
-    
-#    fig, axes = plt.subplots(nrows=len(treatments), ncols=1, figsize=(12, 8))
-#    fig2, axes2 = plt.subplots(nrows=len(treatments), ncols=1, figsize=(12, 8))
-    fig3, axes3 = plt.subplots(nrows=len(treatments), ncols=1, figsize=(12, 8))
-
-    for tr, treatment in enumerate(treatments):
-#        data = [atrophy[treatment][0], atrophy[treatment][1], atrophy[treatment][2], atrophy[treatment][3], atrophy[treatment][4], atrophy[treatment][5], atrophy[treatment][6], atrophy[treatment][7], atrophy[treatment][8], atrophy[treatment][9], atrophy[treatment][10]]
-#        data2 = [newT1[treatment][0], newT1[treatment][1], newT1[treatment][2], newT1[treatment][3], newT1[treatment][4], newT1[treatment][5], newT1[treatment][6], newT1[treatment][7], newT1[treatment][8], newT1[treatment][9], newT1[treatment][10]]
-        data3 = [newT2[treatment][0], newT2[treatment][1], newT2[treatment][2], newT2[treatment][3], newT2[treatment][4], newT2[treatment][5], newT2[treatment][6], newT2[treatment][7], newT2[treatment][8], newT2[treatment][9], newT2[treatment][10]]
-
-#        axes[tr].boxplot(data)
-#        axes[tr].set_ylabel(treatment, fontsize=14)
-#        axes2[tr].boxplot(data2)
-#        axes2[tr].set_ylabel(treatment, fontsize=14)
-        axes3[tr].boxplot(data3)
-        axes3[tr].set_ylabel(treatment, fontsize=14)
-    
-    plt.suptitle('New T2 Lesions by Patient Groups', fontsize=24)
-    plt.xlabel('Brain Cluster', fontsize=14)
-#    plt.tight_layout()
-#    plt.show() 
-    plt.close('all')
-        
-        
-
-def analyzeClinical2(mri_list, clusterAssignments, groupProbabilities):
-    atrophy = {}
-    newT1 = {}
-    newT2 = {}
-    
-    nClusters = np.shape(groupProbabilities)[1]
-    
-    for treatment in treatments:
-        atrophy[treatment] = []
-        newT1[treatment] = []
-        newT2[treatment] = []    
-        for i in range(nClusters):
-            atrophy[treatment].append([])
-            newT1[treatment].append([])
-            newT2[treatment].append([])
-
-
-    for i, scan in enumerate(mri_list):
-        atrophy[scan.treatment][clusterAssignments[i]].append(scan.atrophy)
-        newT1[scan.treatment][clusterAssignments[i]].append(scan.newT1)
-        newT2[scan.treatment][clusterAssignments[i]].append(scan.newT2)
-        
-    
-    fig, axes = plt.subplots(nrows=len(treatments), ncols=1, figsize=(12, 8), sharey=True)
-    fig2, axes2 = plt.subplots(nrows=len(treatments), ncols=1, figsize=(12, 8), sharey=True)
-    fig3, axes3 = plt.subplots(nrows=len(treatments), ncols=1, figsize=(12, 8), sharey=True)
-
-    for tr, treatment in enumerate(treatments):
-        axes[tr].boxplot(atrophy[treatment])
-        axes[tr].set_ylabel(treatment, fontsize=14)
-        axes2[tr].boxplot(newT1[treatment])
-        axes2[tr].set_ylabel(treatment, fontsize=14)
-        axes3[tr].boxplot(newT2[treatment])
-        axes3[tr].set_ylabel(treatment, fontsize=14)
-
-    for tr, treatment in enumerate(treatments):
-        top = axes[tr].get_ylim()[1]
-        pos = np.arange(nClusters) + 1
-        
-        for tick, label in zip(range(nClusters), axes[tr].get_xticklabels()):
-            axes[tr].text(pos[tick], top - (top*0.2), 'n='+str(len(atrophy[treatment][tick])), horizontalalignment='center', size='small')
-            axes[tr].text(pos[tick], top - (top*0.4), 'mean='+str(np.round(np.mean(atrophy[treatment][tick]),1)), horizontalalignment='center', size='small')
-        
-        top = axes2[tr].get_ylim()[1]
-        for tick, label in zip(range(nClusters), axes2[tr].get_xticklabels()):
-            axes2[tr].text(pos[tick], top - (top*0.1), 'n='+str(len(newT1[treatment][tick])), horizontalalignment='center', size='small')
-            axes2[tr].text(pos[tick], top - (top*0.2), 'mean='+str(np.round(np.mean(newT1[treatment][tick]), 1)), horizontalalignment='center', size='small')
-        
-        top = axes3[tr].get_ylim()[1]
-        for tick, label in zip(range(nClusters), axes3[tr].get_xticklabels()):
-            axes3[tr].text(pos[tick], top - (top*0.1), 'n='+str(len(newT2[treatment][tick])), horizontalalignment='center', size='small')
-            axes3[tr].text(pos[tick], top - (top*0.2), 'mean='+str(np.round(np.mean(newT2[treatment][tick]), 1)), horizontalalignment='center', size='small')
-
-    
-    print 'showing figures'
-    fig.suptitle('Atrophy by Patient Groups', fontsize=24)
-    fig.savefig('/usr/local/data/adoyle/images/atrophy.png')
-    fig.show()
-
-    fig2.suptitle('New T1 Lesions by Patient Groups', fontsize=24)
-    fig2.savefig('/usr/local/data/adoyle/images/newt1.png')
-    fig2.show()
-
-    fig3.suptitle('New T2 Lesions by Patient Groups', fontsize=24)
-    fig3.savefig('/usr/local/data/adoyle/images/newt2.png')
-    fig3.show()
-    plt.show() 
- 
-def analyzeClinical3(mri_list, clusterAssignments, groupProbabilities):
-    atrophy = {}
-    newT1 = {}
-    newT2 = {}
-    
-    nClusters = np.shape(groupProbabilities)[1]
-    
-    for treatment in treatments:
-        atrophy[treatment] = []
-        newT1[treatment] = []
-        newT2[treatment] = []    
-        for i in range(nClusters):
-            atrophy[treatment].append([])
-            newT1[treatment].append([])
-            newT2[treatment].append([])
-
-    for i, scan in enumerate(mri_list):
-        atrophy[scan.treatment][clusterAssignments[i]].append(scan.atrophy)
-        newT1[scan.treatment][clusterAssignments[i]].append(scan.newT1)
-        newT2[scan.treatment][clusterAssignments[i]].append(scan.newT2)
-
-    #remove empty clusters
-    i = 0
-    while i < len(atrophy[treatment]):
-        n=0
-        for treatment in treatments:
-            n += len(atrophy[treatment][i])
-        if n == 0:
-            for treatment in treatments:
-                del atrophy[treatment][i]
-                del newT1[treatment][i]
-                del newT2[treatment][i]
-            i -= 1
-        i += 1
-    
-    nClusters = len(atrophy[treatment])
-    
-    plt.close()
-    fig, axes = plt.subplots(nrows=len(treatments), ncols=1, figsize=(12, 8), sharey=True)
-    fig2, axes2 = plt.subplots(nrows=len(treatments), ncols=1, figsize=(12, 8), sharey=True)
-    fig3, axes3 = plt.subplots(nrows=len(treatments), ncols=1, figsize=(12, 8), sharey=True)
-
-    xticks = np.linspace(1, nClusters, num=nClusters)
-
-
-    epsilon = 1e-7
-    t1_active = np.zeros((len(treatments), nClusters))
-    t1_nonactive = np.zeros((len(treatments), nClusters))
-    
-    t2_active = np.zeros((len(treatments), nClusters))
-    t2_nonactive = np.zeros((len(treatments), nClusters))
-
-    bar_width = 0.35
-    
-    print np.shape(xticks)
-    
-    for tr, treatment in enumerate(treatments):
-        for j in range(nClusters):
-            t1_active[tr, j] = np.count_nonzero(newT1[treatment][j]) + epsilon
-            t1_nonactive[tr, j] = len(newT1[treatment][j]) - np.count_nonzero(newT1[treatment][j]) + epsilon
-            
-            t2_active[tr, j] = np.count_nonzero(newT2[treatment][j]) + epsilon
-            t2_nonactive[tr, j] = len(newT2[treatment][j]) - np.count_nonzero(newT2[treatment][j]) + epsilon
-            
-        axes[tr].bar(xticks-0.2, t1_active[tr, :], bar_width, color='r')
-        axes[tr].bar(xticks, t1_nonactive[tr, :], bar_width, color='g')
-        axes[tr].set_ylabel(treatment, fontsize=14)
-
-        axes2[tr].bar(xticks-0.2, t2_active[tr, :], bar_width, color='r')
-        axes2[tr].bar(xticks, t2_nonactive[tr, :], bar_width, color='g')
-        axes2[tr].set_ylabel(treatment, fontsize=14)
-            
-    for tr, treatment in enumerate(treatments):
-        top = axes[tr].get_ylim()[1]
-        pos = np.arange(nClusters) + 1
-        
-        for tick, label in zip(range(nClusters), axes[tr].get_xticklabels()):
-            axes[tr].text(pos[tick], top - (top*0.1), 'n='+str(len(newT1[treatment][tick])), horizontalalignment='center', size='small')
-            axes[tr].text(pos[tick], top - (top*0.2), 'mean='+str(np.round(np.mean(newT1[treatment][tick]),1)), horizontalalignment='center', size='small')
-        
-        top = axes2[tr].get_ylim()[1]
-        for tick, label in zip(range(nClusters), axes2[tr].get_xticklabels()):
-            axes2[tr].text(pos[tick], top - (top*0.1), 'n='+str(len(newT2[treatment][tick])), horizontalalignment='center', size='small')
-            axes2[tr].text(pos[tick], top - (top*0.2), 'mean='+str(np.round(np.mean(newT2[treatment][tick]), 1)), horizontalalignment='center', size='small')
-    
-    print 'showing figures'
-    fig.suptitle('New T1 Lesions by Patient Groups', fontsize=24)
-    fig.savefig('/usr/local/data/adoyle/images/newt1.png')
-    fig.show()
-
-    fig2.suptitle('New T2 Lesions by Patient Groups', fontsize=24)
-    fig2.savefig('/usr/local/data/adoyle/images/newt2.png')
-    fig2.show()
-    plt.show()     
  
 def mk_groups(data):
     try:
@@ -764,11 +432,13 @@ def mk_groups(data):
                 groups = newgroups
     return [thisgroup] + groups
 
+
 def add_line(ax, xpos, ypos):
     line = plt.Line2D([xpos, xpos], [ypos + .1, ypos],
                       transform=ax.transAxes, color='black')
     line.set_clip_on(False)
     ax.add_line(line)
+
 
 def label_group_bar(ax, data):
     groups = mk_groups(data)
@@ -779,18 +449,13 @@ def label_group_bar(ax, data):
 
     ax.bar(xticks, y, align='center')
     ax.set_xticks([])
-#    ax.set_xticks(xticks)
-#    ax.set_xticklabels(x)
+
     
     ax.set_xlim(.5, ly + .5)
     ax.yaxis.grid(True)
-    
-#    for tick in ax.xaxis.get_major_ticks():
-#        tick.label.set_fontsize(6)
-#        tick.label.set_rotation('vertical')
 
     scale = 1. / ly
-    for pos in xrange(ly + 1):
+    for pos in range(ly + 1):
         add_line(ax, pos * scale, -.1)
     ypos = -.2
     while groups:
@@ -804,327 +469,6 @@ def label_group_bar(ax, data):
             pos += rpos
         add_line(ax, pos * scale, ypos)
         ypos -= .1
-
-
-def vtkViz(features, clusterMembership):
-    points = vtk.vtkPoints()
-    vertices = vtk.vtkCellArray()    
-    
-    colours = vtk.vtkUnsignedCharArray()
-    colours.SetNumberOfComponents(3)
-    colours.SetName("Colours")    
-    
-    clusterColours = []
-    for j in range(len(list(set(clusterMembership)))):
-        clusterColours.append(np.random.randint(0, 255, 3))
-    
-    for i, point in enumerate(features):
-#        print point
-        pointId = points.InsertNextPoint(point)
-        colour = clusterColours[clusterMembership[i]]
-        colours.InsertNextTuple3(colour[0], colour[1], colour[2])
-        vertices.InsertNextCell(1)
-        vertices.InsertCellPoint(pointId)
-
-    poly = vtk.vtkPolyData()
-    poly.SetPoints(points)
-    poly.SetVerts(vertices)
-    poly.GetCellData().SetScalars(colours)
-    poly.Modified()
-    poly.Update()
-
-    ren = vtk.vtkRenderer()
-    renWin = vtk.vtkRenderWindow()
-    renWin.AddRenderer(ren)
-    iren = vtk.vtkRenderWindowInteractor()
-    iren.SetRenderWindow(renWin)
-     
-    renWin.SetSize(500, 500)
-
-#    transform = vtk.vtkTransform()
-#    transform.Translate(1.0, 0.0, 0.0)
-    
-    axes = vtk.vtkAxesActor()
-#    axes.SetUserTransform(transform)
-    axes.SetXAxisLabelText("wm")
-    axes.SetYAxisLabelText("gm")
-    axes.SetZAxisLabelText("les")
-#    axes.SetTotalLength(100, 100, 100)
-#    axes.SetShaftTypeToCylinder()
-#    axes.SetCylinderRadius(0.005)
-
-
-    #delaunay = vtk.vtkDelaunay2D()
-    #delaunay.SetInput(poly)
-
-#    glyphFilter = vtk.vtkVertexGlyphFilter()
-#    glyphFilter.SetInput(poly)
-#    glyphFilter.Update()
-
-    mapper = vtk.vtkPolyDataMapper()
-    mapper.SetInput(poly)
-    
-    actor = vtk.vtkActor()
-    actor.GetProperty().SetPointSize(2)
-    actor.SetMapper(mapper)
-    
-    ren.AddActor(actor)
-    ren.AddActor(axes)
-    ren.SetBackground(.2, .3, .4)
-    
-    renWin.Render()
-    iren.Start()
-
-def brainStatistics():
-    mri_list = pkl.load(open('/usr/local/data/adoyle/mri_list.pkl', 'rb'))
-
-    lesions = np.zeros((len(mri_list), 4))
-    numLesions = np.zeros(len(mri_list))
-    
-    for i, scan in enumerate(mri_list):
-        for lesion in scan.lesionList:
-            lesionSize = len(lesion)
-            if lesionSize <= 10 and lesionSize > 2:
-                lesions[i, 0] += 1
-                numLesions[i] += 1
-            if lesionSize > 10 and lesionSize <= 25:
-                lesions[i, 1] += 1
-                numLesions[i] += 1
-            if lesionSize > 25 and lesionSize <= 100:
-                lesions[i, 2] += 1
-                numLesions[i] += 1
-            if lesionSize > 100:
-                lesions[i, 3] += 1
-                numLesions[i] += 1
-                
-    plt.hist(lesions[:,0], 30)
-    plt.title('tiny lesions histogram')
-    plt.ylabel('total cases')
-    plt.xlabel('number of lesions')
-    plt.show() 
-    
-    plt.hist(lesions[:,1], 30)
-    plt.title('small lesions histogram')
-    plt.ylabel('total cases')
-    plt.xlabel('number of lesions')
-    plt.show() 
-    
-    plt.hist(lesions[:,2], 30)
-    plt.title('medium lesions histogram')
-    plt.ylabel('total cases')
-    plt.xlabel('number of lesions')
-    plt.show() 
-    
-    plt.hist(lesions[:,3], 20)
-    plt.title('big lesions histogram')
-    plt.ylabel('total cases')
-    plt.xlabel('number of lesions')
-    plt.show() 
-    
-    plt.hist(numLesions, 30)
-    plt.title('total lesions histogram')
-    plt.ylabel('total cases')
-    plt.xlabel('number of lesions')
-    plt.show() 
-    
-    
-    
-    hist = np.histogram2d(lesions[:,0], lesions[:, 1], bins = 40)
-    
-    plt.imshow(hist[0][:15, :15], interpolation='nearest', cmap = plt.cm.gray, origin='lower')
-    plt.title('joint histogram, tiny and small')
-    plt.xlabel('tiny')
-    plt.ylabel('small')
-    plt.colorbar()
-    plt.show() 
-    
-    hist = np.histogram2d(lesions[:,0], lesions[:, 2], bins = 40)
-    plt.imshow(hist[0][:15, :15], interpolation='nearest', cmap = plt.cm.gray, origin='lower')
-    plt.title('joint histogram, tiny and medium')
-    plt.xlabel('tiny')
-    plt.ylabel('medium')
-    plt.colorbar()
-    plt.show()     
-    
-    hist = np.histogram2d(lesions[:,0], lesions[:, 3], bins = 30)
-    plt.imshow(hist[0][:15, :15], interpolation='nearest', cmap = plt.cm.gray, origin='lower')
-    plt.title('joint histogram, tiny and large')
-    plt.xlabel('tiny')
-    plt.ylabel('large')
-    plt.colorbar()
-    plt.show() 
-    
-    hist = np.histogram2d(lesions[:,1], lesions[:, 2], bins = 30)
-    plt.imshow(hist[0][:15, :15], interpolation='nearest', cmap = plt.cm.gray, origin='lower')
-    plt.title('joint histogram, small and medium')
-    plt.xlabel('small')
-    plt.ylabel('medium')
-    plt.colorbar()
-    plt.show() 
-    
-    hist = np.histogram2d(lesions[:,1], lesions[:, 3], bins = 30)
-    plt.imshow(hist[0][:15, :15], interpolation='nearest', cmap = plt.cm.gray, origin='lower')
-    plt.title('joint histogram, small and large')
-    plt.xlabel('small')
-    plt.ylabel('large')
-    plt.colorbar()
-    plt.show() 
-    
-
-    hist = np.histogram2d(lesions[:,2], lesions[:, 3], bins = 30)
-    plt.imshow(hist[0][:15, :15], interpolation='nearest', cmap = plt.cm.gray, origin='lower')
-    plt.title('joint histogram, medium and large')
-    plt.ylabel('large')
-    plt.xlabel('medium')
-    plt.colorbar()
-    plt.show()   
-    
-    
-    if selectK:
-        numClusters = []
-        bics = []
-        for i in range(3, 30):
-            c = clusterEM(lesions, i)
-            numClusters.append(i)
-            bic = c.bic(lesions)
-            bics.append(bic)
-                
-            print 'optimal clusters:', numClusters[np.argmin(bics)]
-            print numClusters
-                    
-        plt.plot(numClusters, bics)
-        nClusters = numClusters[np.argmin(bics)]
-    else:
-        nClusters = 13
-    
-
-    c = clusterEM(lesions, nClusters)
-    clusterAssignments = c.predict(lesions)
-    
-    queryBrainIndices = np.zeros(nClusters)
-    
-    if os.path.exists('/usr/local/data/adoyle/brainIndices3.pkl'):
-        queryBrainIndices = pkl.load(open('/usr/local/data/adoyle/brainIndices3.pkl'))
-    else:
-        for i in range(nClusters):
-            query = np.random.randint(len(mri_list))
-            while clusterAssignments[query] != i:
-                query = np.random.randint(len(mri_list))
-            queryBrainIndices[i] = query
-                
-
-    for brainCluster in range(nClusters):
-        nClosest = getNClosest(lesions[queryBrainIndices[brainCluster], :], 6, lesions)
-        
-        print nClosest
-        
-        globalymax = 0
-        fig = plt.figure(figsize=(12,4))
-        axes = []       
-        for n, goodOne in enumerate(nClosest):
-            scan = mri_list[goodOne]            
-            t2 = nib.load(mri_list[goodOne].images['t2w']).get_data()
-            
-            lesionMaskImg = np.zeros((np.shape(t2)))
-            
-            for lesion in scan.lesionList:
-                for point in lesion:
-                    lesionMaskImg[point[0], point[1], point[2]] = 1
-                            
-            maskImg = np.ma.masked_where(lesionMaskImg == 0, np.ones((np.shape(lesionMaskImg)))*5000)                      
-
-            ax = fig.add_subplot(2, 7, n+1)
-            ax.imshow(t2[20:200, 20:200, 30].T, cmap=plt.cm.gray, origin='lower')
-            ax.imshow(maskImg[20:200,20:200, 30].T, cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
-            ax.axis('off')
-            if n == 0:
-                ax.set_title('query')
-            ax.set_xlabel(clusterAssignments[goodOne])
-
-
-            if n==0:
-                axes.append(fig.add_subplot(2, 7, n+8))
-            else:
-                axes.append(fig.add_subplot(2, 7, n+8, sharey=axes[0]))
-                axes[n].axes.get_yaxis().set_visible(False)
-                
-            ind = np.arange(4) + 0.5
-            axes[n].bar(ind, lesions[goodOne, :], 0.5)
-            axes[n].set_xticks(ind)
-            axes[n].set_xticklabels(('T', 'S', 'M', 'L'))
-#            ax.axes.get_yaxis().set_visible(False)
-            
-            ymax = np.max(lesions[goodOne, :])
-            if ymax > globalymax:
-                globalymax = ymax
-            axes[n].set_ylim([0, globalymax])
-
-        plt.subplots_adjust(wspace=0.01,hspace=0.01)
-        plt.suptitle('brains from group ' + str(brainCluster+1), fontsize=20)
-        plt.savefig('/usr/local/data/adoyle/images/brains' + str(brainCluster) + '.png', dpi=500)
-                
-        plt.show() 
-        
-    pkl.dump(queryBrainIndices, open('/usr/local/data/adoyle/brainIndices3.pkl', 'wb'))
-
-
-def testFeatures(mri_list, lesionTypes):
-    lr = LinearRegression()
-    
-    atrophy = np.zeros((len(mri_list), 1))    
-    newT1 = np.zeros((len(mri_list), 1))
-    newT2 = np.zeros((len(mri_list), 1))   
-    
-    for i, scan in enumerate(mri_list):
-        atrophy[i] = scan.atrophy
-        newT1[i] = scan.newT1
-        newT2[i] = scan.newT2
-        
-    scores = {}
-    correlation = {}
-    for metric in metrics:
-        scores[metric] = []
-        correlation[metric] = []
-
-    for lesionType in range(np.shape(lesionTypes)[1]):
-        x = np.reshape(lesionTypes[:, lesionType], (len(mri_list), 1))
-        
-        correlation['atrophy'].append(np.abs(stats.pearsonr(x,atrophy)[0]))      
-        correlation['newT1'].append(stats.pearsonr(x,newT1)[0])
-        correlation['newT2'].append(stats.pearsonr(x,newT2)[0])
-        
-        lr.fit(x, atrophy)
-        scores['atrophy'].append(lr.score(x, atrophy))
-        
-        lr.fit(x, newT1)
-        scores['newT1'].append(lr.score(x, newT1))
-        
-        lr.fit(x, newT2)
-        scores['newT2'].append(lr.score(x, newT2))
-
-    plt.plot(scores['atrophy'], label='atrophy')
-    plt.plot(scores['newT1'], label='newT1')
-    plt.plot(scores['newT2'], label='newT2')
-    
-    plt.title('Feature scores predicting clinical outcomes')
-    plt.xlabel('Feature')
-    plt.ylabel('Score')
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
-    plt.close()
-    
-    plt.plot(correlation['atrophy'], label='atrophy')
-    plt.plot(correlation['newT1'], label='newT1')
-    plt.plot(correlation['newT2'], label='newT2')
-    plt.title('Correlation of features and clinical outcomes')
-    plt.xlabel('Feature')
-    plt.ylabel('Pearson Correlation')
-    plt.tight_layout()
-    plt.legend()
-    plt.show()
-    plt.close()
-
 
 
 def getOutcomes(mri_list):
@@ -1141,8 +485,8 @@ def getOutcomes(mri_list):
                 
     return outcomes 
 
-def visualizePatientGroupHistograms(trainData, trainClusterAssignments):
 
+def visualizePatientGroupHistograms(trainData, trainClusterAssignments):
     fig, axs = plt.subplots(len(set(trainClusterAssignments)), 1, sharey=True, figsize = (32, 3*len(set(trainClusterAssignments))))
     for group in set(trainClusterAssignments):
         patientsInGroup = []
@@ -1151,7 +495,7 @@ def visualizePatientGroupHistograms(trainData, trainClusterAssignments):
             if clusterNum == group:
                 patientsInGroup.append(patientHistogram)
         
-        print np.shape(np.asarray(patientsInGroup).T)
+        print(np.shape(np.asarray(patientsInGroup).T))
         axs[group].boxplot(np.asarray(patientsInGroup), 1, '')
         axs[group].set_title('Group ' + str(group) + ' histogram')
         axs[group].set_xticks([])
@@ -1161,7 +505,6 @@ def visualizePatientGroupHistograms(trainData, trainClusterAssignments):
     plt.savefig('/usr/local/data/adoyle/images/groupHistograms.png', dpi=200)
     plt.show()
     
-
 
 def plotTreatmentHists(mri_list, outcomes):
     data = {}
@@ -1190,6 +533,41 @@ def plotTreatmentHists(mri_list, outcomes):
     plt.show()
 
 
+def pruneFeatures(trainData, testData):
+    featureCounts = {}
+    for s, size in enumerate(sizes):
+        #        print np.shape(trainData[size])
+        featureCounts[size] = np.zeros((np.shape(trainData[size])[1]))
+
+    for s, size in enumerate(sizes):
+        testData[size] = testData[size][:, (trainData[size] != 0).sum(axis=0) >= 10]
+        trainData[size] = trainData[size][:, (trainData[size] != 0).sum(axis=0) >= 10]
+
+    # this is very slow!!
+
+    #    for s, size in enumerate(sizes):
+    #        for i in range(np.shape(trainData[size])[1]):
+    #            featureCounts[size][i] = np.sum(trainData[size][:,i])
+    #
+    #    for s, size, in enumerate(sizes):
+    #        r = range(np.shape(trainData[size])[1])[::-1]
+    #        for i in r:
+    #            if featureCounts[size][i] == 0:
+    #                trainData[size] = np.delete(trainData[size], i, 1)
+    #                testData[size] = np.delete(testData[size], i, 1)
+
+    if plotFeats:
+        fig, ax = plt.subplots(1, 4, figsize=(14, 4))
+        for s, size in enumerate(sizes):
+            for d in trainData[size]:
+                ax[s].plot(np.ndarray.flatten(trainData[size]))
+
+            ax[s].set_title(size)
+
+        plt.tight_layout()
+        plt.show()
+
+    return trainData, testData
 
 
 def visualizePatientGroups(mri_list, trainData, groups, subtypeShape):
@@ -1243,42 +621,42 @@ def visualizePatientGroups(mri_list, trainData, groups, subtypeShape):
                 break
             
         groupNum = random.randint(0,100)
-        print groupNum
+        print(groupNum)
         plt.subplots_adjust(wspace=0.01,hspace=0.01)
         plt.savefig('/usr/local/data/adoyle/images/patient-groups' + str(groupNum) + '-' + str(g) + '.png', dpi=500)       
 #        plt.show()
         plt.close()
         
 def visualizeWhereTreatmentInfoHelps(example, mri_test, testData, mri_train, trainData):
-    print 'example', example
-    print 'test data', testData[example, :]
+    print('example', example)
+    print('test data', testData[example, :])
     sys.stdout.flush()
     closeOnes = getNClosestMahalanobis(testData[example, ...], 20, trainData)
-    print 'found closest ones:', closeOnes
+    print('found closest ones:', closeOnes)
     sys.stdout.flush()
     visualize = []
     for index in closeOnes:
         if mri_train[index].treatment == 'Avonex':
             visualize.append(visualize)
-    print 'picked the Avonex ones'
+    print('picked the Avonex ones')
     visualize = visualize[0:6]
     sys.stdout.flush()
     fig = plt.figure(figsize=(15,4))
     axes = []
     ymax = 0
     for n, index in enumerate(visualize):
-        print index
+        print(index)
         sys.stdout.flush()
-        print np.shape(trainData)
+        print(np.shape(trainData))
         sys.stdout.flush()
         hist = trainData[index, :]
-        print hist
+        print(hist)
         sys.stdout.flush()
         scan = mri_train[index]
-        print 'loading image...'
+        print('loading image...')
         sys.stdout.flush()
         t2 = nib.load(scan.images['t2w']).get_data()
-        print 'image loaded'
+        print('image loaded')
         sys.stdout.flush()
         lesionMaskImg = np.zeros((np.shape(t2)))
             
@@ -1287,14 +665,14 @@ def visualizeWhereTreatmentInfoHelps(example, mri_test, testData, mri_train, tra
                 lesionMaskImg[point[0], point[1], point[2]] = 1
                             
         maskImg = np.ma.masked_where(lesionMaskImg == 0, np.ones((np.shape(lesionMaskImg)))*5000)                      
-        print 'image masked'
+        print('image masked')
         sys.std.out.flush()
         ax = fig.add_subplot(2, 6, n+1)
         ax.imshow(t2[20:200, 20:200, 30].T, cmap=plt.cm.gray, origin='lower')
         ax.imshow(maskImg[20:200,20:200, 30].T, cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
         ax.axis('off')
         
-        print 'making hist'
+        print('making hist')
         sys.stdout.flush()
         axes.append(fig.add_subplot(2, 6, n+7))
         axes[-1].bar(range(np.shape(hist)[0]), hist)
@@ -1312,15 +690,14 @@ def visualizeWhereTreatmentInfoHelps(example, mri_test, testData, mri_train, tra
 #    plt.show()
     plt.close()
 
-def removeWorstFeatures(trainData, testData, removeThisRound):
 
-    
+def removeWorstFeatures(trainData, testData, removeThisRound):
     for remove in removeThisRound:
         trainData = np.delete(trainData, remove, 1)
         testData = np.delete(testData, remove, 1)
-    
-        
+
     return trainData, testData
+
 
 def plotScores(scoring, plotTitle):
     try:
@@ -1335,31 +712,16 @@ def plotScores(scoring, plotTitle):
             x = np.linspace(0, numBars, num=4, dtype='float')
             x = np.add(x, i) #shifts bars over
             y = [np.sum(scoreObj['TP']), np.sum(scoreObj['FP']), np.sum(scoreObj['TN']), np.sum(scoreObj['FN'])]
-    #            bars.append(ax2.bar(x, y, color=colours[i], label=label))
+
+            print(label)
+            print(np.sum(scoreObj['TP']), np.sum(scoreObj['FP']), np.sum(scoreObj['TN']), np.sum(scoreObj['FN']))
             
-            print label
-            print np.sum(scoreObj['TP']), np.sum(scoreObj['FP']), np.sum(scoreObj['TN']), np.sum(scoreObj['FN'])
-            
-            print 'sensitivity: ', np.sum(scoreObj['TP']) / (np.sum(scoreObj['TP']) + np.sum(scoreObj['FN']))
-            print 'specificity: ', np.sum(scoreObj['TN']) / (np.sum(scoreObj['TN']) + np.sum(scoreObj['FP']))
-        
-    #        ax2.set_xticks(np.linspace(0, numBars, num=4, endpoint=True) + numBars/8)
-    #        ax2.set_xticklabels(ticks)
-    ##        ax2.set_title('10-fold average results')
-    #        ax2.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=True, shadow=True, ncol=1)
-        
+            print('sensitivity: ', np.sum(scoreObj['TP']) / (np.sum(scoreObj['TP']) + np.sum(scoreObj['FN'])))
+            print('specificity: ', np.sum(scoreObj['TN']) / (np.sum(scoreObj['TN']) + np.sum(scoreObj['FP'])))
     
         labels = []
-    
-    
-    #        if "Avonex" in str(foldNum):
-    #            ax2.set_title("Drug A results")
-    #        elif "Laq" in str(foldNum):
-    #            ax2.set_title("Drug B results")
-    #        else:
-    #            ax2.set_title("Placebo results")
         
-        print plotTitle
+        print(plotTitle)
         
         plots = []
         for i, (scoreObj, label) in enumerate(scoring):
@@ -1377,78 +739,8 @@ def plotScores(scoring, plotTitle):
         plt.savefig('/usr/local/data/adoyle/ss-results-' + str(random.randint(1, 1000)) + '.png', dpi=500)
         plt.show()
     except:
-        print "coulnt plot"
+        print("couldnt plot")
 
-def plotGroupDistribution(trainOutcomes, testOutcomes, trainClusterAssignments, testClusterAssignments, n, predictions, method):
-    
-    #n = len(set(trainClusterAssignments))
-    
-    trainActive = np.zeros(n)    
-    trainInactive = np.zeros(n)    
-    
-    for (outcome, group) in zip(trainOutcomes, trainClusterAssignments):
-        if outcome == 1:
-            trainActive[group] += 1
-        else:
-            trainInactive[group] += 1
-    
-    testActive = np.zeros(n)    
-    testInactive = np.zeros(n)
-    
-    for (outcome, group) in zip(testOutcomes, testClusterAssignments):
-        if outcome == 1:
-            testActive[group] += 1
-        else:
-            testInactive[group] += 1
-    
-    xticks = np.linspace(1, n, num=n)
-    
-    bar_width = 0.35    
-    
-    fig, (ax, ax2, ax3) = plt.subplots(3, figsize=(4,12))
-            
-    ax.bar(xticks-0.2, trainActive, bar_width, color='r')
-    ax.bar(xticks, trainInactive, bar_width, color='g')
-    ax.set_xlim([0, n+1])
-    ax.set_title('Training - ' + method)
-    ax.set_ylabel('Number of Patients')
-    
-    ax2.bar(xticks-0.2, testActive, bar_width, color='r')
-    ax2.bar(xticks, testInactive, bar_width, color='g')
-    ax2.set_ylabel('Number of Patients')
-    ax2.set_title('Testing - ' + method)
-    ax2.set_xlim([0, n+1])
-    
-    groupTotals = np.zeros(n)
-    for i in range(n):
-        groupTotals[i] += testActive[i]
-        groupTotals[i] += testInactive[i]
-    
-    print 'group totals:', groupTotals    
-    
-    groupAccuracy = np.zeros(n)
-    for (outcome, prediction, group) in zip(testOutcomes, predictions, testClusterAssignments):
-        if outcome == prediction:
-            groupAccuracy[group] += 1.0 / groupTotals[group]
-    
-    ax3.bar(xticks-0.2, groupAccuracy, bar_width)
-    ax3.set_xlabel('Group Number')
-    ax3.set_ylabel('Accuracy')
-    ax3.set_xlim([0, n+1])
-    ax3.set_ylim([0, 1])   
-    
-    
-    plt.show()
-    plt.close('all')
-
-def examineClusters(groupProbs):
-    allProbs = []
-    for probs in groupProbs:
-        allProbs.append(np.amax(probs))
-    
-    plt.hist(allProbs)
-    plt.show()
-    plt.close()
     
 def beforeAndAfter():
     plt.close()
@@ -1483,8 +775,7 @@ def beforeAndAfter():
         
         maskImg = np.ma.masked_where(lesionImg == 0, np.ones(np.shape(lesionImg))*5000)
         newMaskImg = np.ma.masked_where(newLesionImg == 0, np.ones(np.shape(newLesionImg))*5000)
-        
-    
+
         ax = fig.add_subplot(1, 2, 1)
         ax.imshow(t2[20:200, 20:200, 30].T, cmap=plt.cm.gray, origin='lower')
         ax.imshow(maskImg[20:200, 20:200, 30].T, cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
@@ -1532,43 +823,6 @@ def beforeAndAfter():
         plt.show()
         plt.close()
 
-def pruneFeatures(trainData, testData):
-
-    featureCounts = {}
-    for s, size in enumerate(sizes):
-#        print np.shape(trainData[size])
-        featureCounts[size] = np.zeros((np.shape(trainData[size])[1]))
-        
-    for s, size in enumerate(sizes):
-        testData[size] = testData[size][:, (trainData[size] != 0).sum(axis=0) >= 10]
-        trainData[size] = trainData[size][:, (trainData[size] != 0).sum(axis=0) >= 10]
-        
-#    this is very slow!!
-        
-#    for s, size in enumerate(sizes):
-#        for i in range(np.shape(trainData[size])[1]):
-#            featureCounts[size][i] = np.sum(trainData[size][:,i])
-#
-#    for s, size, in enumerate(sizes):
-#        r = range(np.shape(trainData[size])[1])[::-1]
-#        for i in r:
-#            if featureCounts[size][i] == 0:
-#                trainData[size] = np.delete(trainData[size], i, 1)
-#                testData[size] = np.delete(testData[size], i, 1)
-    
-    if plotFeats:
-        fig, ax = plt.subplots(1,4, figsize=(14,4))
-        for s, size in enumerate(sizes):
-            for d in trainData[size]:
-                ax[s].plot(np.ndarray.flatten(trainData[size]))
-            
-            ax[s].set_title(size)
-        
-        plt.tight_layout()
-        plt.show()
-        
-    
-    return trainData, testData
 
 def separatePatientsByTreatment(mri_train, mri_test, trainData, testData, trainCounts, testCounts):
     trainingPatientsByTreatment = defaultdict(list)
@@ -1613,8 +867,8 @@ def separatePatientsByTreatment(mri_train, mri_test, trainData, testData, trainC
         treatmentIndexTest[scan.treatment] += 1
     
     for treatment in treatments:
-        print 'training shape:', treatment, np.shape(trainingData[treatment])
-        print 'testing shape:', treatment, np.shape(testingData[treatment])
+        print('training shape:', treatment, np.shape(trainingData[treatment]))
+        print('testing shape:', treatment, np.shape(testingData[treatment]))
     
     return trainingPatientsByTreatment, testingPatientsByTreatment, trainingData, testingData, trainLesionCounts, testLesionCounts
 
@@ -1642,7 +896,7 @@ def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, te
         else:
             responder_certain_actual.append(0)
         
-        print 'values (probs, drug prediction, actual): ', pretrained_prediction[1], prediction, test_outcome
+        print('values (probs, drug prediction, actual): ', pretrained_prediction[1], prediction, test_outcome)
         
         if pretrained_prediction[1] > 0.5 and prediction[1] < 0.5:
             responder_prediction.append(1)
@@ -1655,15 +909,7 @@ def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, te
             responder_certain_prediction.append(0)
             
         if pretrained_prediction[1] > 0.5 and prediction[1] < 0.5 and test_outcome == 0:
-            
             scan = test_mri[test_index]
-    
-            # get chi2 representation, find closest patient
-#            distances = chi2_kernel(train_data, test_data[test_index])
-#            print 'chi2 distance shape:', np.shape(distances)        
-        
-#            closest_index = np.argmin(distances[:,0])
-            
             t2_test = nib.load(scan.images['t2w']).get_data()
             testLesionPoints = nib.load(scan.lesions).get_data()
             testLesionList = list(np.asarray(np.nonzero(testLesionPoints)).T)
@@ -1672,14 +918,11 @@ def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, te
 
             for (x, y, z) in testLesionList:
                 testLesionImg[z,y,x] = 1
-            
-                       
+
             maskImg = np.ma.masked_where(testLesionImg == 0, np.ones(np.shape(testLesionImg))*5000)
-            
             n=4
             
             fig, axes = plt.subplots(2, n+1, sharey='row', figsize=(10, 4))
-
             axes[0,0].set_xticks([])
             axes[0,0].set_yticks([])
             axes[0,0].imshow(t2_test[20:180, 20:200, 30].T, cmap=plt.cm.gray, origin='lower')
@@ -1698,10 +941,10 @@ def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, te
             
             closest_index = getNClosestMahalanobis(test_data[test_index], n, train_data)
 
-            print "Responder:", scan.uid
+            print("Responder:", scan.uid)
             for i, closest in enumerate(closest_index):            
                 train_scan = train_mri[closest]
-                print "closest:", train_scan.uid
+                print("closest:", train_scan.uid)
     
                 t2_train = nib.load(train_scan.images['t2w']).get_data()
                     
@@ -1725,8 +968,7 @@ def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, te
                     axes[0,i+1].set_xlabel('(non-active)')
                 axes[0,i+1].set_xticks([])
                 axes[0,i+1].set_yticks([])
-                
-                
+
                 x = np.linspace(1, len(train_data[closest]), num=len(train_data[closest]))
                 
                 axes[1,i+1].set_xlabel('Lesion-Types')
@@ -1735,7 +977,6 @@ def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, te
             plt.savefig('/usr/local/data/adoyle/images/responder-' + scan.uid + '.png', dpi=500)
             plt.show()
             plt.close()
-
             
             respondersRight += 1
         
@@ -1747,7 +988,8 @@ def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, te
     responder_certain_score = bol_classifiers.calculateScores(responder_certain_prediction, responder_actual)
     responder_more_certain_score = bol_classifiers.calculateScores(responder_certain_prediction, responder_certain_actual)
     
-    print "Responders(right, wrong)", respondersRight, respondersWrong
+    print("Responders(right, wrong)", respondersRight, respondersWrong)
+
     return respondersRight, respondersWrong, responder_score, responder_uncertain_score, responder_certain_score, responder_more_certain_score
 
 
@@ -1759,20 +1001,11 @@ def justTreatmentGroups():
     outcomes = getOutcomes(mri_list)
     
     kf = StratifiedKFold(outcomes['newT2'], n_folds=50, shuffle=True)
-#    sss = StratifiedShuffleSplit(n_splits=1, test_size=0.1, random_state=0)
-#    treatments = ['Placebo']
+    failedFolds = 0
 
-    failedFolds =0
+    respondersRight, respondersWrong = {}, {}
 
-    respondersRight = {}
-    respondersWrong = {}
-
-    certainNumber = defaultdict(dict)
-    certainCorrect = defaultdict(dict)
-    
-    certainNumberPre = defaultdict(dict)
-    certainCorrectPre = defaultdict(dict)
-
+    certainNumber, certainCorrect, certainNumberPre, certainCorrectPre = defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict)
 
     scores = defaultdict(dict)
 
@@ -1855,31 +1088,17 @@ def justTreatmentGroups():
         preTrainedSvmLinScores[treatment] = defaultdict(list)
         preTrainedSvmRadScores[treatment] = defaultdict(list)
         
-        probScores[treatment] = defaultdict(list)
-        allProbScores[treatment] = defaultdict(list)
+        probScores[treatment], allProbScores[treatment] = defaultdict(list), defaultdict(list)
         
-        responderScores[treatment] = defaultdict(list)
-        responderHighProbScores[treatment] = defaultdict(list)
-        countScores[treatment] = defaultdict(list)
+        responderScores[treatment], responderHighProbScores[treatment], countScores[treatment] = defaultdict(list), defaultdict(list), defaultdict(list)
 
-        certainNumber[treatment] = 0
-        certainCorrect[treatment] = 0
-        certainNumberPre[treatment] = 0
-        certainCorrectPre[treatment] = 0
-        
-        respondersRight[treatment] = 0
-        respondersWrong[treatment] = 0
-        
-        r1[treatment] = defaultdict(list)
-        r2[treatment] = defaultdict(list)
-        r3[treatment] = defaultdict(list)
-        r4[treatment] = defaultdict(list)
+        certainNumber[treatment], certainCorrect[treatment], certainNumberPre[treatment], certainCorrectPre[treatment] = 0, 0, 0, 0
+        respondersRight[treatment], respondersWrong[treatment] = 0, 0
+
+        r1[treatment], r2[treatment], r3[treatment], r4[treatment] = defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list)
 
     for foldNum, (train_index, test_index) in enumerate(kf):
-
-        print foldNum, '/', len(kf)
-#        for train_index, test_index in sss.split(mri_list, outcomes['newT2']):
-#            mri_train, mri_test = train_test_split(mri_list, test_size=0.18, random_state=5)
+        print(foldNum, '/', len(kf))
         
         mri_train = np.asarray(mri_list)[train_index]
         mri_test = np.asarray(mri_list)[test_index]
@@ -1887,7 +1106,7 @@ def justTreatmentGroups():
         trainCounts = load_data.loadLesionNumbers(mri_train)
         testCounts = load_data.loadLesionNumbers(mri_test)
         
-        print "training:", len(mri_train)
+        print("training:", len(mri_train))
         #incorporate patients with no clinical data
         train_patients = []
         for scan in mri_train:
@@ -1895,7 +1114,7 @@ def justTreatmentGroups():
         for scan in without_clinical:
             train_patients.append(scan)
     
-        print 'loading data...'
+        print('loading data...')
         startLoad = time.time()
         numLesionsTrain, lesionSizesTrain, lesionCentroids, brainUids = load_data.getLesionSizes(train_patients)
         trainDataVectors, lbpPCA = load_data.loadAllData(train_patients, numLesionsTrain)
@@ -1903,9 +1122,8 @@ def justTreatmentGroups():
         numLesionsTest, lesionSizesTest, lesionCentroids, brainUids = load_data.getLesionSizes(mri_test)
         dataVectorsTest, lbpPCA = load_data.loadAllData(mri_test, numLesionsTest, lbpPCA=lbpPCA)
         
-        print 'loading data took', (time.time() - startLoad)/60.0, 'minutes'
-        
-        print 'removing infrequent features...'
+        print('loading data took', (time.time() - startLoad)/60.0, 'minutes')
+        print('removing infrequent features...')
         startPruneTime = time.time()
         prunedDataTrain = []
         prunedDataTest = []
@@ -1917,70 +1135,58 @@ def justTreatmentGroups():
         
         del trainDataVectors
         del dataVectorsTest
-        print "it took", (time.time() - startPruneTime)/60.0, "minutes"
-    
-        print 'learning bag of lesions...'
+        print("it took", (time.time() - startPruneTime)/60.0, "minutes")
+        print('learning bag of lesions...')
 
         startBol = time.time()
         allTrainData, clusters, pcas, subtypeShape, brainIndices, lesionIndices = createRepresentationSpace(train_patients, prunedDataTrain, lesionSizesTrain, len(mri_train), lesionCentroids, examineClusters=False)
         elapsedBol = time.time() - startBol
-        print str(elapsedBol / 60), 'minutes to learn BoL.'                                
+        print(str(elapsedBol / 60), 'minutes to learn BoL.')
                     
-#           tfidfTrans = TfidfTransformer()
-#           allTrainData = tfidfTrans.fit_transform(allTrainData).toarray()        
+#       tfidfTrans = TfidfTransformer()
+#       allTrainData = tfidfTrans.fit_transform(allTrainData).toarray()
    
-#                    pca = None
-    #    ica = FastICA()
-    #    ica.fit(data)
-    #    data = ica.transform(data)
+#       pca = None
+#       ica = FastICA()
+#       ica.fit(data)
+#       data = ica.transform(data)
 
-#                    pca = PCA(n_components=120, copy=False)
-#                    data = pca.fit_transform(data)
-#                    print 'explained variance ratio:', np.sum(pca.explained_variance_ratio_)
+#       pca = PCA(n_components=120, copy=False)
+#       data = pca.fit_transform(data)
+#       print 'explained variance ratio:', np.sum(pca.explained_variance_ratio_)
 
-        print 'transforming test data to bag of lesions representation...'    
+        print('transforming test data to bag of lesions representation...')
         allTestData = testRepresentationSpace(mri_test, prunedDataTest, lesionSizesTest, clusters, pcas)        
         
-#                    allTestData = tfidfTrans.transform(allTestData).toarray()                 
+#       allTestData = tfidfTrans.transform(allTestData).toarray()
+#       allTrainData, allTestData, lesionSizeFeatures = pruneFeatures(allTrainData, allTestData)
         
-#            allTrainData, allTestData, lesionSizeFeatures = pruneFeatures(allTrainData, allTestData)
-        
-        print 'splitting data up by treatment group'
+        print('splitting data up by treatment group')
         trainingPatientsByTreatment, testingPatientsByTreatment, trainingData, testingData, trainCounts, testCounts = separatePatientsByTreatment(mri_train, mri_test, allTrainData, allTestData, trainCounts, testCounts)
         
-        featuresToRemove = None
-        
-        
-        c = None
-        print 'grouping patients'
+        featuresToRemove, c = None, None
+
+        print('grouping patients')
         for treatment in treatments:
             try:
                 scoreThisFold = True
                 
-                trainData = trainingData[treatment]
-                testData = testingData[treatment]
-                
-                trainDataCopy = trainData
-                testDataCopy = testData
-                
-                trainOutcomes = getOutcomes(trainingPatientsByTreatment[treatment])
-                testOutcomes = getOutcomes(testingPatientsByTreatment[treatment])
-    
+                trainData, testData = trainingData[treatment], testingData[treatment]
+                trainDataCopy, testDataCopy = trainData, testData
+                trainOutcomes, testOutcomes = getOutcomes(trainingPatientsByTreatment[treatment]), getOutcomes(testingPatientsByTreatment[treatment])
+
                 remove_worst_features = True
                 if remove_worst_features:
                     if treatment == "Placebo":
-                        print 'selecting features...'
+                        print('selecting features...')
                         bestTrainData, bestTestData, featuresToRemove = bol_classifiers.randomForestFeatureSelection(trainDataCopy, testDataCopy, trainOutcomes['newT2'], testOutcomes['newT2'], 12)  
                     else:
-                        print 'using previously determined best features'
-        #                print featuresToRemove
                         bestTrainData, bestTestData = removeWorstFeatures(trainDataCopy, testDataCopy, featuresToRemove)
                 else:
                     bestTrainData = trainDataCopy
                     bestTestData  = testDataCopy
-    
-    
-                print 'train, test data shape:', np.shape(bestTrainData), np.shape(bestTestData)
+
+                print('train, test data shape:', np.shape(bestTrainData), np.shape(bestTestData))
     
     #            trainClusterData, validationData = train_test_split(bestTrainData, test_size=0.1, random_state=5)
     #                        ratio = len(trainOutcomes['newT2'])/ float(np.sum(trainOutcomes['newT2']))
@@ -2035,8 +1241,7 @@ def justTreatmentGroups():
                     (bestChi2Score, bestChi2Predictions), (bestChi2svmscore, bestChi2svmPredictions) = bol_classifiers.chi2Knn(bestTrainData, bestTestData, trainOutcomes, testOutcomes)
                     (bestSvmLinScore, bestSvmLinPredictions, svm1), (bestSvmRadScore, bestSvmRadPredictions, svm2) = bol_classifiers.svmClassifier(bestTrainData, bestTestData, trainOutcomes, testOutcomes)
                     (bestKnnEuclideanScoreVals, bestEuclideanPredictions), (bestKnnMahalanobisScoreVals, bestMahalanobisPredictions) = bol_classifiers.knn(bestTrainData, trainOutcomes, bestTestData, testOutcomes)
-                    
-                    
+
                     (featureScore, featurePredictions, meh), (allProbScore, allprobPredicted), (allCorrect, allTotal) = bol_classifiers.featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeShape, train_patients, mri_test, brainIndices, lesionIndices, len(mri_list))   
                     
                     (countingScore, countingPredictions, placebo_nb) = bol_classifiers.countingClassifier(trainCounts[treatment], testCounts[treatment], trainOutcomes, testOutcomes)
@@ -2059,8 +1264,8 @@ def justTreatmentGroups():
                     respondersRight[treatment] += right
                     respondersWrong[treatment] += wrong
                     
-                    print 'responders right', respondersRight
-                    print 'responders wrong', respondersWrong
+                    print('responders right', respondersRight)
+                    print('responders wrong', respondersWrong)
                     
                     (responderScore, responderProbs), responderHighProbScore, count_score = bol_classifiers.identifyResponders(bestTrainData, bestTestData, trainOutcomes, testOutcomes, trainCounts[treatment], testCounts[treatment], placebo_rf, placebo_nb) 
                     
@@ -2213,17 +1418,17 @@ def justTreatmentGroups():
             
 
                 
-    print "FAILED FOLDS:", failedFolds
+    print("FAILED FOLDS:", failedFolds)
 
-    print 'certain correct pretrained', certainCorrectPre
-    print 'certain total pretrained', certainNumberPre
+    print('certain correct pretrained', certainCorrectPre)
+    print('certain total pretrained', certainNumberPre)
 
-    print 'certain correct', certainCorrect
-    print 'certain total', certainNumber
+    print('certain correct', certainCorrect)
+    print('certain total', certainNumber)
     
     end = time.time()
     elapsed = end - start
-    print str(elapsed / 60), 'minutes elapsed.'
+    print(str(elapsed / 60), 'minutes elapsed.')
 
 if __name__ == "__main__":
 #    beforeAndAfter()

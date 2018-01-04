@@ -1,22 +1,18 @@
-
 import nibabel as nib
 import numpy as np
 import collections
-
-
-#malf_classes = ['bg', 'bs', 'cgm', 'crblr_gm', 'crblr_wm', 'csf', 'dgm', 'lv', 'ov', 'wm']
-#modalities = ['t1p', 't2w', 'pdw', 'flr']
-#good_malf_classes = ['cgm', 'dgm', 'wm']
-
+import os
 
 class mri(object):
     
     def __init__(self, t1p_image):
         
         tokens = t1p_image.split('_')
-        self.data_dir = '/usr/local/data/adoyle/trials/MS-LAQ-302-STX/'
+        self.data_dir = '/usr/local/data/adoyle/MS-LAQ/'
 
         self.folder = self.data_dir + tokens[1] + '/' + tokens[2] + '_' + tokens[3] + '/m0/'
+        self.features_dir = self.folder[:-3] + 'results'
+        os.makedirs(self.features_dir, exist_ok=True)
         
         self.uid = tokens[2] + tokens[3]
 
@@ -51,9 +47,7 @@ class mri(object):
         self.atrophy = 0.0
         self.treatment = ''
         
-        #MS-LAQ-302-STX_5821-PUM-1_lvv_9582103_m24_anewt2_75_TREF-m12
-        #self.futureLabels = self.data_dir + 'anewt2_75/MSLAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m24_anewt2_75_TREF-m12.mnc.gz'
-        self.futureLabels = self.folder[0:-3] + '/m24/MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m24_ct2f_ISPC-stx152lsq6.mnc.gz'        
+        self.futureLabels = self.folder[0:-3] + '/m24/MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m24_ct2f_ISPC-stx152lsq6.mnc.gz'
         self.newLesions = 0
         
         self.newT2 = self.data_dir + tokens[1] + '/' + tokens[2] + '_' + tokens[3] + '/m24/' + 'classifier_files/' + 'MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m24_t2w_norm_ANAT-brain_ISPC-stx152lsq6.mnc.gz'
@@ -83,18 +77,14 @@ class mri(object):
         lesionImage = nib.load(self.lesions).get_data()
         lesionLocations = list(np.asarray(np.nonzero(lesionImage)).T)
 
-
         connectedLesion = np.zeros((len(lesionLocations)))
 
         lesionList = []
         
         for i, (x, y, z) in enumerate(lesionLocations):
-            
             for lesion in lesionList:
                 for point in lesion:
                     if np.abs(x - point[0]) <= 1 and np.abs(y - point[1]) <= 1 and np.abs(z - point[2]) <= 1:
-#                        print 'newpoint:', x, y, z, 'oldpoint:', point
-#                        print np.abs(x - point[0]), np.abs(y - point[1]), np.abs(z - point[2])
                         lesion.append([x, y, z])
                         connectedLesion[i] = True
                     if connectedLesion[i]:

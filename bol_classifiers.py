@@ -1,38 +1,21 @@
 import numpy as np
-
-
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.mixture import GMM, DPGMM
-
 from sklearn.naive_bayes import GaussianNB, MultinomialNB
 from sklearn.metrics.pairwise import chi2_kernel
-
 from sklearn.covariance import EmpiricalCovariance
 from sklearn.model_selection import StratifiedShuffleSplit
 
-
-from sklearn.svm import LinearSVC #CAN DO L1 regularization
-
 from sklearn.svm import SVC
-
 from scipy import stats
-
 import matplotlib as mpl
 mpl.use('Agg')
-
 import matplotlib.pyplot as plt
-
-
 import nibabel as nib
-
-import random
-
-from skrvm import RVC
 
 modalities = ['t1p', 't2w', 'pdw', 'flr']
 tissues = ['csf', 'wm', 'gm', 'pv', 'lesion']
-#metrics = ['newT1', 'newT2', 'newT1andT2'] 
 metrics = ['newT2']
 feats = ["Context", "RIFT", "LBP", "Intensity"]
 sizes = ["tiny", "small", "medium", "large"]
@@ -50,23 +33,11 @@ treatments = ['Placebo', 'Laquinimod', 'Avonex']
 
 threads = 1
 
-dbIP = '132.206.73.115'
-#dbIP = '127.0.0.1'
-dbPort = 27017
-
 plotFeats = False
 usePCA = False
 
-
-
 def calculateScores(predictions, actual):
     score = {}
-    
-#    nPositive = np.sum(actual)
-#    nNegative = len(actual) - nPositive
-#    
-#    if nNegative == 0:
-#        nNegative = 1
         
     for scoreMet in scoringMetrics:
         score[scoreMet] = 0.0
@@ -90,11 +61,7 @@ def calculateScores(predictions, actual):
         score['specificity'] = score['TN'] / (score['TN'] + score['FP'])
     except:
         score['specificity'] = 0
-    
-#    score['TP'] /= nPositive
-#    score['FP'] /= nNegative
-#    score['TN'] /= nNegative
-#    score['FN'] /= nPositive
+
     return score
                 
 
@@ -110,18 +77,7 @@ def countingClassifier(trainCounts, testCounts, trainOutcomes, testOutcomes):
         countingScore[metric] = calculateScores(predictions, testOutcomes[metric])
 
     return (countingScore, predictions, nb)
-    
-def rvmClassifier(trainData, testData, trainOutcomes, testOutcomes):
-    rvm = RVC()    
-    
-    rvmScore = {}
-    for metric in metrics:
-        rvm.fit(np.asarray(trainData), np.asarray(trainOutcomes[metric]))
-        predictions = rvm.predict(np.asarray(testData))
-        
-        rvmScore[metric] = calculateScores(predictions, testOutcomes[metric])
-    
-    return (rvmScore, predictions)
+
 
 def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeShape, mri_train, mri_test, brainIndices, lesionIndices, numWithClinical, rf=None):
     lesionSizeFeatures = {}
@@ -131,7 +87,7 @@ def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeS
     rfscore = {}
     for metric in metrics:
         if rf == None:    
-            print 'training random forest...'
+            print('training random forest...')
             rf = RandomForestClassifier(class_weight='balanced', n_estimators=3000, n_jobs=-1)
 
             # for cross-validating tree depth
@@ -160,7 +116,7 @@ def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeS
 #            rf = RandomForestClassifier(class_weight='balanced', n_estimators=3000, n_jobs=-1, max_depth=bestDepth)
             rf.fit(trainData, trainOutcomes[metric])
         else:
-            print 'using pretrained model'
+            print('using pretrained model')
             
         predictions = rf.predict(testData)
         
@@ -183,18 +139,12 @@ def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeS
 #        plt.show()
         plt.close()
         
-        
         importance = {}
         importance['T'] = rf.feature_importances_[0:lesionSizeFeatures['T']]
         importance['S'] = rf.feature_importances_[lesionSizeFeatures['T']:lesionSizeFeatures['T']+lesionSizeFeatures['S']]
         importance['M'] = rf.feature_importances_[lesionSizeFeatures['T']+lesionSizeFeatures['S']:lesionSizeFeatures['T']+lesionSizeFeatures['S']+lesionSizeFeatures['M']]
         importance['L'] = rf.feature_importances_[lesionSizeFeatures['T']+lesionSizeFeatures['S']+lesionSizeFeatures['M']:lesionSizeFeatures['T']+lesionSizeFeatures['S']+lesionSizeFeatures['M']+lesionSizeFeatures['L']]
-    
-#        print 'T', lesionSizeFeatures['T']
-#        print 'S', lesionSizeFeatures['S']
-#        print 'M', lesionSizeFeatures['M']
-#        print 'L', lesionSizeFeatures['L']
-#    
+
         allImportances = rf.feature_importances_
     
         bestLesions = []
@@ -334,7 +284,7 @@ def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeS
         certainCorrect = 0
         certainTotal = 0
         for prob, outcome, scan, bol_rep in zip(probabilities, testOutcomes[metric], mri_test, testData):
-            print prob, outcome
+            print(prob, outcome)
             if prob[0] > 0.8 and outcome == 0:
                 probPredicted.append(0)
                 actual.append(0)
@@ -405,8 +355,7 @@ def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeS
                 ax.set_xlabel('Lesion-Types')
 #                ax.set_xticks(x)
                 
-#                plt.savefig('/usr/local/data/adoyle/images/active-' + scan.uid, dpi=500)
-                
+                plt.savefig('/usr/local/data/adoyle/images/active-' + scan.uid, dpi=500)
 #                plt.show()
                 plt.close()
                 
@@ -474,23 +423,21 @@ def identifyResponders(bestTrainData, bestTestData, trainOutcomes, testOutcomes,
         else:
             responder_count_test[index] = 0
             
-    print 'training responders:', np.sum(responder_label_train)
-    print 'training non-responders:', (len(trainOutcomes['newT2']) - np.sum(responder_label_train))
+    print('training responders:', np.sum(responder_label_train))
+    print('training non-responders:', (len(trainOutcomes['newT2']) - np.sum(responder_label_train)))
     
-    print 'testing responders:', np.sum(responder_label_test)
-    print 'testing non-responders:', (len(testOutcomes['newT2']) - np.sum(responder_label_test))
+    print('testing responders:', np.sum(responder_label_test))
+    print('testing non-responders:', (len(testOutcomes['newT2']) - np.sum(responder_label_test)))
 
 
 
 #    trainData, testData, meh = randomForestFeatureSelection(bestTrainData, bestTestData, responder_label_train, responder_label_test, 10)
-    trainData = bestTrainData
-    testData = bestTestData
-    
+    trainData, testData = bestTrainData, bestTestData
+
     # BoL RF responder method
 #    responder_classifier = RandomForestClassifier(class_weight='balanced', n_estimators=3000, n_jobs=-1)
     responder_classifier = SVC(probability=True, class_weight='balanced', kernel='linear')    
-    
-    
+
     responder_classifier.fit(trainData, responder_label_train, responder_train_weight)
       
     predictions = responder_classifier.predict_proba(testData)
@@ -510,7 +457,7 @@ def identifyResponders(bestTrainData, bestTestData, trainOutcomes, testOutcomes,
     high_prob_responder_actual = []
 
     for index, (prediction, actual) in enumerate(zip(predictions, responder_label_test)):
-        print 'high prob responder predictions:', prediction, actual
+        print('high prob responder predictions:', prediction, actual)
         if prediction[1] > 0.8:
             high_prob_responder_predictions.append(1)
             high_prob_responder_actual.append(actual)
@@ -518,32 +465,30 @@ def identifyResponders(bestTrainData, bestTestData, trainOutcomes, testOutcomes,
             high_prob_responder_predictions.append(0)
             high_prob_responder_actual.append(actual)
     
-    print 'high probability predictions:', len(high_prob_responder_predictions)
+    print('high probability predictions:', len(high_prob_responder_predictions))
     high_prob_scores = calculateScores(high_prob_responder_predictions, high_prob_responder_actual)
-    
-    
+
     # Naive Bayes responder
     responder_nb = GaussianNB()
     responder_nb.fit(trainCounts, responder_count_train)
     
     responder_count_predictions = responder_nb.predict(testCounts)
-    print 'count predictions shape', np.shape(responder_count_predictions)
-    print 'responder_count_test', np.shape(responder_count_test)
+    print('count predictions shape', np.shape(responder_count_predictions))
+    print('responder_count_test', np.shape(responder_count_test))
     count_score = calculateScores(responder_count_predictions, responder_count_test)
     
     return (responder_score, responder_predictions), high_prob_scores, count_score
 
 def chi2Knn(trainData, testData, trainOutcomes, testOutcomes):
-    print 'computing chi2 kernel...'
+    print('computing chi2 kernel...')
 
     distances = chi2_kernel(trainData, testData)
 
     trainDistances = chi2_kernel(trainData, trainData)
     testDistances = chi2_kernel(testData, trainData)
     
-    chi2knnscore = {}
-    chi2svmscore = {}
-    
+    chi2knnscore, chi2svmscore = {}, {}
+
     for metric in metrics:
         chi2predictions = np.zeros(len(testOutcomes[metric]))
         
@@ -553,8 +498,7 @@ def chi2Knn(trainData, testData, trainOutcomes, testOutcomes):
             chi2predictions[i] = trainOutcomes[metric][minIndex]
 
         chi2knnscore[metric] = calculateScores(chi2predictions, testOutcomes[metric])
-        
-        
+
         svc = SVC(kernel='precomputed', class_weight='balanced')
         svc.fit(trainDistances, trainOutcomes[metric])
         
@@ -653,7 +597,7 @@ def subdividePredictGroups(trainData, trainClusterAssignments, trainOutcomes, te
                             subdivisionScore[metric]['TP'] += (1.0 / nPositive) * len(testOutcome[group]) / len(testOutcomes[metric])
                     
                 except:
-                    print 'EM messed up!'
+                    print('EM messed up!')
             else:
                 if np.shape(test)[0] > 0:
                     
@@ -695,10 +639,8 @@ def knn(trainData, trainOutcomes, testData, testOutcomes, knnEuclidean=None):
     ec = EmpiricalCovariance()
     ec.fit(trainData)
     
-    knnMahalanobis = KNeighborsClassifier(n_neighbors=1, algorithm='brute', metric = 'mahalanobis', metric_params={'V': ec.covariance_})        
-           
-    knnEuclideanScores = {}
-    knnMahalanobisScores = {}
+    knnMahalanobis = KNeighborsClassifier(n_neighbors=1, algorithm='brute', metric = 'mahalanobis', metric_params={'V': ec.covariance_})
+    knnEuclideanScores, knnMahalanobisScores = {}, {}
 
     for metric in metrics:
         #euclidean nearest neighbour
@@ -760,7 +702,7 @@ def softSubdividePredictGroups(trainData, trainClusterAssignments, trainOutcomes
                         else:
                             predictions[i, group] = 1
                 except:
-                    print 'not enough samples to fit Gaussian in group', group
+                    print('not enough samples to fit Gaussian in group', group)
 
         prediction = np.zeros(len(testOutcomes[metric]))
 
@@ -854,20 +796,18 @@ def predictOutcomeBayesian(trainData, testData, trainOutcomes, testOutcomes, tes
 #        print 'predictionsGivenGroup', np.shape(predictionsGivenGroup)
         
         for predicted, actual in zip(predictionsGivenGroup, testOutcomes[metric]):
-            print 'predicted, actual:', predicted, actual
+            print('predicted, actual:', predicted, actual)
             if (predicted >= 0.5 and actual == 1) or (predicted < 0.5 and actual == 0):
                 accuracy[metric] += 1 / len(testData)
 
     return accuracy
-    
+
+
 def randomForestFeatureSelection(trainData, testData, trainOutcomes, testOutcomes, minTypes):
-    
     train = trainData
     test = testData    
     
     rf = RandomForestClassifier(class_weight='balanced', n_estimators=2000, n_jobs=-1, oob_score=True)
-    
-
     rf.fit(trainData, trainOutcomes)
     
     allFeatureImportance = rf.feature_importances_
@@ -875,10 +815,8 @@ def randomForestFeatureSelection(trainData, testData, trainOutcomes, testOutcome
  
     typesLeft = len(featureImportance)
     
-    trainScores = []
-    oobScores = []
-    testScores = []
-    numFeatures = []
+    trainScores, oobScores, testScores, numFeatures = [], [], [] ,[]
+
     while True:
         removeThisRound = []
         
@@ -895,9 +833,7 @@ def randomForestFeatureSelection(trainData, testData, trainOutcomes, testOutcome
         for remove in removeThisRound:
             train = np.delete(train, remove, 1)
             test = np.delete(test, remove, 1)
-            
-#            print 'new training shape:', np.shape(train)
-        
+
         typesLeft -= len(removeThisRound)
         
         rf.fit(train, trainOutcomes)
@@ -910,7 +846,7 @@ def randomForestFeatureSelection(trainData, testData, trainOutcomes, testOutcome
         if typesLeft < minTypes:
             break
 
-    print numFeatures[np.argmax(oobScores)], 'is the optimal number of features'
+    print(numFeatures[np.argmax(oobScores)], 'is the optimal number of features')
     
     plt.figure()
     plt.plot(numFeatures, oobScores, label="Out-of-Bag Score")
@@ -934,7 +870,6 @@ def randomForestFeatureSelection(trainData, testData, trainOutcomes, testOutcome
         allFeatureImportance[remove] = 999
         
     # this is where I need to remove/update the visualization arrays
-        
     allFeatureImportance = [x for x in featureImportance if x != 999]
     
     removeThisRound = sorted(removeThisRound, reverse=True)
