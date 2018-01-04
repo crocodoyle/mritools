@@ -50,6 +50,34 @@ def getLesionSizes(mri_list):
     return numLesions, lesionSizes, lesionCentroids, brainUids
 
 
+def get_outcomes(mri_list):
+    outcomes = {}
+    for metric in metrics:
+        outcomes[metric] = []
+        for scan in mri_list:
+            if metric == 'newT1':
+                outcomes[metric].append(scan.newT1)
+            elif metric == 'newT2':
+                outcomes[metric].append(scan.newT2)
+            elif metric == 'newT1andT2':
+                outcomes[metric].append(scan.newT1andT2)
+
+    return outcomes
+
+
+# removes extremely rare lesion-types
+def prune_features(trainData, testData):
+    featureCounts = {}
+    for s, size in enumerate(sizes):
+        featureCounts[size] = np.zeros((np.shape(trainData[size])[1]))
+
+    for s, size in enumerate(sizes):
+        testData[size] = testData[size][:, (trainData[size] != 0).sum(axis=0) >= 10]
+        trainData[size] = trainData[size][:, (trainData[size] != 0).sum(axis=0) >= 10]
+
+    return trainData, testData
+
+
 def loadLesionNumbers(mri_list):
     featureVector = np.zeros((len(mri_list), 4))
     for i, scan in enumerate(mri_list):
@@ -370,7 +398,7 @@ def loadClinical(mri_list):
 #    for uid in bad_ids:
 #        writer.writerow([uid[0:3] + '_' + uid[4:]])
         
-    print('we have', len(new_mri_list), 'patients with clinical data')
-    print('we have', len(without_clinical), 'patients without clinical data')
+    # print('we have', len(new_mri_list), 'patients with clinical data')
+    # print('we have', len(without_clinical), 'patients without clinical data')
 
     return new_mri_list, without_clinical

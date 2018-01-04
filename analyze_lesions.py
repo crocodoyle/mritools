@@ -1,41 +1,22 @@
-import cPickle as pkl
 import numpy as np
+import pickle as pkl
 
-import csv
-
-from sklearn.cluster import KMeans, SpectralClustering
-from sklearn.neighbors import KNeighborsRegressor, KNeighborsClassifier
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.mixture import GMM, DPGMM
-from sklearn.metrics import mutual_info_score
-from sklearn.metrics.pairwise import chi2_kernel
-from sklearn.feature_extraction.text import TfidfTransformer
+from sklearn.cluster import KMeans
+from sklearn.mixture import GMM
 
 from sklearn.decomposition import PCA, FastICA
-from sklearn.linear_model import LinearRegression
-from sklearn.cross_validation import KFold, StratifiedKFold
-from sklearn.cross_validation import train_test_split
-
-from sklearn.metrics import silhouette_score
-
-from sklearn.model_selection import StratifiedShuffleSplit
-
-from sklearn.ensemble import RandomForestClassifier
-
+from sklearn.model_selection import StratifiedKFold, train_test_split
 
 from scipy.spatial.distance import euclidean
-from scipy import stats
 
 import time
 
 import matplotlib as mpl
 mpl.use('Agg')
-
 import matplotlib.pyplot as plt
 
 import nibabel as nib
 
-import os
 import collections
 from collections import defaultdict
 
@@ -542,19 +523,6 @@ def pruneFeatures(trainData, testData):
         testData[size] = testData[size][:, (trainData[size] != 0).sum(axis=0) >= 10]
         trainData[size] = trainData[size][:, (trainData[size] != 0).sum(axis=0) >= 10]
 
-    # this is very slow!!
-
-    #    for s, size in enumerate(sizes):
-    #        for i in range(np.shape(trainData[size])[1]):
-    #            featureCounts[size][i] = np.sum(trainData[size][:,i])
-    #
-    #    for s, size, in enumerate(sizes):
-    #        r = range(np.shape(trainData[size])[1])[::-1]
-    #        for i in r:
-    #            if featureCounts[size][i] == 0:
-    #                trainData[size] = np.delete(trainData[size], i, 1)
-    #                testData[size] = np.delete(testData[size], i, 1)
-
     if plotFeats:
         fig, ax = plt.subplots(1, 4, figsize=(14, 4))
         for s, size in enumerate(sizes):
@@ -599,7 +567,7 @@ def visualizePatientGroups(mri_list, trainData, groups, subtypeShape):
                 ax = fig.add_subplot(2, 6, n)
                 ax.imshow(t2[20:200, 20:200, 30].T, cmap=plt.cm.gray, origin='lower')
                 ax.imshow(maskImg[20:200,20:200, 30].T, cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
-                ax.axis('off')                
+                ax.axis('off')
                 
                 ax2 = fig.add_subplot(2, 6, n+6)
                 ax2.bar(range(len(hist)), hist, width=1)
@@ -1091,7 +1059,7 @@ def justTreatmentGroups():
 
         r1[treatment], r2[treatment], r3[treatment], r4[treatment] = defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list)
 
-    for foldNum, (train_index, test_index) in enumerate(kf):
+    for foldNum, (train_index, test_index) in enumerate(kf.split(range(len(mri_list)))):
         print(foldNum, '/', len(kf))
         
         mri_train = np.asarray(mri_list)[train_index]
