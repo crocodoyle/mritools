@@ -54,7 +54,6 @@ warnings.filterwarnings("ignore")
 
 modalities = ['t1p', 't2w', 'pdw', 'flr']
 tissues = ['csf', 'wm', 'gm', 'pv', 'lesion']
-
 metrics = ['newT2']
 feats = ["Context", "RIFT", "LBP", "Intensity"]
 sizes = ["tiny", "small", "medium", "large"]
@@ -601,17 +600,12 @@ def visualizePatientGroups(mri_list, trainData, groups, subtypeShape):
                 ax.imshow(t2[20:200, 20:200, 30].T, cmap=plt.cm.gray, origin='lower')
                 ax.imshow(maskImg[20:200,20:200, 30].T, cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
                 ax.axis('off')                
-
-#                axes[-1].bar(range(np.shape(hist)[0]), hist)
                 
                 ax2 = fig.add_subplot(2, 6, n+6)
                 ax2.bar(range(len(hist)), hist, width=1)
                 ax2.set_xticks([0, lesionSizeFeatures['T']/2, lesionSizeFeatures['T'], lesionSizeFeatures['T']+(lesionSizeFeatures['S']/2), lesionSizeFeatures['T']+lesionSizeFeatures['S'], lesionSizeFeatures['T']+lesionSizeFeatures['S']+lesionSizeFeatures['M']/2, lesionSizeFeatures['T']+lesionSizeFeatures['S']+lesionSizeFeatures['M'], lesionSizeFeatures['T']+lesionSizeFeatures['S']+lesionSizeFeatures['M']+lesionSizeFeatures['L']/2, lesionSizeFeatures['T']+lesionSizeFeatures['S']+lesionSizeFeatures['M']+lesionSizeFeatures['L']])
                 ax2.set_xticklabels(['', 'T', '', 'S', '', 'M', '', 'L', ''])
-                
-              
 
-#                axes[-1].set_xticks([])
                 if np.amax(hist) > ymax:
                     ymax = np.amax(hist)
                 

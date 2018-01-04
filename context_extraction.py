@@ -19,9 +19,9 @@ import matplotlib.pyplot as plt
 
 import bitstring
 
-icbmRoot = '/usr/local/data/adoyle/MS-LAQ/quarantine/common/models/icbm_avg_152_'
-data_dir = '/usr/local/data/adoyle/trials/MS-LAQ/'
-lesion_atlas = '/usr/local/data/adoyle/trials/quarantine/common/models/icbm_avg_3714_t2les.mnc.gz'
+icbmRoot = '/usr/local/data/adoyle/MS-LAQ/MS-LAQ-302-STX/quarantine/common/models/icbm_avg_152_'
+data_dir = '/usr/local/data/adoyle/MS-LAQ/MS-LAQ-302-STX/'
+lesion_atlas = '/usr/local/data/adoyle/MS-LAQ/MS-LAQ-302-STX/quarantine/common/models/icbm_avg_3714_t2les.mnc.gz'
 
 
 threads = 8
