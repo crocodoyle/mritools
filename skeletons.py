@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import vtk
 
-import cPickle as pickle
+import pickle
 
 from scipy.ndimage.morphology import binary_erosion
 from scipy.ndimage.morphology import binary_hit_or_miss
@@ -49,16 +49,8 @@ def thinningElements():
         rotatedElements[r,2,:,:] = np.rot90(elem2, r)
         rotatedElements[r,3,:,:] = np.rot90(elem2Conv, r)
         
-#    print 'elem1'
-#    print rotatedElements[r,0,:,:]
-#    print 'elem2'
-#    print rotatedElements[r,2,:,:]
-#    print 'elem1c'
-#    print rotatedElements[r,1,:,:]
-#    print 'elem2c'
-#    print rotatedElements[r,3,:,:]
-        
     return rotatedElements
+
 
 def hitOrMissThinning(lesion, thinningElements):
     img = np.zeros((256, 256, 60), dtype='bool')
@@ -66,7 +58,7 @@ def hitOrMissThinning(lesion, thinningElements):
     for point in lesion:
         img[point[0], point[1], point[2]] = 1
         
-    
+
     for z in range(np.shape(img)[2]):
         iterations = 0
         numSkelePoints = 0
@@ -83,11 +75,12 @@ def hitOrMissThinning(lesion, thinningElements):
             
             iterations += 1
                 
-#        print iterations, 'iterations'
-    print np.sum(img), '/', len(lesion)
+
+    print(np.sum(img), '/', len(lesion))
     
     skeletonPoints = np.transpose(np.nonzero(img))
     return img, skeletonPoints
+
 
 def voroSkeleton(lesion):
     skeleton = []
@@ -100,6 +93,7 @@ def voroSkeleton(lesion):
                 skeleton.append(vor.vertices[pointIndex])
                 
     return skeleton
+
 
 def getLesionSkeleton(scan):
 
@@ -143,7 +137,8 @@ def getLesionSkeleton(scan):
             plt.xlabel('skeleton')
             
             plt.show()
- 
+
+
 def displaySkeleton3D(lesion, skeleton):
     
     points = vtk.vtkPoints()
@@ -152,9 +147,6 @@ def displaySkeleton3D(lesion, skeleton):
     points2 = vtk.vtkPoints()
     vertices2 = vtk.vtkCellArray()     
 
-#    points3 = vtk.vtkPoints()
-#    vertices3 = vtk.vtkCellArray()     
-    
     
     Colors = vtk.vtkUnsignedCharArray()
     Colors.SetNumberOfComponents(3)
@@ -162,10 +154,7 @@ def displaySkeleton3D(lesion, skeleton):
     Colors2 = vtk.vtkUnsignedCharArray()
     Colors2.SetNumberOfComponents(3)
     Colors2.SetName("Colors2")
-#    Colors3 = vtk.vtkUnsignedCharArray()
-#    Colors3.SetNumberOfComponents(3)
-#    Colors3.SetName("Colors3")
-    
+
     for point in lesion:
         pointId = points.InsertNextPoint(point)
         vertices.InsertNextCell(1)
@@ -177,24 +166,15 @@ def displaySkeleton3D(lesion, skeleton):
         vertices2.InsertNextCell(1)
         vertices2.InsertCellPoint(pointId)
         Colors2.InsertNextTuple3(0,255,0)
-        
-#    for point in skeleton2:
-#        pointId = points3.InsertNextPoint(point)
-#        vertices3.InsertNextCell(1)
-#        vertices3.InsertCellPoint(pointId)
-#        Colors3.InsertNextTuple3(255,0,0)
-                
 
     poly = vtk.vtkPolyData()
     poly2 = vtk.vtkPolyData()
-#    poly3 = vtk.vtkPolyData()
 
     poly.SetPoints(points)
     poly.SetVerts(vertices)
     poly.GetPointData().SetScalars(Colors)
     poly.Modified()
     poly.Update()
-
 
 #    delaunay = vtk.vtkDelaunay2D()
 #    delaunay.SetInput(poly)
@@ -221,7 +201,6 @@ def displaySkeleton3D(lesion, skeleton):
 #    poly3.GetPointData().SetScalars(Colors3)
 #    poly3.Modified()
 #    poly3.Update()
-
     
     ren = vtk.vtkRenderer()
     renWin = vtk.vtkRenderWindow()
@@ -248,8 +227,7 @@ def displaySkeleton3D(lesion, skeleton):
 #    transform.Translate(0.2, 0.0, 0.0)
 #    axesTransform = vtk.vtkTransform()
 #    axesTransform.Scale(0.1, 0,0)     
-     
-     
+
 #    axes = vtk.vtkAxesActor()
 #    axes.SetUserTransform(transform)
 #    axes.SetUserTransform(axesTransform)
@@ -284,11 +262,10 @@ def displaySkeletons():
     infile = open('/usr/local/data/adoyle/mri_list.pkl', 'rb')
     mri_list = pickle.load(infile)
     infile.close()
-    
-    
-    
+
     for scan in mri_list[0:100]:
         getLesionSkeleton(scan)
+
 
 def main():
     displaySkeletons()

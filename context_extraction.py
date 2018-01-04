@@ -15,13 +15,12 @@ from bson.binary import Binary
 
 import skeletons
 
-import matplotlib.pyplot as plt
-
 import bitstring
 
-icbmRoot = '/usr/local/data/adoyle/MS-LAQ/MS-LAQ-302-STX/quarantine/common/models/icbm_avg_152_'
-data_dir = '/usr/local/data/adoyle/MS-LAQ/MS-LAQ-302-STX/'
-lesion_atlas = '/usr/local/data/adoyle/MS-LAQ/MS-LAQ-302-STX/quarantine/common/models/icbm_avg_3714_t2les.mnc.gz'
+
+data_dir = '/data1/users/adoyle/MS-LAQ/MS-LAQ-302-STX/'
+icbmRoot = data_dir + 'quarantine/common/models/icbm_avg_152_'
+lesion_atlas = data_dir + 'quarantine/common/models/icbm_avg_3714_t2les.mnc.gz'
 
 
 threads = 8
@@ -488,7 +487,7 @@ def main():
                 #sshfs adoyle@iron7.bic.mni.mcgill.ca:/trials/ -p 22101 /usr/local/data/adoyle/trials/
                 subprocess.call(['sshfs', 'adoyle@iron7.bic.mni.mcgill.ca:/trials/', '-p', '22101', '/usr/local/data/adoyle/trials/'])
         mri_list = loadMRIList()
-        outfile = open('/usr/local/data/adoyle/mri_list.pkl', 'wb')
+        outfile = open('/home/users/adoyle/respondMS/mri_list.pkl', 'wb')
         pickle.dump(mri_list, outfile)
         outfile.close()
         print('Cached MRI file listing')

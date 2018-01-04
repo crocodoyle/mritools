@@ -14,6 +14,7 @@ import load_data
 import bol_classifiers
 from analyze_lesions import createRepresentationSpace, testRepresentationSpace, separatePatientsByTreatment, removeWorstFeatures, showWhereTreatmentHelped, plotScores
 
+from mri import mri
 
 treatments = ['Placebo', 'Laquinimod', 'Avonex']
 modalities = ['t1p', 't2w', 'pdw', 'flr']
@@ -26,11 +27,31 @@ scoringMetrics = ['TP', 'FP', 'TN', 'FN']
 
 metrics = ['newT2']
 
-mri_list_location = '/data1/users/adoyle/mri_list.pkl'
+
+workdir = '/home/users/adoyle/respondMS/'
+datadir = '/data1/users/adoyle/MS-LAQ/'
+
+mri_list_location = workdir + 'mri_list.pkl'
 
 
 
 def predict_responders():
+    start = time.time()
+
+    try:
+        experiment_number = pickle.load(open(workdir + 'experiment_number.pkl', 'rb'))
+        experiment_number += 1
+    except:
+        print('Couldnt find the file to load experiment number')
+        experiment_number = 0
+
+    print('This is experiment number:', experiment_number)
+
+    results_dir = workdir + '/experiment-' + str(experiment_number) + '/'
+    os.makedirs(results_dir)
+
+    pickle.dump(experiment_number, open(workdir + 'experiment_number.pkl', 'wb'))
+
     mri_list = pickle.load(open(mri_list_location, 'rb'))
     mri_list, without_clinical = load_data.loadClinical(mri_list)
 
@@ -47,7 +68,6 @@ def predict_responders():
 
     knnEuclideanScores, knnMahalanobisScores, chi2Scores, chi2svmScores, featureScores, svmLinScores, svmRadScores, preTrainedFeatureScores, preTrainedSvmLinScores, preTrainedSvmRadScores = defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict)
     countingScores = defaultdict(dict)
-
 
     bestScores, bestKnnEuclideanScores, bestKnnMahalanobisScores, bestChi2Scores, bestChi2svmScores, bestFeatureScores, bestSvmLinScores, bestSvmRadScores, bestPreTrainedKnnEuclideanScores, bestPreTrainedFeatureScores, bestPreTrainedSvmLinScores, bestPreTrainedSvmRadScores = defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict)
     probScores, allProbScores = defaultdict(dict), defaultdict(dict)
@@ -81,7 +101,6 @@ def predict_responders():
         bestPreTrainedFeatureScores[treatment] = defaultdict(list)
         preTrainedSvmLinScores[treatment] = defaultdict(list)
         preTrainedSvmRadScores[treatment] = defaultdict(list)
-
         probScores[treatment], allProbScores[treatment] = defaultdict(list), defaultdict(list)
 
         responderScores[treatment], responderHighProbScores[treatment], countScores[treatment] = defaultdict(
@@ -250,11 +269,7 @@ def predict_responders():
                     allProbScores[treatment][scoreMet].append(probScore[scoreMet])
 
                     if treatment != "Placebo":
-                        preTrainedFeatureScores[treatment][scoreMet].append(
-                            bestPreTrainedFeatureScore['newT2'][scoreMet])
-                        #                    preTrainedKnnEuclideanScores[treatment][scoreMet].append(bestPreTrainedKnnEuclideanScoreVals['newT2'][scoreMet])
-                        #                    preTrainedSvmLinScores[treatment][scoreMet].append(bestPreTrainedSvmLinScore['newT2'][scoreMet])
-                        #                    preTrainedSvmRadScores[treatment][scoreMet].append(bestPreTrainedSvmRadScore['newT2'][scoreMet])
+                        preTrainedFeatureScores[treatment][scoreMet].append(bestPreTrainedFeatureScore['newT2'][scoreMet])
                         responderScores[treatment][scoreMet].append(responderScore[scoreMet])
                         responderHighProbScores[treatment][scoreMet].append(responderHighProbScore[scoreMet])
                         countScores[treatment][scoreMet].append(count_score[scoreMet])

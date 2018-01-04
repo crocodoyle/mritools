@@ -8,7 +8,7 @@ class mri(object):
     def __init__(self, t1p_image):
         
         tokens = t1p_image.split('_')
-        self.data_dir = '/usr/local/data/adoyle/MS-LAQ/MS-LAQ-302-STX/'
+        self.data_dir = '/data1/users/adoyle/MS-LAQ/MS-LAQ-302-STX/'
 
         self.folder = self.data_dir + tokens[1] + '/' + tokens[2] + '_' + tokens[3] + '/m0/'
         self.features_dir = self.folder[:-3] + 'results'
