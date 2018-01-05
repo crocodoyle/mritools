@@ -373,7 +373,7 @@ def loadMRIList():
     print(complete_data_subjects, '/', potential_subjects, 'have all modalities and lesion labels')
 
     p = Pool(8)
-    mri_list_lesions = p.map(separate_lesions, mri_list)
+    mri_list_lesions = p.map(lambda scan: separate_lesions(**scan), mri_list)
 
     for scan, lesions in zip(mri_list, mri_list_lesions):
         scan.lesionList = lesions
