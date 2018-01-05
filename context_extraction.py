@@ -326,23 +326,17 @@ def getRIFTFeatures2D(scan, riftRegions, img):
 
 
 def loadMRIList():
-    total = 0    
-    
+
     mri_list = []
     for root, dirs, filenames in os.walk(data_dir):
         for f in filenames:
-            if total > 3:
-                break
             if f.endswith('_m0_t1p.mnc.gz'):
                 scan = mri(f)
                 
                 if os.path.isfile(scan.lesions) and os.path.isfile(scan.images['t1p']) and os.path.isfile(scan.images['t2w']) and  os.path.isfile(scan.images['pdw']) and os.path.isfile(scan.images['flr']):
                     scan.separateLesions()
                     mri_list.append(scan)
-                    total += 1
                     
-                    print(total, '/', len(filenames))
-                    print(scan.images['t1p'])
     return mri_list
 
 
@@ -447,7 +441,7 @@ def getFeaturesOfList(mri_list, riftRegions):
         for j, m in enumerate(modalities):
             images[m] = nib.load(scan.images[m]).get_data()
         
-        print(scan.uid, i, '/', len(mri_list))
+        print('Patient:', scan.uid, i+1, '/', len(mri_list)+1)
         startTime = time.time()
 
         if doContext:
@@ -478,7 +472,6 @@ def main():
     print('Loading MRI file list...')
     
     if reload_list:
-        print('Reloading MRI file list from NeuroRX...')
         mri_list = loadMRIList()
         outfile = open(data_dir + 'mri_list.pkl', 'wb')
         pickle.dump(mri_list, outfile)
