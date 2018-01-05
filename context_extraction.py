@@ -337,6 +337,7 @@ def loadMRIList():
                     if os.path.isfile(scan.images['t1p']) and os.path.isfile(scan.images['t2w']) and  os.path.isfile(scan.images['pdw']) and os.path.isfile(scan.images['flr']):
                         scan.separateLesions()
                         mri_list.append(scan)
+                        print(f)
                         complete_data_subjects += 1
                     else:
                         print('Missing MRI modality: ', f)
