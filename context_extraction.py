@@ -286,7 +286,6 @@ def getRIFTFeatures2D(scan, riftRegions, img):
     
                             gaussianWindow = 1/(sigma * np.sqrt(2 * np.pi)) * np.exp( - (np.square(y-yc) + np.square(x-xc)) / (2 * sigma**2))
                             gradientData[p,:] = [outwardTheta, mag[mod][x,y,z]*gaussianWindow]
-                                                        
 
                         hist, bins = np.histogram(gradientData[:, 0], bins=binsTheta, range=(0, np.pi), weights=gradientData[:,1])
                         hist = np.divide(hist, sum(hist))   
@@ -326,6 +325,7 @@ def getRIFTFeatures2D(scan, riftRegions, img):
 
 
 def loadMRIList():
+    complete_data_subjects, potential_subjects = 0, 0
 
     mri_list = []
     for root, dirs, filenames in os.walk(data_dir):
@@ -333,10 +333,19 @@ def loadMRIList():
             if f.endswith('_m0_t1p.mnc.gz'):
                 scan = mri(f)
                 
-                if os.path.isfile(scan.lesions) and os.path.isfile(scan.images['t1p']) and os.path.isfile(scan.images['t2w']) and  os.path.isfile(scan.images['pdw']) and os.path.isfile(scan.images['flr']):
-                    scan.separateLesions()
-                    mri_list.append(scan)
-                    
+                if os.path.isfile(scan.lesions):
+                    if os.path.isfile(scan.images['t1p']) and os.path.isfile(scan.images['t2w']) and  os.path.isfile(scan.images['pdw']) and os.path.isfile(scan.images['flr']):
+                        scan.separateLesions()
+                        mri_list.append(scan)
+                        complete_data_subjects += 1
+                    else:
+                        print('Missing MRI modality: ', f)
+                        potential_subjects += 1
+                else:
+                    print('Missing lesion labels: ', f)
+                    potential_subjects += 1
+
+    print(complete_data_subjects, '/', potential_subjects)
     return mri_list
 
 
