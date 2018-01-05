@@ -13,7 +13,7 @@ from random import shuffle
 import skeletons
 
 import bitstring
-
+from multiprocessing import Pool
 
 data_dir = '/data1/users/adoyle/MS-LAQ/MS-LAQ-302-STX/'
 icbmRoot = data_dir + 'quarantine/common/models/icbm_avg_152_'
@@ -67,6 +67,7 @@ def convertToNifti(mri_list):
     
     return new_list
 
+
 def invertLesionCoordinates(mri_list):
     new_list = []
     for scan in mri_list:
@@ -87,6 +88,7 @@ def invertLesionCoordinates(mri_list):
     outfile.close()    
 
     return new_list
+
 
 def getBoundingBox(mri_list):
     lesTypes = ['tiny', 'small', 'medium', 'large']
@@ -129,7 +131,28 @@ def getBoundingBox(mri_list):
     print('boundingBoxes: ', boundingBoxes)
     return boundingBoxes
 
-    
+
+def separate_lesions(lesionImage):
+    lesionLocations = list(np.asarray(np.nonzero(lesionImage)).T)
+    connectedLesion = np.zeros((len(lesionLocations)))
+
+    lesionList = []
+    for i, (x, y, z) in enumerate(lesionLocations):
+        for lesion in lesionList:
+            for point in lesion:
+                if np.abs(x - point[0]) <= 1 and np.abs(y - point[1]) <= 1 and np.abs(z - point[2]) <= 1:
+                    lesion.append([x, y, z])
+                    connectedLesion[i] = True
+                if connectedLesion[i]:
+                    break
+
+        if not connectedLesion[i]:
+            newLesion = [[x, y, z]]
+            lesionList.append(newLesion)
+
+    return lesionList
+
+
 def uniformLBP(image, lesion, radius):
     lbp = bitstring.BitArray('0b00000000')
     
@@ -327,6 +350,7 @@ def getRIFTFeatures2D(scan, riftRegions, img):
 def loadMRIList():
     complete_data_subjects, potential_subjects = 0, 0
 
+
     mri_list = []
     for root, dirs, filenames in os.walk(data_dir):
         for f in filenames:
@@ -335,9 +359,8 @@ def loadMRIList():
                 
                 if os.path.isfile(scan.lesions):
                     if os.path.isfile(scan.images['t1p']) and os.path.isfile(scan.images['t2w']) and  os.path.isfile(scan.images['pdw']) and os.path.isfile(scan.images['flr']):
-                        scan.separateLesions()
+                        print('Connecting lesion voxels for', f)
                         mri_list.append(scan)
-                        print(f)
                         complete_data_subjects += 1
                     else:
                         print('Missing MRI modality: ', f)
@@ -346,7 +369,14 @@ def loadMRIList():
                     print('Missing lesion labels: ', f)
                     potential_subjects += 1
 
-    print(complete_data_subjects, '/', potential_subjects)
+    print(complete_data_subjects, '/', potential_subjects, 'have all modalities and lesion labels')
+
+    p = Pool(8)
+    mri_list_lesions = p.map(separate_lesions, mri_list)
+
+    for scan, lesions in zip(mri_list, mri_list_lesions):
+        scan.lesionList = lesions
+
     return mri_list
 
 

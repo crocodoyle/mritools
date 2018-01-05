@@ -73,27 +73,3 @@ class mri(object):
         
         self.newLesions = len(lesionList)
         
-    def separateLesions(self):
-        lesionImage = nib.load(self.lesions).get_data()
-        lesionLocations = list(np.asarray(np.nonzero(lesionImage)).T)
-
-        connectedLesion = np.zeros((len(lesionLocations)))
-
-        lesionList = []
-        
-        for i, (x, y, z) in enumerate(lesionLocations):
-            for lesion in lesionList:
-                for point in lesion:
-                    if np.abs(x - point[0]) <= 1 and np.abs(y - point[1]) <= 1 and np.abs(z - point[2]) <= 1:
-                        lesion.append([x, y, z])
-                        connectedLesion[i] = True
-                    if connectedLesion[i]:
-                        break
-            
-            if not connectedLesion[i]:
-                newLesion = [[x,y,z]]
-                lesionList.append(newLesion)
-        
-        self.lesionList = lesionList
-        
-        return lesionList
