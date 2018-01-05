@@ -13,7 +13,7 @@ from random import shuffle
 import skeletons
 
 import bitstring
-from multiprocessing import Pool
+from multiprocessing import Pool, Process
 
 data_dir = '/data1/users/adoyle/MS-LAQ/MS-LAQ-302-STX/'
 icbmRoot = data_dir + 'quarantine/common/models/icbm_avg_152_'
@@ -360,7 +360,7 @@ def loadMRIList():
                 
                 if os.path.isfile(scan.lesions):
                     if os.path.isfile(scan.images['t1p']) and os.path.isfile(scan.images['t2w']) and  os.path.isfile(scan.images['pdw']) and os.path.isfile(scan.images['flr']):
-                        print('Connecting lesion voxels for', f)
+                        print('Parsing files for', f)
                         mri_list.append(scan)
                         complete_data_subjects += 1
                     else:
@@ -372,13 +372,13 @@ def loadMRIList():
 
     print(complete_data_subjects, '/', potential_subjects, 'have all modalities and lesion labels')
 
-    p = Pool(8)
-    mri_list_lesions = p.map(lambda scan: separate_lesions(**scan), mri_list)
+    mri_list_lesions = []
+    for i, scan in enumerate(mri_list):
+        scan.lesionList = separate_lesions(scan)
+        mri_list_lesions.append(scan)
+        print(scan.uid, i+1, '/', len(mri_list)+1)
 
-    for scan, lesions in zip(mri_list, mri_list_lesions):
-        scan.lesionList = lesions
-
-    return mri_list
+    return mri_list_lesions
 
 
 def getICBMContext(scan, images):
