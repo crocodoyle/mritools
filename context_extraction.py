@@ -323,7 +323,8 @@ def getRIFTFeatures2D(scan, riftRegions, img):
             saveDocument[mod] = feature
 
         pickle.dump(saveDocument, open(scan.features_dir + 'rift_' + str(l) + '.pkl', "wb"))
-    
+
+
 def loadMRIList():
     total = 0    
     
@@ -408,7 +409,7 @@ def getLBPFeatures(scan, images):
             
             for r, radius in enumerate(lbpRadii):
                 feature[r, ...] = uniformLBP(images[mod], lesion, radius)
-                saveDocument[mod] = Binary(pickle.dumps(feature, protocol=2))
+            saveDocument[mod] = feature
 
         pickle.dump(saveDocument, open(scan.features_dir + 'lbp_' + str(l) + '.pkl', "wb"))
 
@@ -435,7 +436,7 @@ def getIntensityFeatures(scan, images):
                 intensityHist = np.zeros((histBins))
                 intensityHist[0] = 1
 
-            saveDocument[m] = Binary(pickle.dumps([np.mean(intensities), np.var(intensities)], protocol=2))
+            saveDocument[m] = [np.mean(intensities), np.var(intensities)]
         
         pickle.dump(saveDocument, open(scan.features_dir + 'intensity_' + str(l) + '.pkl', "wb"))
 
@@ -448,8 +449,7 @@ def getFeaturesOfList(mri_list, riftRegions):
         
         print(scan.uid, i, '/', len(mri_list))
         startTime = time.time()
-        
-        sys.stdout.flush()
+
         if doContext:
             getICBMContext(scan, images)
 
@@ -479,26 +479,18 @@ def main():
     
     if reload_list:
         print('Reloading MRI file list from NeuroRX...')
-        for root, dirs, filenames in os.walk(data_dir):
-            if len(filenames) == 0:
-                #sshfs adoyle@iron7.bic.mni.mcgill.ca:/trials/ -p 22101 /usr/local/data/adoyle/trials/
-                subprocess.call(['sshfs', 'adoyle@iron7.bic.mni.mcgill.ca:/trials/', '-p', '22101', '/usr/local/data/adoyle/trials/'])
         mri_list = loadMRIList()
-        outfile = open('/home/users/adoyle/respondMS/mri_list.pkl', 'wb')
+        outfile = open(data_dir + 'mri_list.pkl', 'wb')
         pickle.dump(mri_list, outfile)
         outfile.close()
         print('Cached MRI file listing')
     else:
-        infile = open('/usr/local/data/adoyle/mri_list.pkl', 'rb')
+        infile = open(data_dir + 'mri_list.pkl', 'rb')
         mri_list = pickle.load(infile)
         infile.close()
     
     print('MRI list loaded')
-    
-#    mri_list = convertToNifti(mri_list)
-#    mri_list = gzipNiftiFiles(mri_list)
-    
-#    mri_list = invertLesionCoordinates(mri_list)
+
     riftRegions = generateRIFTRegions2D(riftRadii)
 
     getFeaturesOfList(mri_list, riftRegions)
