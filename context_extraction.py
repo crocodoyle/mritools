@@ -133,25 +133,25 @@ def getBoundingBox(mri_list):
 
 
 def separate_lesions(scan):
-    lesionImage = nib.load(scan.lesionList).get_data()
-    lesionLocations = list(np.asarray(np.nonzero(lesionImage)).T)
-    connectedLesion = np.zeros((len(lesionLocations)))
+    lesion_image = nib.load(scan.lesions).get_data()
+    lesion_locations = list(np.asarray(np.nonzero(lesion_image)).T)
+    connected_lesion = np.zeros((len(lesion_locations)))
 
-    lesionList = []
-    for i, (x, y, z) in enumerate(lesionLocations):
-        for lesion in lesionList:
+    lesion_list = []
+    for i, (x, y, z) in enumerate(lesion_locations):
+        for lesion in lesion_list:
             for point in lesion:
                 if np.abs(x - point[0]) <= 1 and np.abs(y - point[1]) <= 1 and np.abs(z - point[2]) <= 1:
                     lesion.append([x, y, z])
-                    connectedLesion[i] = True
-                if connectedLesion[i]:
+                    connected_lesion[i] = True
+                if connected_lesion[i]:
                     break
 
-        if not connectedLesion[i]:
+        if not connected_lesion[i]:
             newLesion = [[x, y, z]]
-            lesionList.append(newLesion)
+            lesion_list.append(newLesion)
 
-    return lesionList
+    return lesion_list
 
 
 def uniformLBP(image, lesion, radius):
