@@ -132,7 +132,8 @@ def getBoundingBox(mri_list):
     return boundingBoxes
 
 
-def separate_lesions(lesionImage):
+def separate_lesions(scan):
+    lesionImage = nib.load(scan.lesionList).get_data()
     lesionLocations = list(np.asarray(np.nonzero(lesionImage)).T)
     connectedLesion = np.zeros((len(lesionLocations)))
 
