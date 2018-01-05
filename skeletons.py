@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import vtk
+# import vtk
 
 import pickle
 
