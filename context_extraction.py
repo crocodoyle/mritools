@@ -10,9 +10,6 @@ import subprocess
 import time, sys
 
 from random import shuffle
-
-from bson.binary import Binary
-
 import skeletons
 
 import bitstring
@@ -323,7 +320,7 @@ def getRIFTFeatures2D(scan, riftRegions, img):
                             if not np.isnan(np.min(hist)):
                                 feature[r, :] += hist / float(len(skeleton))
 
-            saveDocument[mod] = Binary(pickle.dumps(feature))
+            saveDocument[mod] = feature
 
         pickle.dump(saveDocument, open(scan.features_dir + 'rift_' + str(l) + '.pkl', "wb"))
     
@@ -378,7 +375,7 @@ def getICBMContext(scan, images):
                 contextHist = np.zeros(numBins)
                 contextHist[0] = 1
 
-            saveDocument[tissue] = Binary(pickle.dumps([np.mean(context), np.var(context)], protocol=2))
+            saveDocument[tissue] = [np.mean(context), np.var(context)]
         
         pickle.dump(saveDocument, open(scan.features_dir + 'context_' + str(l) + '.pkl', "wb"))
 
