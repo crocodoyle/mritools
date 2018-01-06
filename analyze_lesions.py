@@ -661,7 +661,7 @@ def removeWorstFeatures(trainData, testData, removeThisRound):
     return trainData, testData
 
 
-def plotScores(scoring, plotTitle):
+def plotScores(scoring, plotTitle, results_dir):
     try:
         numBars = len(scoring)*4
         bars = []
@@ -698,7 +698,7 @@ def plotScores(scoring, plotTitle):
         plt.title(plotTitle)
         plt.legend(tuple(plots), tuple(labels), loc='center left', bbox_to_anchor=(1, 0.5), scatterpoints=1, fancybox=True, shadow=True)
         
-        plt.savefig('/usr/local/data/adoyle/ss-results-' + str(random.randint(1, 1000)) + '.png', dpi=500)
+        plt.savefig(results_dir + '/ss-results-' + str(random.randint(1, 1000)) + '.png', dpi=500)
         plt.show()
     except:
         print("couldnt plot")

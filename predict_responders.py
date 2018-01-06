@@ -279,7 +279,8 @@ def predict_responders():
                         r3[treatment][scoreMet].append(r3_score[scoreMet])
                         r4[treatment][scoreMet].append(r4_score[scoreMet])
 
-            except:
+            except Exception as e:
+                print('ERROR:', e)
                 failedFolds += 1
                 scoreThisFold = False
 
@@ -298,7 +299,7 @@ def predict_responders():
                         bestScoring.append((bestFeatureScores[treatment], "Random Forest"))
                         bestScoring.append((countingScores[treatment], "Naive Bayes (Lesion Counts)"))
 
-                        plotScores(bestScoring, 'Activity Prediction (Untreated)')
+                        plotScores(bestScoring, 'Activity Prediction (Untreated)', results_dir)
 
                     if treatment == "Placebo":
                         bestScoring = []
@@ -314,12 +315,12 @@ def predict_responders():
                         #                plotScores([(responderScores[treatment], 'Responders'), (responderHighProbScores[treatment], 'Responders (certain)'), (countScores[treatment], 'Responders (lesion counts)')], "Avonex Responder Prediction")
                         plotScores([(r1[treatment], 'Responders'), (r2[treatment], 'Responders (certain GT)'),
                                     (r3[treatment], 'Responders (certain prediction)'),
-                                    (r4[treatment], 'Responders (all certain)')], "Avonex Responder Prediction")
+                                    (r4[treatment], 'Responders (all certain)')], "Avonex Responder Prediction", results_dir)
                     elif treatment == "Laquinimod":
                         #                plotScores([(responderScores[treatment], 'Responders'), (responderHighProbScores[treatment], 'Responders (certain)'), (countScores[treatment], 'Responders (lesion counts)')], "Laquinimod Responder Prediction")
                         plotScores([(r1[treatment], 'Responders'), (r2[treatment], 'Responders (certain GT)'),
                                     (r3[treatment], 'Responders (certain prediction)'),
-                                    (r4[treatment], 'Responders (all certain)')], "Laquinimod Responder Prediction")
+                                    (r4[treatment], 'Responders (all certain)')], "Laquinimod Responder Prediction", results_dir)
 
                 bestScoring = []
 
@@ -339,7 +340,7 @@ def predict_responders():
                         bestScoring.append((bestFeatureScores[treatment], 'Drug B ($\\alpha=0.5$)'))
                         bestScoring.append((probScores[treatment], 'Drug B ($\\alpha=0.8$)'))
 
-                plotScores(bestScoring, "Activity Prediction")
+                plotScores(bestScoring, "Activity Prediction", results_dir)
 
     print("FAILED FOLDS:", failedFolds)
 
