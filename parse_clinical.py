@@ -8,10 +8,12 @@ Created on Mon Feb  8 11:33:35 2016
 import csv 
 import pickle
 
-csvfile = open('/usr/local/data/adoyle/MSLAQ-clinical.csv', 'rb')
-mri_list = pickle.load(open('/usr/local/data/adoyle/mri_list.pkl', 'rb'))
+data_dir = '/data1/users/adoyle/MS-LAQ/'
 
-csvwriter = csv.writer(open('/usr/local/data/adoyle/extraOnes.csv', 'wb'))
+csvfile = open(data_dir + 'MSLAQ-clinical.csv', 'rb')
+mri_list = pickle.load(open(data_dir + 'mri_list.pkl', 'rb'))
+
+csvwriter = csv.writer(open(data_dir + 'extraOnes.csv', 'wb'))
 csvreader = csv.reader(csvfile)
 
 index = 0
