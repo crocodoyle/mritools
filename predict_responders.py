@@ -57,7 +57,7 @@ def predict_responders():
 
     outcomes = load_data.get_outcomes(mri_list)
 
-    kf = StratifiedKFold(outcomes['newT2'], n_folds=50, shuffle=True)
+    kf = StratifiedKFold(outcomes['newT2'], n_splits=50, shuffle=True)
 
     respondersRight, respondersWrong = {}, {}
     failedFolds = 0
