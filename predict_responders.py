@@ -29,7 +29,7 @@ metrics = ['newT2']
 
 
 workdir = '/home/users/adoyle/respondMS/'
-datadir = '/data1/users/adoyle/MS-LAQ/'
+datadir = '/data1/users/adoyle/MS-LAQ/MS-LAQ-302-STX/'
 
 mri_list_location = workdir + 'mri_list.pkl'
 

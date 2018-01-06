@@ -8,7 +8,7 @@ Created on Mon Feb  8 11:33:35 2016
 import csv 
 import pickle
 
-data_dir = '/data1/users/adoyle/MS-LAQ/'
+data_dir = '/data1/users/adoyle/MS-LAQ/MS-LAQ-302-STX/'
 
 csvfile = open(data_dir + 'MSLAQ-clinical.csv', 'rb')
 mri_list = pickle.load(open(data_dir + 'mri_list.pkl', 'rb'))
