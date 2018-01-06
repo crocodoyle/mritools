@@ -10,11 +10,9 @@ import pickle
 
 data_dir = '/data1/users/adoyle/MS-LAQ/MS-LAQ-302-STX/'
 
-csvfile = open(data_dir + 'MSLAQ-clinical.csv', 'rb')
 mri_list = pickle.load(open(data_dir + 'mri_list.pkl', 'rb'))
-
 csvwriter = csv.writer(open(data_dir + 'extraOnes.csv', 'wb'))
-csvreader = csv.reader(csvfile)
+csvreader = csv.reader(open(data_dir + 'MSLAQ-clinical.csv'))
 
 index = 0
 for row in csvreader:
