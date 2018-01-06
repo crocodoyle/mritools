@@ -357,7 +357,7 @@ def loadAllData(mri_list, numLesions, lbpPCA=None):
             oneDataSourceDims = 1
             for dim in np.shape(dataVectors[i][size]):
                 oneDataSourceDims *= dim
-            oneDataSourceDims /= np.shape(dataVectors[i][size])[0]
+            oneDataSourceDims //= np.shape(dataVectors[i][size])[0]
             
             dataVectors[i][size] = np.reshape(np.vstack(dataVectors[i][size]), (np.shape(dataVectors[i][size])[0], oneDataSourceDims))
 
