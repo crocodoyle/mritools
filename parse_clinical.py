@@ -11,7 +11,7 @@ import pickle
 data_dir = '/data1/users/adoyle/MS-LAQ/MS-LAQ-302-STX/'
 
 mri_list = pickle.load(open(data_dir + 'mri_list.pkl', 'rb'))
-csvwriter = csv.writer(open(data_dir + 'extraOnes.csv', 'wb'))
+csvwriter = csv.writer(open(data_dir + 'extraOnes.csv', 'w'))
 csvreader = csv.reader(open(data_dir + 'MSLAQ-clinical.csv'))
 
 index = 0
@@ -30,13 +30,11 @@ for row in csvreader:
         for scan in mri_list:
             if scan.uid == uid:
                 inList = True
-                print(uid, 'found!')
         
         if not inList:
-            print(uid, 'not found!')
             csvwriter.writerow([uid[0:3] + '_' + uid[4:]])
         
-        print(uid, treatment, newT2, newT1, atrophy)
+        print(uid, treatment, newT2, newT1, atrophy, 'clinical info:', str(inList))
         
         saveDocument['treatment'] = treatment
         try:
