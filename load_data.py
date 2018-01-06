@@ -235,7 +235,7 @@ def loadRIFT(mri_list, numLesions):
 
 
 def loadContext(mri_list, numLesions):
-    numBins = 4
+    numBins = 2
     
     data = defaultdict(list)
         
