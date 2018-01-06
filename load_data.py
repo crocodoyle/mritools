@@ -303,28 +303,28 @@ def loadLBP(mri_list, numLesions, lbpPCA=None):
                 feature = np.zeros((len(modalities), len(lbpRadii), 9))
 
                 for m, mod in enumerate(modalities):
-                    feature[m, ...] = pickle.loads(lesion_feature[mod])
+                    feature[m, ...] = lesion_feature[mod]
                 data['large'].append(feature)
 
             elif len(scan.lesionList[j]) > 25:
                 feature = np.zeros((len(modalities), len(lbpRadii), 9))
 
                 for m, mod in enumerate(modalities):
-                    feature[m,...] = pickle.loads(lesion_feature[mod])
+                    feature[m,...] = lesion_feature[mod]
                 data['medium'].append(feature)
 
             elif len(scan.lesionList[j]) > 10:
                 feature = np.zeros((len(modalities), len(lbpRadii), 9))
 
                 for m, mod in enumerate(modalities):
-                    feature[m,...] = pickle.loads(lesion_feature[mod])
+                    feature[m,...] = lesion_feature[mod]
                 data['small'].append(feature)
                 
             elif len(scan.lesionList[j]) > 2:
                 feature = np.zeros((len(modalities), len(lbpRadii), 9))
 
                 for m, mod in enumerate(modalities):
-                    feature[m,...] = pickle.loads(lesion_feature[mod])
+                    feature[m,...] = lesion_feature[mod]
                 data['tiny'].append(feature)
     
     if plotFeats:
