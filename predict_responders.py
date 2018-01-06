@@ -38,7 +38,7 @@ def predict_responders():
     start = time.time()
 
     try:
-        experiment_number = pickle.load(open(workdir + 'experiment_number.pkl', 'rb'))
+        experiment_number = pickle.load(open(datadir + 'experiment_number.pkl', 'rb'))
         experiment_number += 1
     except:
         print('Couldnt find the file to load experiment number')
@@ -46,10 +46,10 @@ def predict_responders():
 
     print('This is experiment number:', experiment_number)
 
-    results_dir = workdir + '/experiment-' + str(experiment_number) + '/'
+    results_dir = datadir + '/experiment-' + str(experiment_number) + '/'
     os.makedirs(results_dir)
 
-    pickle.dump(experiment_number, open(workdir + 'experiment_number.pkl', 'wb'))
+    pickle.dump(experiment_number, open(datadir + 'experiment_number.pkl', 'wb'))
 
     mri_list = pickle.load(open(mri_list_location, 'rb'))
     mri_list, without_clinical = load_data.loadClinical(mri_list)
