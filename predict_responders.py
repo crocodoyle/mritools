@@ -55,6 +55,7 @@ def predict_responders():
     mri_list = pickle.load(open(mri_list_location, 'rb'))
     mri_list, without_clinical = load_data.loadClinical(mri_list)
 
+    print('We have', len(mri_list), 'patients')
     outcomes = load_data.get_outcomes(mri_list)
 
     kf = StratifiedKFold(50, shuffle=True, random_state=42)
