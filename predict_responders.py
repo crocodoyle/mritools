@@ -57,7 +57,7 @@ def predict_responders():
 
     outcomes = load_data.get_outcomes(mri_list)
 
-    kf = StratifiedKFold(outcomes['newT2'], n_splits=50, shuffle=True)
+    kf = StratifiedKFold(50, shuffle=True, random_state=42)
 
     respondersRight, respondersWrong = {}, {}
     failedFolds = 0
@@ -115,7 +115,7 @@ def predict_responders():
 
     # initialization of result structures complete
     # start learning BoL, predicting activity
-    for foldNum, (train_index, test_index) in enumerate(kf.split(range(len(mri_list)))):
+    for foldNum, (train_index, test_index) in enumerate(kf.split(range(len(mri_list)), outcomes['newT2'])):
         print(foldNum+1, '/', len(kf)+1)
         scoreThisFold = True
 
