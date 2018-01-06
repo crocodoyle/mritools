@@ -29,7 +29,7 @@ doContext = True
 doRIFT = True
 doIntensity = True
 
-reload_list = True
+reload_list = False
 
 modalities = ['t1p', 't2w', 'pdw', 'flr']
 
@@ -349,8 +349,7 @@ def getRIFTFeatures2D(scan, riftRegions, img):
 
 
 def loadMRIList():
-    complete_data_subjects, potential_subjects = 0, 0
-
+    complete_data_subjects, missing_data_subjects = 0, 0
 
     mri_list = []
     for root, dirs, filenames in os.walk(data_dir):
@@ -365,12 +364,12 @@ def loadMRIList():
                         complete_data_subjects += 1
                     else:
                         print('Missing MRI modality: ', f)
-                        potential_subjects += 1
+                        missing_data_subjects += 1
                 else:
                     print('Missing lesion labels: ', f)
-                    potential_subjects += 1
+                    missing_data_subjects += 1
 
-    print(complete_data_subjects, '/', potential_subjects, 'have all modalities and lesion labels')
+    print(complete_data_subjects, '/', missing_data_subjects + complete_data_subjects, 'have all modalities and lesion labels')
 
     mri_list_lesions = []
     for i, scan in enumerate(mri_list):

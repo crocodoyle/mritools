@@ -65,7 +65,7 @@ def hitOrMissThinning(lesion, thinningElements):
             
             iterations += 1
 
-    print(np.sum(img), '/', len(lesion))
+    print(np.sum(img), '/', len(lesion), 'lesion voxels')
     
     skeletonPoints = np.transpose(np.nonzero(img))
     return img, skeletonPoints
