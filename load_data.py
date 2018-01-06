@@ -370,8 +370,8 @@ def loadAllData(mri_list, numLesions, lbpPCA=None):
 def loadClinical(mri_list):
     new_mri_list, without_clinical = [], []
     for i, scan in enumerate(mri_list):
-        clinicalData = pickle.load(open(scan.features_dir + 'clinical.pkl', 'rb'))
         try:
+            clinicalData = pickle.load(open(scan.features_dir + 'clinical.pkl', 'rb'))
             if int(clinicalData['newT1']) > 0:
                 scan.newT1 = 1
             else:
@@ -391,14 +391,6 @@ def loadClinical(mri_list):
             scan.treatment = clinicalData['treatment']
             new_mri_list.append(scan)
         except:
-#            print scan.uid, clinicalData
             without_clinical.append(scan)
-
-#    writer = csv.writer(open('/usr/local/data/adoyle/bad_ids.csv', 'wb'))
-#    for uid in bad_ids:
-#        writer.writerow([uid[0:3] + '_' + uid[4:]])
-        
-    # print('we have', len(new_mri_list), 'patients with clinical data')
-    # print('we have', len(without_clinical), 'patients without clinical data')
 
     return new_mri_list, without_clinical
