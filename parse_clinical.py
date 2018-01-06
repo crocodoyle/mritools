@@ -30,27 +30,28 @@ for row in csvreader:
         for scan in mri_list:
             if scan.uid == uid:
                 inList = True
-        
-        if not inList:
-            csvwriter.writerow([uid[0:3] + '_' + uid[4:]])
-        
-        print(uid, treatment, newT2, newT1, atrophy, 'clinical info:', str(inList))
-        
-        saveDocument['treatment'] = treatment
-        try:
-            saveDocument['newT1'] = int(newT1)
-        except ValueError:
-            saveDocument['newT1'] = 0
-        try:
-            saveDocument['newT2'] = int(newT2)
-        except ValueError:
-            saveDocument['newT2'] = 0
-            
-        try:
-            saveDocument['atrophy'] = float(atrophy)
-        except:
-            saveDocument['atrophy'] = 0.0
+                right_scan = scan
 
-        pickle.dump(saveDocument, open(scan.features_dir + 'clinical' + '.pkl', 'wb'))
+        if not inList: # we don't have imaging data for the results, log it
+            print(uid, 'NOT FOUND')
+            csvwriter.writerow([uid[0:3] + '_' + uid[4:]])
+        else:
+            print(uid, treatment, newT2, newT1, atrophy)
+            saveDocument['treatment'] = treatment
+            try:
+                saveDocument['newT1'] = int(newT1)
+            except ValueError:
+                saveDocument['newT1'] = 0
+            try:
+                saveDocument['newT2'] = int(newT2)
+            except ValueError:
+                saveDocument['newT2'] = 0
+
+            try:
+                saveDocument['atrophy'] = float(atrophy)
+            except:
+                saveDocument['atrophy'] = 0.0
+                
+            pickle.dump(saveDocument, open(right_scan.features_dir + 'clinical' + '.pkl', 'wb'))
 
     index +=1
