@@ -370,7 +370,7 @@ def loadAllData(mri_list, numLesions, lbpPCA=None):
 def loadClinical(mri_list):
     new_mri_list, without_clinical = [], []
     for i, scan in enumerate(mri_list):
-        clinicalData = pickle.load(open(scan.features_dir + 'clinical' + '.pkl', 'rb'))
+        clinicalData = pickle.load(open(scan.features_dir + 'clinical.pkl', 'rb'))
         try:
             if int(clinicalData['newT1']) > 0:
                 scan.newT1 = 1

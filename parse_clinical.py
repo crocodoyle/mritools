@@ -52,6 +52,7 @@ for row in csvreader:
             except:
                 saveDocument['atrophy'] = 0.0
 
-            pickle.dump(saveDocument, open(right_scan.features_dir + 'clinical' + '.pkl', 'wb'))
+            print(right_scan.features_dir + 'clinical.pkl')
+            pickle.dump(saveDocument, open(right_scan.features_dir + 'clinical.pkl', 'wb'))
 
     index +=1
