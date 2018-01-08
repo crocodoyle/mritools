@@ -191,7 +191,7 @@ def predict_responders():
                     correct, total) = bol_classifiers.featureClassifier(bestTrainData, bestTestData, trainOutcomes,
                                                                         testOutcomes, subtypeShape, train_patients,
                                                                         mri_test, brainIndices, lesionIndices,
-                                                                        len(mri_list))
+                                                                        len(mri_list), results_dir)
 
                     (bestChi2Score, bestChi2Predictions), (
                     bestChi2svmscore, bestChi2svmPredictions) = bol_classifiers.chi2Knn(bestTrainData, bestTestData,
@@ -211,7 +211,7 @@ def predict_responders():
                     allCorrect, allTotal) = bol_classifiers.featureClassifier(trainData, testData, trainOutcomes,
                                                                               testOutcomes, subtypeShape,
                                                                               train_patients, mri_test, brainIndices,
-                                                                              lesionIndices, len(mri_list))
+                                                                              lesionIndices, len(mri_list), results_dir)
 
                     (countingScore, countingPredictions, placebo_nb) = bol_classifiers.countingClassifier(
                         trainCounts[treatment], testCounts[treatment], trainOutcomes, testOutcomes)

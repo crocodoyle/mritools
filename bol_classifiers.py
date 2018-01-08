@@ -375,7 +375,7 @@ def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeS
 
 def identifyResponders(bestTrainData, bestTestData, trainOutcomes, testOutcomes, trainCounts, testCounts, placebo_rf, placebo_nb):
     
-    relapse_certainty = 0.8    
+    relapse_certainty = 0.8
     
     activity_counts = placebo_nb.predict_proba(trainCounts)
     activity_counts_test = placebo_nb.predict_proba(testCounts)
