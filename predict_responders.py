@@ -167,6 +167,7 @@ def predict_responders():
         # feature selection
         featuresToRemove, c = None, None
         for treatment in treatments:
+            if True:
             # try:
 
                 trainData, testData = trainingData[treatment], testingData[treatment]
