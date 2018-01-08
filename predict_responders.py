@@ -28,10 +28,9 @@ scoringMetrics = ['TP', 'FP', 'TN', 'FN']
 metrics = ['newT2']
 
 
-workdir = '/home/users/adoyle/respondMS/'
-datadir = '/data1/users/adoyle/MS-LAQ/'
+datadir = '/data1/users/adoyle/MS-LAQ/MS-LAQ-302-STX/'
 
-mri_list_location = workdir + 'mri_list.pkl'
+mri_list_location = datadir + 'mri_list.pkl'
 
 
 
@@ -39,7 +38,7 @@ def predict_responders():
     start = time.time()
 
     try:
-        experiment_number = pickle.load(open(workdir + 'experiment_number.pkl', 'rb'))
+        experiment_number = pickle.load(open(datadir + 'experiment_number.pkl', 'rb'))
         experiment_number += 1
     except:
         print('Couldnt find the file to load experiment number')
@@ -47,17 +46,18 @@ def predict_responders():
 
     print('This is experiment number:', experiment_number)
 
-    results_dir = workdir + '/experiment-' + str(experiment_number) + '/'
+    results_dir = datadir + '/experiment-' + str(experiment_number) + '/'
     os.makedirs(results_dir)
 
-    pickle.dump(experiment_number, open(workdir + 'experiment_number.pkl', 'wb'))
+    pickle.dump(experiment_number, open(datadir + 'experiment_number.pkl', 'wb'))
 
     mri_list = pickle.load(open(mri_list_location, 'rb'))
     mri_list, without_clinical = load_data.loadClinical(mri_list)
 
+    print('We have', len(mri_list), 'patients')
     outcomes = load_data.get_outcomes(mri_list)
 
-    kf = StratifiedKFold(outcomes['newT2'], n_folds=50, shuffle=True)
+    kf = StratifiedKFold(50, shuffle=True, random_state=42)
 
     respondersRight, respondersWrong = {}, {}
     failedFolds = 0
@@ -115,8 +115,8 @@ def predict_responders():
 
     # initialization of result structures complete
     # start learning BoL, predicting activity
-    for foldNum, (train_index, test_index) in enumerate(kf.split(range(len(mri_list)))):
-        print(foldNum+1, '/', len(kf)+1)
+    for foldNum, (train_index, test_index) in enumerate(kf.split(range(len(mri_list)), outcomes['newT2'])):
+        print(foldNum+1, '/', kf.get_n_splits())
         scoreThisFold = True
 
         mri_train, mri_test = np.asarray(mri_list)[train_index], np.asarray(mri_list)[test_index]
@@ -279,7 +279,8 @@ def predict_responders():
                         r3[treatment][scoreMet].append(r3_score[scoreMet])
                         r4[treatment][scoreMet].append(r4_score[scoreMet])
 
-            except:
+            except Exception as e:
+                print('ERROR:', e)
                 failedFolds += 1
                 scoreThisFold = False
 
@@ -298,7 +299,7 @@ def predict_responders():
                         bestScoring.append((bestFeatureScores[treatment], "Random Forest"))
                         bestScoring.append((countingScores[treatment], "Naive Bayes (Lesion Counts)"))
 
-                        plotScores(bestScoring, 'Activity Prediction (Untreated)')
+                        plotScores(bestScoring, 'Activity Prediction (Untreated)', results_dir)
 
                     if treatment == "Placebo":
                         bestScoring = []
@@ -314,12 +315,12 @@ def predict_responders():
                         #                plotScores([(responderScores[treatment], 'Responders'), (responderHighProbScores[treatment], 'Responders (certain)'), (countScores[treatment], 'Responders (lesion counts)')], "Avonex Responder Prediction")
                         plotScores([(r1[treatment], 'Responders'), (r2[treatment], 'Responders (certain GT)'),
                                     (r3[treatment], 'Responders (certain prediction)'),
-                                    (r4[treatment], 'Responders (all certain)')], "Avonex Responder Prediction")
+                                    (r4[treatment], 'Responders (all certain)')], "Avonex Responder Prediction", results_dir)
                     elif treatment == "Laquinimod":
                         #                plotScores([(responderScores[treatment], 'Responders'), (responderHighProbScores[treatment], 'Responders (certain)'), (countScores[treatment], 'Responders (lesion counts)')], "Laquinimod Responder Prediction")
                         plotScores([(r1[treatment], 'Responders'), (r2[treatment], 'Responders (certain GT)'),
                                     (r3[treatment], 'Responders (certain prediction)'),
-                                    (r4[treatment], 'Responders (all certain)')], "Laquinimod Responder Prediction")
+                                    (r4[treatment], 'Responders (all certain)')], "Laquinimod Responder Prediction", results_dir)
 
                 bestScoring = []
 
@@ -339,7 +340,7 @@ def predict_responders():
                         bestScoring.append((bestFeatureScores[treatment], 'Drug B ($\\alpha=0.5$)'))
                         bestScoring.append((probScores[treatment], 'Drug B ($\\alpha=0.8$)'))
 
-                plotScores(bestScoring, "Activity Prediction")
+                plotScores(bestScoring, "Activity Prediction", results_dir)
 
     print("FAILED FOLDS:", failedFolds)
 

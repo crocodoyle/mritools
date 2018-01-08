@@ -355,7 +355,7 @@ def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeS
                 ax.set_xlabel('Lesion-Types')
 #                ax.set_xticks(x)
                 
-                plt.savefig('/usr/local/data/adoyle/images/active-' + scan.uid, dpi=500)
+                plt.savefig('/data1/users/adoyle/MS-LAQ/MS-LAQ-302-STX/images/active-' + scan.uid, dpi=500)
 #                plt.show()
                 plt.close()
                 

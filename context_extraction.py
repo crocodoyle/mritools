@@ -10,13 +10,10 @@ import subprocess
 import time, sys
 
 from random import shuffle
-
-from bson.binary import Binary
-
 import skeletons
 
 import bitstring
-
+from multiprocessing import Pool, Process
 
 data_dir = '/data1/users/adoyle/MS-LAQ/MS-LAQ-302-STX/'
 icbmRoot = data_dir + 'quarantine/common/models/icbm_avg_152_'
@@ -32,7 +29,7 @@ doContext = True
 doRIFT = True
 doIntensity = True
 
-reload_list = True
+reload_list = False
 
 modalities = ['t1p', 't2w', 'pdw', 'flr']
 
@@ -70,6 +67,7 @@ def convertToNifti(mri_list):
     
     return new_list
 
+
 def invertLesionCoordinates(mri_list):
     new_list = []
     for scan in mri_list:
@@ -90,6 +88,7 @@ def invertLesionCoordinates(mri_list):
     outfile.close()    
 
     return new_list
+
 
 def getBoundingBox(mri_list):
     lesTypes = ['tiny', 'small', 'medium', 'large']
@@ -132,7 +131,29 @@ def getBoundingBox(mri_list):
     print('boundingBoxes: ', boundingBoxes)
     return boundingBoxes
 
-    
+
+def separate_lesions(scan):
+    lesion_image = nib.load(scan.lesions).get_data()
+    lesion_locations = list(np.asarray(np.nonzero(lesion_image)).T)
+    connected_lesion = np.zeros((len(lesion_locations)))
+
+    lesion_list = []
+    for i, (x, y, z) in enumerate(lesion_locations):
+        for lesion in lesion_list:
+            for point in lesion:
+                if np.abs(x - point[0]) <= 1 and np.abs(y - point[1]) <= 1 and np.abs(z - point[2]) <= 1:
+                    lesion.append([x, y, z])
+                    connected_lesion[i] = True
+                if connected_lesion[i]:
+                    break
+
+        if not connected_lesion[i]:
+            newLesion = [[x, y, z]]
+            lesion_list.append(newLesion)
+
+    return lesion_list
+
+
 def uniformLBP(image, lesion, radius):
     lbp = bitstring.BitArray('0b00000000')
     
@@ -289,7 +310,6 @@ def getRIFTFeatures2D(scan, riftRegions, img):
     
                             gaussianWindow = 1/(sigma * np.sqrt(2 * np.pi)) * np.exp( - (np.square(y-yc) + np.square(x-xc)) / (2 * sigma**2))
                             gradientData[p,:] = [outwardTheta, mag[mod][x,y,z]*gaussianWindow]
-                                                        
 
                         hist, bins = np.histogram(gradientData[:, 0], bins=binsTheta, range=(0, np.pi), weights=gradientData[:,1])
                         hist = np.divide(hist, sum(hist))   
@@ -323,29 +343,41 @@ def getRIFTFeatures2D(scan, riftRegions, img):
                             if not np.isnan(np.min(hist)):
                                 feature[r, :] += hist / float(len(skeleton))
 
-            saveDocument[mod] = Binary(pickle.dumps(feature))
+            saveDocument[mod] = feature
 
         pickle.dump(saveDocument, open(scan.features_dir + 'rift_' + str(l) + '.pkl', "wb"))
-    
+
+
 def loadMRIList():
-    total = 0    
-    
+    complete_data_subjects, missing_data_subjects = 0, 0
+
     mri_list = []
     for root, dirs, filenames in os.walk(data_dir):
         for f in filenames:
-            if total > 3:
-                break
             if f.endswith('_m0_t1p.mnc.gz'):
                 scan = mri(f)
                 
-                if os.path.isfile(scan.lesions) and os.path.isfile(scan.images['t1p']) and os.path.isfile(scan.images['t2w']) and  os.path.isfile(scan.images['pdw']) and os.path.isfile(scan.images['flr']):
-                    scan.separateLesions()
-                    mri_list.append(scan)
-                    total += 1
-                    
-                    print(total, '/', len(filenames))
-                    print(scan.images['t1p'])
-    return mri_list
+                if os.path.isfile(scan.lesions):
+                    if os.path.isfile(scan.images['t1p']) and os.path.isfile(scan.images['t2w']) and  os.path.isfile(scan.images['pdw']) and os.path.isfile(scan.images['flr']):
+                        print('Parsing files for', f)
+                        mri_list.append(scan)
+                        complete_data_subjects += 1
+                    else:
+                        print('Missing MRI modality: ', f)
+                        missing_data_subjects += 1
+                else:
+                    print('Missing lesion labels: ', f)
+                    missing_data_subjects += 1
+
+    print(complete_data_subjects, '/', missing_data_subjects + complete_data_subjects, 'have all modalities and lesion labels')
+
+    mri_list_lesions = []
+    for i, scan in enumerate(mri_list):
+        scan.lesionList = separate_lesions(scan)
+        mri_list_lesions.append(scan)
+        print(scan.uid, i+1, '/', len(mri_list)+1)
+
+    return mri_list_lesions
 
 
 def getICBMContext(scan, images):
@@ -378,7 +410,7 @@ def getICBMContext(scan, images):
                 contextHist = np.zeros(numBins)
                 contextHist[0] = 1
 
-            saveDocument[tissue] = Binary(pickle.dumps([np.mean(context), np.var(context)], protocol=2))
+            saveDocument[tissue] = [np.mean(context), np.var(context)]
         
         pickle.dump(saveDocument, open(scan.features_dir + 'context_' + str(l) + '.pkl', "wb"))
 
@@ -411,7 +443,7 @@ def getLBPFeatures(scan, images):
             
             for r, radius in enumerate(lbpRadii):
                 feature[r, ...] = uniformLBP(images[mod], lesion, radius)
-                saveDocument[mod] = Binary(pickle.dumps(feature, protocol=2))
+            saveDocument[mod] = feature
 
         pickle.dump(saveDocument, open(scan.features_dir + 'lbp_' + str(l) + '.pkl', "wb"))
 
@@ -438,7 +470,7 @@ def getIntensityFeatures(scan, images):
                 intensityHist = np.zeros((histBins))
                 intensityHist[0] = 1
 
-            saveDocument[m] = Binary(pickle.dumps([np.mean(intensities), np.var(intensities)], protocol=2))
+            saveDocument[m] = [np.mean(intensities), np.var(intensities)]
         
         pickle.dump(saveDocument, open(scan.features_dir + 'intensity_' + str(l) + '.pkl', "wb"))
 
@@ -449,10 +481,9 @@ def getFeaturesOfList(mri_list, riftRegions):
         for j, m in enumerate(modalities):
             images[m] = nib.load(scan.images[m]).get_data()
         
-        print(scan.uid, i, '/', len(mri_list))
+        print('Patient:', scan.uid, i+1, '/', len(mri_list)+1)
         startTime = time.time()
-        
-        sys.stdout.flush()
+
         if doContext:
             getICBMContext(scan, images)
 
@@ -481,27 +512,18 @@ def main():
     print('Loading MRI file list...')
     
     if reload_list:
-        print('Reloading MRI file list from NeuroRX...')
-        for root, dirs, filenames in os.walk(data_dir):
-            if len(filenames) == 0:
-                #sshfs adoyle@iron7.bic.mni.mcgill.ca:/trials/ -p 22101 /usr/local/data/adoyle/trials/
-                subprocess.call(['sshfs', 'adoyle@iron7.bic.mni.mcgill.ca:/trials/', '-p', '22101', '/usr/local/data/adoyle/trials/'])
         mri_list = loadMRIList()
-        outfile = open('/home/users/adoyle/respondMS/mri_list.pkl', 'wb')
+        outfile = open(data_dir + 'mri_list.pkl', 'wb')
         pickle.dump(mri_list, outfile)
         outfile.close()
         print('Cached MRI file listing')
     else:
-        infile = open('/usr/local/data/adoyle/mri_list.pkl', 'rb')
+        infile = open(data_dir + 'mri_list.pkl', 'rb')
         mri_list = pickle.load(infile)
         infile.close()
     
     print('MRI list loaded')
-    
-#    mri_list = convertToNifti(mri_list)
-#    mri_list = gzipNiftiFiles(mri_list)
-    
-#    mri_list = invertLesionCoordinates(mri_list)
+
     riftRegions = generateRIFTRegions2D(riftRadii)
 
     getFeaturesOfList(mri_list, riftRegions)

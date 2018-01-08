@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import vtk
+# import vtk
 
 import pickle
 
@@ -10,16 +10,7 @@ from scipy.ndimage.morphology import binary_hit_or_miss
 from scipy.ndimage.morphology import distance_transform_edt
 from scipy.ndimage.measurements import center_of_mass
 
-
-import matplotlib.cm as cm
-import transformations as t
-
-import nibabel as nib
-
-from scipy.spatial import distance
-from scipy.spatial import ConvexHull
-from scipy.spatial import Voronoi
-
+from scipy.spatial import distance, ConvexHull, Voronoi
 from scipy.special import sph_harm
 
 
@@ -53,30 +44,28 @@ def thinningElements():
 
 
 def hitOrMissThinning(lesion, thinningElements):
-    img = np.zeros((256, 256, 60), dtype='bool')
+    img = np.zeros((60, 256, 256), dtype='bool')
     
     for point in lesion:
         img[point[0], point[1], point[2]] = 1
-        
 
-    for z in range(np.shape(img)[2]):
+    for z in range(img.shape[0]):
         iterations = 0
         numSkelePoints = 0
         
-        while not numSkelePoints == np.sum(img[:,:,z]): 
-            numSkelePoints = np.sum(img[:,:,z])
+        while not numSkelePoints == np.sum(img[z,:,:]):
+            numSkelePoints = np.sum(img[z,:,:])
             for r in range(4):
-                remove = binary_hit_or_miss(img[:,:,z], thinningElements[r,0,:,:], thinningElements[r,1,:,:])
-                img[:,:,z] = img[:,:,z] - remove
+                remove = binary_hit_or_miss(img[z,:,:], thinningElements[r,0,:,:], thinningElements[r,1,:,:])
+                img[z,:,:] = img[z,:,:] - remove
                 
             for r in range(4):
-                remove = binary_hit_or_miss(img[:,:,z], thinningElements[r,2,:,:], thinningElements[r,3,:,:])
-                img[:,:,z] = img[:,:,z] - remove
+                remove = binary_hit_or_miss(img[z,:,:], thinningElements[r,2,:,:], thinningElements[r,3,:,:])
+                img[z,:,:] = img[z,:,:] - remove
             
             iterations += 1
-                
 
-    print(np.sum(img), '/', len(lesion))
+    print(np.sum(img), '/', len(lesion), 'lesion voxels')
     
     skeletonPoints = np.transpose(np.nonzero(img))
     return img, skeletonPoints

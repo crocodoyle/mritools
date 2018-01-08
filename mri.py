@@ -16,7 +16,7 @@ class mri(object):
         
         self.uid = tokens[2] + tokens[3]
 
-        self.images = collections.OrderedDict()        
+        self.images = collections.OrderedDict()
         self.images['t1p'] = self.folder + 'classifier_files/' + 'MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m0_t1p_norm_ANAT-brain_ISPC-stx152lsq6.mnc.gz'
         self.images['t2w'] = self.folder + 'classifier_files/' + 'MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m0_t2w_norm_ANAT-brain_ISPC-stx152lsq6.mnc.gz'
         self.images['pdw'] = self.folder + 'classifier_files/' + 'MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m0_pdw_norm_ANAT-brain_ISPC-stx152lsq6.mnc.gz'
@@ -50,8 +50,9 @@ class mri(object):
         self.futureLabels = self.folder[0:-3] + '/m24/MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m24_ct2f_ISPC-stx152lsq6.mnc.gz'
         self.newLesions = 0
         
-        self.newT2 = self.data_dir + tokens[1] + '/' + tokens[2] + '_' + tokens[3] + '/m24/' + 'classifier_files/' + 'MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m24_t2w_norm_ANAT-brain_ISPC-stx152lsq6.mnc.gz'
-        
+        # self.newT2 = self.data_dir + tokens[1] + '/' + tokens[2] + '_' + tokens[3] + '/m24/' + 'classifier_files/' + 'MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m24_t2w_norm_ANAT-brain_ISPC-stx152lsq6.mnc.gz'
+        self.has_2_years_data = os.path.exists(self.folder[0:-3] + '/m24/')
+
     def calculateNewLesions(self):
         lesionImage = nib.load(self.futureLabels).get_data()
         lesionLocations = list(np.asarray(np.nonzero(lesionImage)).T)
@@ -73,27 +74,3 @@ class mri(object):
         
         self.newLesions = len(lesionList)
         
-    def separateLesions(self):
-        lesionImage = nib.load(self.lesions).get_data()
-        lesionLocations = list(np.asarray(np.nonzero(lesionImage)).T)
-
-        connectedLesion = np.zeros((len(lesionLocations)))
-
-        lesionList = []
-        
-        for i, (x, y, z) in enumerate(lesionLocations):
-            for lesion in lesionList:
-                for point in lesion:
-                    if np.abs(x - point[0]) <= 1 and np.abs(y - point[1]) <= 1 and np.abs(z - point[2]) <= 1:
-                        lesion.append([x, y, z])
-                        connectedLesion[i] = True
-                    if connectedLesion[i]:
-                        break
-            
-            if not connectedLesion[i]:
-                newLesion = [[x,y,z]]
-                lesionList.append(newLesion)
-        
-        self.lesionList = lesionList
-        
-        return lesionList

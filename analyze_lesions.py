@@ -54,6 +54,8 @@ threads = 8
 
 plotFeats = False
 usePCA = False
+
+data_dir = '/data1/users/adoyle/MS-LAQ/MS-LAQ-302-STX/'
     
 def cluster(data, numClusters):    
     startTime = time.time()
@@ -293,7 +295,7 @@ def createRepresentationSpace(mri_list, dataVectors, lesionSizes, numWithClinica
                                 ax3.set_xlabel(letters[i])
 
                             plt.subplots_adjust(wspace=0.01,hspace=0.01)
-                            plt.savefig('/usr/local/data/adoyle/images/t2lesions-'+ size + '-' + ''.join((str(f1),str(f2),str(f3),str(f4))) + '.png', dpi=600)
+                            plt.savefig(data_dir + 'images/t2lesions-'+ size + '-' + ''.join((str(f1),str(f2),str(f3),str(f4))) + '.png', dpi=600)
 
     pcas, lesionFlat = [], []
 
@@ -482,7 +484,7 @@ def visualizePatientGroupHistograms(trainData, trainClusterAssignments):
         axs[group].set_yticks([])
         axs[group].set_xlabel('Lesion Type')
         
-    plt.savefig('/usr/local/data/adoyle/images/groupHistograms.png', dpi=200)
+    plt.savefig(data_dir + 'images/groupHistograms.png', dpi=200)
     plt.show()
     
 
@@ -585,7 +587,7 @@ def visualizePatientGroups(mri_list, trainData, groups, subtypeShape):
         groupNum = random.randint(0,100)
         print(groupNum)
         plt.subplots_adjust(wspace=0.01,hspace=0.01)
-        plt.savefig('/usr/local/data/adoyle/images/patient-groups' + str(groupNum) + '-' + str(g) + '.png', dpi=500)       
+        plt.savefig(data_dir + '/images/patient-groups' + str(groupNum) + '-' + str(g) + '.png', dpi=500)
 #        plt.show()
         plt.close()
         
@@ -648,7 +650,7 @@ def visualizeWhereTreatmentInfoHelps(example, mri_test, testData, mri_train, tra
             break
     
     plt.subplots_adjust(wspace=0.01,hspace=0.01)
-    plt.savefig('/usr/local/data/adoyle/images/example' + str(example) + '.png')
+    plt.savefig(data_dir + 'images/example' + str(example) + '.png')
 #    plt.show()
     plt.close()
 
@@ -661,7 +663,7 @@ def removeWorstFeatures(trainData, testData, removeThisRound):
     return trainData, testData
 
 
-def plotScores(scoring, plotTitle):
+def plotScores(scoring, plotTitle, results_dir):
     try:
         numBars = len(scoring)*4
         bars = []
@@ -698,7 +700,7 @@ def plotScores(scoring, plotTitle):
         plt.title(plotTitle)
         plt.legend(tuple(plots), tuple(labels), loc='center left', bbox_to_anchor=(1, 0.5), scatterpoints=1, fancybox=True, shadow=True)
         
-        plt.savefig('/usr/local/data/adoyle/ss-results-' + str(random.randint(1, 1000)) + '.png', dpi=500)
+        plt.savefig(results_dir + '/ss-results-' + str(random.randint(1, 1000)) + '.png', dpi=500)
         plt.show()
     except:
         print("couldnt plot")
@@ -748,7 +750,7 @@ def beforeAndAfter():
         ax.imshow(newMaskImg[20:200, 20:200, 30].T, cmap=plt.cm.autumn, interpolation = 'nearest', alpha=0.4, origin='lower')
         ax.axis('off')  
         
-        plt.savefig('/usr/local/data/adoyle/images/before-after-' + str(i) + '.png', dpi=500)
+        plt.savefig(data_dir + 'images/before-after-' + str(i) + '.png', dpi=500)
         plt.show()        
         plt.close()        
     
@@ -765,7 +767,7 @@ def beforeAndAfter():
             ax.set_xlabel(mod)
         
 #        plt.tight_layout()
-        plt.savefig('/usr/local/data/adoyle/images/allmods-' + scan.uid + '.png', dpi=500)
+        plt.savefig(data_dir + '/allmods-' + scan.uid + '.png', dpi=500)
         plt.show()
         plt.close()
         
@@ -781,7 +783,7 @@ def beforeAndAfter():
             ax.set_xlabel(mod)
         
 #        plt.tight_layout()
-        plt.savefig('/usr/local/data/adoyle/images/rawmods-' + scan.uid + '.png', dpi=500)
+        plt.savefig(data_dir + '/images/rawmods-' + scan.uid + '.png', dpi=500)
         plt.show()
         plt.close()
 
@@ -936,7 +938,7 @@ def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, te
                 axes[1,i+1].set_xlabel('Lesion-Types')
                 axes[1,i+1].bar(x, train_data[closest])
             
-            plt.savefig('/usr/local/data/adoyle/images/responder-' + scan.uid + '.png', dpi=500)
+            plt.savefig(data_dir + '/images/responder-' + scan.uid + '.png', dpi=500)
             plt.show()
             plt.close()
             
@@ -957,7 +959,7 @@ def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, te
 
 def justTreatmentGroups():
     start = time.time()
-    mri_list = pkl.load(open('/usr/local/data/adoyle/mri_list.pkl', 'rb'))
+    mri_list = pkl.load(open(data_dir + 'mri_list.pkl', 'rb'))
     mri_list, without_clinical = load_data.loadClinical(mri_list)
         
     outcomes = getOutcomes(mri_list)
