@@ -279,10 +279,10 @@ def predict_responders():
                         r3[treatment][scoreMet].append(r3_score[scoreMet])
                         r4[treatment][scoreMet].append(r4_score[scoreMet])
 
-            except Exception as e:
-                print('ERROR:', e)
-                failedFolds += 1
-                scoreThisFold = False
+            # except Exception as e:
+            #     print('ERROR:', e)
+            #     failedFolds += 1
+            #     scoreThisFold = False
 
             if scoreThisFold:
                 for treatment in treatments:
