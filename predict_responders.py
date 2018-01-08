@@ -222,14 +222,14 @@ def predict_responders():
                     (bestPreTrainedFeatureScore, bestPreTrainedFeaturePredictions, meh), (
                     pretrainedProbScore, pretrainedProbPredicted), (correct, total) = bol_classifiers.featureClassifier(
                         bestTrainData, bestTestData, trainOutcomes, testOutcomes, subtypeShape, train_patients,
-                        mri_test, brainIndices, lesionIndices, len(mri_list), placebo_rf)
+                        mri_test, brainIndices, lesionIndices, len(mri_list), results_dir, placebo_rf)
 
                     # new model on drugged patients
                     (bestFeatureScore, bestFeaturePredictions, meh), (probScore, probDrugPredicted), (
                     correct, total) = bol_classifiers.featureClassifier(bestTrainData, bestTestData, trainOutcomes,
                                                                         testOutcomes, subtypeShape, train_patients,
                                                                         mri_test, brainIndices, lesionIndices,
-                                                                        len(mri_list))
+                                                                        len(mri_list), results_dir)
 
                     certainNumber[treatment] += total
                     certainCorrect[treatment] += correct
@@ -237,7 +237,7 @@ def predict_responders():
                     right, wrong, r1_score, r2_score, r3_score, r4_score = showWhereTreatmentHelped(
                         pretrainedProbPredicted, probDrugPredicted, bestTrainData, bestTestData, trainOutcomes['newT2'],
                         testOutcomes['newT2'], trainingPatientsByTreatment[treatment],
-                        testingPatientsByTreatment[treatment])
+                        testingPatientsByTreatment[treatment], results_dir)
 
                     respondersRight[treatment] += right
                     respondersWrong[treatment] += wrong

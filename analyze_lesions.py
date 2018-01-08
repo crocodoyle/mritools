@@ -670,7 +670,7 @@ def plotScores(scoring, plotTitle, results_dir):
         ticks = ['TP', 'FP', 'TN', 'FN']
         colours = ['b', 'g', 'r', 'c', 'm', 'y', 'aqua', 'k', 'gold', 'lightgreen']    
         
-        fig, (ax) = plt.subplots(nrows=1, ncols=1, figsize=(4,4))
+        fig, (ax) = plt.subplots(nrows=1, ncols=1, figsize=(7,4))
     
         for i, (scoreObj, label) in enumerate(scoring):
             x = np.linspace(0, numBars, num=4, dtype='float')
@@ -838,7 +838,7 @@ def separatePatientsByTreatment(mri_train, mri_test, trainData, testData, trainC
 
 # we want to show here where the placebo-trained model failed to predict a patient showing activity
 # this means that the drug had an effect, because it messed up our pre-trained prediction
-def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, test_data, train_outcomes, test_outcomes, train_mri, test_mri):
+def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, test_data, train_outcomes, test_outcomes, train_mri, test_mri, results_dir):
     respondersRight = 0
     respondersWrong = 0
     

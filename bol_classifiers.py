@@ -79,7 +79,7 @@ def countingClassifier(trainCounts, testCounts, trainOutcomes, testOutcomes):
     return (countingScore, predictions, nb)
 
 
-def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeShape, mri_train, mri_test, brainIndices, lesionIndices, numWithClinical, rf=None):
+def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeShape, mri_train, mri_test, brainIndices, lesionIndices, numWithClinical, results_dir, rf=None):
     lesionSizeFeatures = {}
     for index, l in enumerate(['T', 'S', 'M', 'L']):
         lesionSizeFeatures[l] = subtypeShape[index][1]*subtypeShape[index][2]*subtypeShape[index][3]*subtypeShape[index][4]  
@@ -303,8 +303,8 @@ def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeS
                 ax = fig.add_subplot(2, 1, 1)
                 ax.set_xticks([])
                 ax.set_yticks([])
-                ax.imshow(img[20:180,20:200, 30].T, cmap = plt.cm.gray, interpolation = 'nearest',origin='lower')
-                ax.imshow(maskImg[20:180,20:200, 30].T, cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
+                ax.imshow(img[30, 20:180,20:200, 30], cmap = plt.cm.gray, interpolation = 'nearest',origin='lower')
+                ax.imshow(maskImg[30, 20:180,20:200], cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
                 ax.set_xlabel('High probability inactive')
                 
                 ax = fig.add_subplot(2, 1, 2)
@@ -344,8 +344,8 @@ def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeS
                 ax = fig.add_subplot(2, 1, 1)
                 ax.set_xticks([])
                 ax.set_yticks([])
-                ax.imshow(img[20:180,20:200, 30].T, cmap = plt.cm.gray, interpolation = 'nearest',origin='lower')
-                ax.imshow(maskImg[20:180,20:200, 30].T, cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
+                ax.imshow(img[30, 20:180,20:200], cmap = plt.cm.gray, interpolation = 'nearest',origin='lower')
+                ax.imshow(maskImg[30, 20:180,20:200], cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
                 ax.set_xlabel('High probability active')
                 
                 ax = fig.add_subplot(2, 1, 2)
@@ -355,7 +355,7 @@ def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeS
                 ax.set_xlabel('Lesion-Types')
 #                ax.set_xticks(x)
                 
-                plt.savefig('/data1/users/adoyle/MS-LAQ/MS-LAQ-302-STX/images/active-' + scan.uid, dpi=500)
+                plt.savefig(results_dir + 'active-' + scan.uid, dpi=500)
 #                plt.show()
                 plt.close()
                 
