@@ -303,7 +303,7 @@ def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeS
                 ax = fig.add_subplot(2, 1, 1)
                 ax.set_xticks([])
                 ax.set_yticks([])
-                ax.imshow(img[30, 20:180,20:200, 30], cmap = plt.cm.gray, interpolation = 'nearest',origin='lower')
+                ax.imshow(img[30, 20:180,20:200], cmap = plt.cm.gray, interpolation = 'nearest', origin='lower')
                 ax.imshow(maskImg[30, 20:180,20:200], cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
                 ax.set_xlabel('High probability inactive')
                 
