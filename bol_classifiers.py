@@ -136,7 +136,7 @@ def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeS
         ax2.set_xlabel('Lesion-Type')
         ax2.set_ylabel('Pearson correlation coefficient (absolute value)')
         plt.tight_layout()
-#        plt.show()
+        # plt.savefig()
         plt.close()
         
         importance = {}
