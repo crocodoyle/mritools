@@ -167,7 +167,7 @@ def predict_responders():
         # feature selection
         featuresToRemove, c = None, None
         for treatment in treatments:
-            try:
+            # try:
 
                 trainData, testData = trainingData[treatment], testingData[treatment]
                 trainDataCopy, testDataCopy = trainData, testData
@@ -279,7 +279,7 @@ def predict_responders():
                         r3[treatment][scoreMet].append(r3_score[scoreMet])
                         r4[treatment][scoreMet].append(r4_score[scoreMet])
 
-            except ValueError as e:
+            # except Exception as e:
             #     print('ERROR:', e)
             #     failedFolds += 1
             #     scoreThisFold = False
