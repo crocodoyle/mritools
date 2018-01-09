@@ -178,7 +178,7 @@ def createRepresentationSpace(mri_list, dataVectors, lesionSizes, numWithClinica
             clustSearch.append("")
             
             clusterData, validationData = train_test_split(lesionFeatures, test_size=0.3, random_state=5)
-            for k in range(2,4):
+            for k in range(2,5):
                 print('trying ' + str(k) + ' clusters...')
                 clustSearch.append(GMM(n_components = k, covariance_type = 'full'))
                 clustSearch[k].fit(clusterData)
@@ -668,7 +668,7 @@ def plotScores(scoring, plotTitle, results_dir):
         numBars = len(scoring)*4
         colours = ['b', 'g', 'r', 'c', 'm', 'y', 'aqua', 'k', 'gold', 'lightgreen']    
         
-        fig, (ax) = plt.subplots(nrows=1, ncols=1, figsize=(7,4))
+        fig, (ax) = plt.subplots(nrows=1, ncols=1, figsize=(4, 4))
     
         for i, (scoreObj, label) in enumerate(scoring):
             x = np.linspace(0, numBars, num=4, dtype='float')
@@ -699,9 +699,7 @@ def plotScores(scoring, plotTitle, results_dir):
         plt.title(plotTitle)
         plt.legend(tuple(plots), tuple(labels), loc='center left', bbox_to_anchor=(1, 0.5), scatterpoints=1, fancybox=True, shadow=True)
 
-        plt.tight_layout()
-        plt.savefig(results_dir + '/ss-results-' + str(random.randint(1, 1000)) + '.png', dpi=500)
-        plt.show()
+        plt.savefig(results_dir + '/ss-results-' + str(random.randint(1, 1000)) + '.png', dpi=500, bbox_inches='tight')
     except:
         print("couldnt plot")
 
@@ -731,23 +729,23 @@ def beforeAndAfter():
 
 
         for i, (x, y, z) in enumerate(lesionList):
-            lesionImg[z,y,x] = 1
+            lesionImg[x,y,z] = 1
             
             
         for i, (x, y, z) in enumerate(newLesionList):
-            newLesionImg[z,y,x] = 1
+            newLesionImg[x,y,z] = 1
         
         maskImg = np.ma.masked_where(lesionImg == 0, np.ones(np.shape(lesionImg))*5000)
         newMaskImg = np.ma.masked_where(newLesionImg == 0, np.ones(np.shape(newLesionImg))*5000)
 
         ax = fig.add_subplot(1, 2, 1)
-        ax.imshow(t2[20:200, 20:200, 30].T, cmap=plt.cm.gray, origin='lower')
-        ax.imshow(maskImg[20:200, 20:200, 30].T, cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
+        ax.imshow(t2[:, :, 30], cmap=plt.cm.gray, origin='lower')
+        ax.imshow(maskImg[:, :, 30], cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
         ax.axis('off')
             
         ax = fig.add_subplot(1, 2, 2)
-        ax.imshow(newT2[20:200, 20:200, 30].T, cmap=plt.cm.gray, origin='lower')
-        ax.imshow(newMaskImg[20:200, 20:200, 30].T, cmap=plt.cm.autumn, interpolation = 'nearest', alpha=0.4, origin='lower')
+        ax.imshow(newT2[:, :, 30], cmap=plt.cm.gray, origin='lower')
+        ax.imshow(newMaskImg[:, :, 30], cmap=plt.cm.autumn, interpolation = 'nearest', alpha=0.4, origin='lower')
         ax.axis('off')  
         
         plt.savefig(data_dir + 'images/before-after-' + str(i) + '.png', dpi=500)
@@ -762,7 +760,7 @@ def beforeAndAfter():
             scan.images[mod] = scan.images[mod][0:-7] + '.nii.gz'
             img[mod] = nib.load(scan.images[mod]).get_data()
             ax = fig.add_subplot(1, 4, j+1)
-            ax.imshow(img[mod][20:170, 20:200, 30].T, cmap=plt.cm.gray, origin='lower')
+            ax.imshow(img[mod][:, :, 30].T, cmap=plt.cm.gray, origin='lower')
             ax.axis('off')
             ax.set_xlabel(mod)
         

@@ -169,7 +169,6 @@ def predict_responders():
         for treatment in treatments:
             if True:
             # try:
-
                 trainData, testData = trainingData[treatment], testingData[treatment]
                 trainDataCopy, testDataCopy = trainData, testData
                 trainOutcomes, testOutcomes = load_data.get_outcomes(trainingPatientsByTreatment[treatment]), load_data.get_outcomes(
