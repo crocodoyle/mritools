@@ -917,14 +917,14 @@ def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, te
                 trainLesionImg = np.zeros(np.shape(t2_train))
 
                 for (x, y, z) in trainLesionList:
-                    trainLesionImg[z,y,x] = 1
+                    trainLesionImg[x,y,z] = 1
 
                 newMaskImg = np.ma.masked_where(trainLesionImg == 0, np.ones(np.shape(trainLesionImg))*5000)
                 axes[0,i+1].set_xticks([])
                 axes[0,i+1].set_yticks([])
                 
-                axes[0,i+1].imshow(t2_train[30, 20:180, 20:200].T, cmap=plt.cm.gray, origin='lower')
-                axes[0,i+1].imshow(newMaskImg[30, 20:180, 20:200].T, cmap=plt.cm.autumn, interpolation = 'nearest', alpha=0.4, origin='lower')
+                axes[0,i+1].imshow(t2_train[30, 20:180, 20:200], cmap=plt.cm.gray, origin='lower')
+                axes[0,i+1].imshow(newMaskImg[30, 20:180, 20:200], cmap=plt.cm.autumn, interpolation = 'nearest', alpha=0.4, origin='lower')
                 axes[0,i+1].set_title('Close Patient')                
                 if scan.newT2 > 0:
                     axes[0,i+1].set_xlabel('(active)')
