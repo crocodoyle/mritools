@@ -881,7 +881,7 @@ def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, te
             testLesionImg = np.zeros(np.shape(t2_test))
 
             for (x, y, z) in testLesionList:
-                testLesionImg[z,y,x] = 1
+                testLesionImg[x,y,z] = 1
 
             maskImg = np.ma.masked_where(testLesionImg == 0, np.ones(np.shape(testLesionImg))*5000)
             n=4
@@ -889,8 +889,8 @@ def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, te
             fig, axes = plt.subplots(2, n+1, sharey='row', figsize=(10, 4))
             axes[0,0].set_xticks([])
             axes[0,0].set_yticks([])
-            axes[0,0].imshow(t2_test[20:180, 20:200, 30].T, cmap=plt.cm.gray, origin='lower')
-            axes[0,0].imshow(maskImg[20:180, 20:200, 30].T, cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
+            axes[0,0].imshow(t2_test[30, 20:180, 20:200].T, cmap=plt.cm.gray, origin='lower')
+            axes[0,0].imshow(maskImg[30, 20:180, 20:200].T, cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
             
             if scan.treatment == "Avonex":
                 axes[0,0].set_xlabel('Responder (Drug A)')
@@ -923,8 +923,8 @@ def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, te
                 axes[0,i+1].set_xticks([])
                 axes[0,i+1].set_yticks([])
                 
-                axes[0,i+1].imshow(t2_train[20:180, 20:200, 30].T, cmap=plt.cm.gray, origin='lower')
-                axes[0,i+1].imshow(newMaskImg[20:180, 20:200, 30].T, cmap=plt.cm.autumn, interpolation = 'nearest', alpha=0.4, origin='lower')
+                axes[0,i+1].imshow(t2_train[30, 20:180, 20:200].T, cmap=plt.cm.gray, origin='lower')
+                axes[0,i+1].imshow(newMaskImg[30, 20:180, 20:200].T, cmap=plt.cm.autumn, interpolation = 'nearest', alpha=0.4, origin='lower')
                 axes[0,i+1].set_title('Close Patient')                
                 if scan.newT2 > 0:
                     axes[0,i+1].set_xlabel('(active)')
@@ -938,8 +938,7 @@ def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, te
                 axes[1,i+1].set_xlabel('Lesion-Types')
                 axes[1,i+1].bar(x, train_data[closest])
             
-            plt.savefig(data_dir + '/images/responder-' + scan.uid + '.png', dpi=500)
-            plt.show()
+            plt.savefig(results_dir + 'responder-' + scan.uid + '.png', dpi=500)
             plt.close()
             
             respondersRight += 1
