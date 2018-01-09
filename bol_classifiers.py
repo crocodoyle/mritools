@@ -86,7 +86,7 @@ def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeS
   
     rfscore = {}
     for metric in metrics:
-        if rf == None:    
+        if rf == None:
             print('training random forest...')
             rf = RandomForestClassifier(class_weight='balanced', n_estimators=3000, n_jobs=-1)
 
@@ -147,8 +147,7 @@ def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeS
 
         allImportances = rf.feature_importances_
     
-        bestLesions = []
-        bestLesionsSize = []
+        bestLesions, bestLesionsSize = [], []
         
         for i in range(1):
             goodLesion = np.argmax(allImportances)            
@@ -279,10 +278,9 @@ def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeS
         # Predict only high-probability cases
         probabilities = rf.predict_proba(testData)
         
-        probPredicted = []
-        actual = []
-        certainCorrect = 0
-        certainTotal = 0
+        probPredicted, actual = [], []
+        certainCorrect, certainTotal = 0, 0
+
         for prob, outcome, scan, bol_rep in zip(probabilities, testOutcomes[metric], mri_test, testData):
             print(prob, outcome)
             if prob[0] > 0.8 and outcome == 0:
@@ -303,8 +301,8 @@ def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeS
                 ax = fig.add_subplot(2, 1, 1)
                 ax.set_xticks([])
                 ax.set_yticks([])
-                ax.imshow(img[30, 20:180,20:200], cmap = plt.cm.gray, interpolation = 'nearest', origin='lower')
-                ax.imshow(maskImg[30, 20:180,20:200], cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
+                ax.imshow(img[30, 20:175, 20:225], cmap = plt.cm.gray, interpolation = 'nearest', origin='lower')
+                ax.imshow(maskImg[30, 20:175, 20:225], cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
                 ax.set_xlabel('High probability inactive')
                 
                 ax = fig.add_subplot(2, 1, 2)
@@ -312,10 +310,8 @@ def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeS
                 ax.bar(x, bol_rep)
 #                ax.set_ylabel('Number of Lesions')
                 ax.set_xlabel('Lesion-Types')
-#                ax.set_xticks(x)
-                
-#                plt.savefig('/usr/local/data/adoyle/images/inactive-' + scan.uid, dpi=500)
-#                plt.show()
+
+                plt.savefig(results_dir + 'inactive-' + scan.uid, dpi=500)
                 plt.close()
                 
                 certainCorrect += 1
@@ -344,8 +340,8 @@ def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeS
                 ax = fig.add_subplot(2, 1, 1)
                 ax.set_xticks([])
                 ax.set_yticks([])
-                ax.imshow(img[30, 20:180,20:200], cmap = plt.cm.gray, interpolation = 'nearest',origin='lower')
-                ax.imshow(maskImg[30, 20:180,20:200], cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
+                ax.imshow(img[30, 20:175, 20:225], cmap = plt.cm.gray, interpolation = 'nearest',origin='lower')
+                ax.imshow(maskImg[30, 20:175, 20:225], cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
                 ax.set_xlabel('High probability active')
                 
                 ax = fig.add_subplot(2, 1, 2)
@@ -356,7 +352,6 @@ def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeS
 #                ax.set_xticks(x)
                 
                 plt.savefig(results_dir + 'active-' + scan.uid, dpi=500)
-#                plt.show()
                 plt.close()
                 
                 certainCorrect += 1
@@ -428,8 +423,6 @@ def identifyResponders(bestTrainData, bestTestData, trainOutcomes, testOutcomes,
     
     print('testing responders:', np.sum(responder_label_test))
     print('testing non-responders:', (len(testOutcomes['newT2']) - np.sum(responder_label_test)))
-
-
 
 #    trainData, testData, meh = randomForestFeatureSelection(bestTrainData, bestTestData, responder_label_train, responder_label_test, 10)
     trainData, testData = bestTrainData, bestTestData

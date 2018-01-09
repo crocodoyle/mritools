@@ -666,8 +666,6 @@ def removeWorstFeatures(trainData, testData, removeThisRound):
 def plotScores(scoring, plotTitle, results_dir):
     try:
         numBars = len(scoring)*4
-        bars = []
-        ticks = ['TP', 'FP', 'TN', 'FN']
         colours = ['b', 'g', 'r', 'c', 'm', 'y', 'aqua', 'k', 'gold', 'lightgreen']    
         
         fig, (ax) = plt.subplots(nrows=1, ncols=1, figsize=(7,4))
@@ -697,9 +695,11 @@ def plotScores(scoring, plotTitle, results_dir):
         ax.set_xlabel('Specificity')
         ax.set_xlim([0, 1])
         ax.set_ylim([0, 1])
+
         plt.title(plotTitle)
         plt.legend(tuple(plots), tuple(labels), loc='center left', bbox_to_anchor=(1, 0.5), scatterpoints=1, fancybox=True, shadow=True)
-        
+
+        plt.tight_layout()
         plt.savefig(results_dir + '/ss-results-' + str(random.randint(1, 1000)) + '.png', dpi=500)
         plt.show()
     except:
@@ -839,14 +839,9 @@ def separatePatientsByTreatment(mri_train, mri_test, trainData, testData, trainC
 # we want to show here where the placebo-trained model failed to predict a patient showing activity
 # this means that the drug had an effect, because it messed up our pre-trained prediction
 def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, test_data, train_outcomes, test_outcomes, train_mri, test_mri, results_dir):
-    respondersRight = 0
-    respondersWrong = 0
+    respondersRight, respondersWrong = 0, 0
     
-    responder_prediction = []
-    responder_actual = []
-    
-    responder_certain_actual = []
-    responder_certain_prediction = []
+    responder_prediction, responder_actual, responder_certain_actual, responder_certain_prediction = []
     
     for test_index, (pretrained_prediction, prediction, test_outcome) in enumerate(zip(pretrained_predictions, predictions, test_outcomes)):
         
