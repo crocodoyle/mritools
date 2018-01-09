@@ -841,7 +841,7 @@ def separatePatientsByTreatment(mri_train, mri_test, trainData, testData, trainC
 def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, test_data, train_outcomes, test_outcomes, train_mri, test_mri, results_dir):
     respondersRight, respondersWrong = 0, 0
     
-    responder_prediction, responder_actual, responder_certain_actual, responder_certain_prediction = []
+    responder_prediction, responder_actual, responder_certain_actual, responder_certain_prediction = [], [], [], []
     
     for test_index, (pretrained_prediction, prediction, test_outcome) in enumerate(zip(pretrained_predictions, predictions, test_outcomes)):
         
@@ -884,8 +884,8 @@ def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, te
             fig, axes = plt.subplots(2, n+1, sharey='row', figsize=(10, 4))
             axes[0,0].set_xticks([])
             axes[0,0].set_yticks([])
-            axes[0,0].imshow(t2_test[30, 20:180, 20:200].T, cmap=plt.cm.gray, origin='lower')
-            axes[0,0].imshow(maskImg[30, 20:180, 20:200].T, cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
+            axes[0,0].imshow(t2_test[30, 20:175, 20:225], cmap=plt.cm.gray, origin='lower')
+            axes[0,0].imshow(maskImg[30, 20:175, 20:225], cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
             
             if scan.treatment == "Avonex":
                 axes[0,0].set_xlabel('Responder (Drug A)')
@@ -918,8 +918,8 @@ def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, te
                 axes[0,i+1].set_xticks([])
                 axes[0,i+1].set_yticks([])
                 
-                axes[0,i+1].imshow(t2_train[30, 20:180, 20:200], cmap=plt.cm.gray, origin='lower')
-                axes[0,i+1].imshow(newMaskImg[30, 20:180, 20:200], cmap=plt.cm.autumn, interpolation = 'nearest', alpha=0.4, origin='lower')
+                axes[0,i+1].imshow(t2_train[30, 20:175, 20:225], cmap=plt.cm.gray, origin='lower')
+                axes[0,i+1].imshow(newMaskImg[30, 20:175, 20:225], cmap=plt.cm.autumn, interpolation = 'nearest', alpha=0.4, origin='lower')
                 axes[0,i+1].set_title('Close Patient')                
                 if scan.newT2 > 0:
                     axes[0,i+1].set_xlabel('(active)')
