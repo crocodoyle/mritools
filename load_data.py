@@ -51,16 +51,10 @@ def getLesionSizes(mri_list):
 
 
 def get_outcomes(mri_list):
-    outcomes = {}
-    for metric in metrics:
-        outcomes[metric] = []
-        for scan in mri_list:
-            if metric == 'newT1':
-                outcomes[metric].append(scan.newT1)
-            elif metric == 'newT2':
-                outcomes[metric].append(scan.newT2)
-            elif metric == 'newT1andT2':
-                outcomes[metric].append(scan.newT1andT2)
+    outcomes = []
+
+    for scan in mri_list:
+        outcomes.append(scan.newT2)
 
     return outcomes
 
@@ -342,26 +336,31 @@ def loadLBP(mri_list, numLesions, lbpPCA=None):
 
 
 def loadAllData(mri_list, numLesions, lbpPCA=None):
-    dataVectors = []
-    print('loading context...')
-    dataVectors.append(loadContext(mri_list, numLesions))
-    print('loading rift...')
-    dataVectors.append(loadRIFT(mri_list, numLesions))
-    print('loading LBP...')
-    dataVectors.append(loadLBP(mri_list, numLesions, lbpPCA=lbpPCA)[0])
-    print('loading intensity...')
-    dataVectors.append(loadIntensity(mri_list, numLesions))
 
-    for i in range(len(dataVectors)):
+    context = loadContext(mri_list, numLesions)
+    rift = loadRIFT(mri_list, numLesions)
+    lbp = loadLBP(mri_list, numLesions, lbpPCA=lbpPCA)[0]
+    intensity = loadIntensity(mri_list, numLesions)
+
+    feature_data = [context, rift, lbp, intensity]
+
+    data = {}
+
+    # first, flatten each feature
+    for feature in feature_data:
         for size in sizes:
             oneDataSourceDims = 1
-            for dim in np.shape(dataVectors[i][size]):
+            for dim in feature[size].shape:
                 oneDataSourceDims *= dim
-            oneDataSourceDims //= np.shape(dataVectors[i][size])[0]
-            
-            dataVectors[i][size] = np.reshape(np.vstack(dataVectors[i][size]), (np.shape(dataVectors[i][size])[0], oneDataSourceDims))
+            oneDataSourceDims //= feature[size].shape[0]
 
-    return dataVectors, lbpPCA
+            feature[size] = np.reshape(np.vstack(feature[size]), feature[size].shape[0], oneDataSourceDims)
+
+    for size in sizes:
+        data[size] = np.hstack((feature_data[0][size], feature_data[1][size], feature_data[2][size], feature_data[3][size]))
+        print(size, 'data shape:', data[size].shape)
+
+    return data, lbpPCA
     
     
 def loadClinical(mri_list):

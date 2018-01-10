@@ -12,7 +12,7 @@ from sklearn.model_selection import StratifiedKFold
 
 import load_data
 import bol_classifiers
-from analyze_lesions import createRepresentationSpace, testRepresentationSpace, separatePatientsByTreatment, removeWorstFeatures, showWhereTreatmentHelped, plotScores
+from analyze_lesions import learn_bol, project_to_bol, separatePatientsByTreatment, removeWorstFeatures, showWhereTreatmentHelped, plotScores
 
 from mri import mri
 
@@ -139,30 +139,28 @@ def predict_responders():
 
         print('loading data took', (time.time() - startLoad) / 60.0, 'minutes')
 
-        print('removing infrequent features...')
-        startPruneTime = time.time()
-        prunedDataTrain = []
-        prunedDataTest = []
-
-        for dTrain, dTest in zip(trainDataVectors, dataVectorsTest):
-            dTrainPruned, dTestPruned = load_data.prune_features(dTrain, dTest)
-            prunedDataTrain.append(dTrainPruned)
-            prunedDataTest.append(dTestPruned)
-
-        print("it took", (time.time() - startPruneTime) / 60.0, "minutes")
+        # print('removing infrequent features...')
+        # startPruneTime = time.time()
+        # prunedDataTrain = []
+        # prunedDataTest = []
+        #
+        # for dTrain, dTest in zip(trainDataVectors, dataVectorsTest):
+        #     dTrainPruned, dTestPruned = load_data.prune_features(dTrain, dTest)
+        #     prunedDataTrain.append(dTrainPruned)
+        #     prunedDataTest.append(dTestPruned)
+        #
+        # print("it took", (time.time() - startPruneTime) / 60.0, "minutes")
         print('learning bag of lesions...')
 
         startBol = time.time()
-        allTrainData, clusters, pcas, subtypeShape, brainIndices, lesionIndices = createRepresentationSpace(
-            train_patients, prunedDataTrain, lesionSizesTrain, len(mri_train), lesionCentroids, examineClusters=False)
+        allTrainData, mixture_models = learn_bol(train_patients, trainDataVectors, len(mri_train), results_dir)
         elapsedBol = time.time() - startBol
         print(str(elapsedBol / 60), 'minutes to learn BoL.')
 
         print('transforming test data to bag of lesions representation...')
-        allTestData = testRepresentationSpace(mri_test, prunedDataTest, lesionSizesTest, clusters, pcas)
+        allTestData = project_to_bol(mri_test, dataVectorsTest, mixture_models)
 
-        trainingPatientsByTreatment, testingPatientsByTreatment, trainingData, testingData, trainCounts, testCounts = separatePatientsByTreatment(
-            mri_train, mri_test, allTrainData, allTestData, trainCounts, testCounts)
+        trainingPatientsByTreatment, testingPatientsByTreatment, trainingData, testingData, trainCounts, testCounts = separatePatientsByTreatment(mri_train, mri_test, allTrainData, allTestData, trainCounts, testCounts)
 
         # feature selection
         featuresToRemove, c = None, None
@@ -174,12 +172,12 @@ def predict_responders():
                 trainOutcomes, testOutcomes = load_data.get_outcomes(trainingPatientsByTreatment[treatment]), load_data.get_outcomes(
                     testingPatientsByTreatment[treatment])
 
-                remove_worst_features = True
+                remove_worst_features = False
                 if remove_worst_features:
                     if treatment == "Placebo":
                         print('selecting features...')
                         bestTrainData, bestTestData, featuresToRemove = bol_classifiers.randomForestFeatureSelection(
-                            trainDataCopy, testDataCopy, trainOutcomes['newT2'], testOutcomes['newT2'], 12)
+                            trainDataCopy, testDataCopy, trainOutcomes, testOutcomes, 12)
                     else:
                         bestTrainData, bestTestData = removeWorstFeatures(trainDataCopy, testDataCopy, featuresToRemove)
                 else:
@@ -188,91 +186,78 @@ def predict_responders():
 
                 if treatment == "Placebo":
                     (bestFeatureScore, bestFeaturePredictions, placebo_rf), (probScore, probPredicted), (
-                    correct, total) = bol_classifiers.featureClassifier(bestTrainData, bestTestData, trainOutcomes,
-                                                                        testOutcomes, subtypeShape, train_patients,
-                                                                        mri_test, brainIndices, lesionIndices,
-                                                                        len(mri_list), results_dir)
+                    correct, total) = bol_classifiers.random_forest(bestTrainData, bestTestData, trainOutcomes,
+                                                                        testOutcomes, mri_test, mixture_models, results_dir)
 
-                    (bestChi2Score, bestChi2Predictions), (
-                    bestChi2svmscore, bestChi2svmPredictions) = bol_classifiers.chi2Knn(bestTrainData, bestTestData,
-                                                                                        trainOutcomes, testOutcomes)
-                    (bestSvmLinScore, bestSvmLinPredictions, svm1), (
-                    bestSvmRadScore, bestSvmRadPredictions, svm2) = bol_classifiers.svmClassifier(bestTrainData,
-                                                                                                  bestTestData,
-                                                                                                  trainOutcomes,
-                                                                                                  testOutcomes)
-                    (bestKnnEuclideanScoreVals, bestEuclideanPredictions), (
-                    bestKnnMahalanobisScoreVals, bestMahalanobisPredictions) = bol_classifiers.knn(bestTrainData,
-                                                                                                   trainOutcomes,
-                                                                                                   bestTestData,
-                                                                                                   testOutcomes)
-
-                    (featureScore, featurePredictions, meh), (allProbScore, allprobPredicted), (
-                    allCorrect, allTotal) = bol_classifiers.featureClassifier(trainData, testData, trainOutcomes,
-                                                                              testOutcomes, subtypeShape,
-                                                                              train_patients, mri_test, brainIndices,
-                                                                              lesionIndices, len(mri_list), results_dir)
-
-                    (countingScore, countingPredictions, placebo_nb) = bol_classifiers.countingClassifier(
-                        trainCounts[treatment], testCounts[treatment], trainOutcomes, testOutcomes)
+                    # (bestChi2Score, bestChi2Predictions), (
+                    # bestChi2svmscore, bestChi2svmPredictions) = bol_classifiers.chi2Knn(bestTrainData, bestTestData,
+                    #                                                                     trainOutcomes, testOutcomes)
+                    # (bestSvmLinScore, bestSvmLinPredictions, svm1), (
+                    # bestSvmRadScore, bestSvmRadPredictions, svm2) = bol_classifiers.svmClassifier(bestTrainData,
+                    #                                                                               bestTestData,
+                    #                                                                               trainOutcomes,
+                    #                                                                               testOutcomes)
+                    # (bestKnnEuclideanScoreVals, bestEuclideanPredictions), (
+                    # bestKnnMahalanobisScoreVals, bestMahalanobisPredictions) = bol_classifiers.knn(bestTrainData,
+                    #                                                                                trainOutcomes,
+                    #                                                                                bestTestData,
+                    #                                                                                testOutcomes)
+                    #
+                    # (countingScore, countingPredictions, placebo_nb) = bol_classifiers.countingClassifier(
+                    #     trainCounts[treatment], testCounts[treatment], trainOutcomes, testOutcomes)
 
                 # drugged patients
                 else:
-                    # natural course MS model
+                    # project onto untreated MS model (don't train)
                     (bestPreTrainedFeatureScore, bestPreTrainedFeaturePredictions, meh), (
-                    pretrainedProbScore, pretrainedProbPredicted), (correct, total) = bol_classifiers.featureClassifier(
-                        bestTrainData, bestTestData, trainOutcomes, testOutcomes, subtypeShape, train_patients,
-                        mri_test, brainIndices, lesionIndices, len(mri_list), results_dir, placebo_rf)
+                    pretrainedProbScore, pretrainedProbPredicted), (correct, total) = bol_classifiers.random_forest(
+                        bestTrainData, bestTestData, trainOutcomes, testOutcomes, mri_test, mixture_models, results_dir, placebo_rf)
 
                     # new model on drugged patients
-                    (bestFeatureScore, bestFeaturePredictions, meh), (probScore, probDrugPredicted), (
-                    correct, total) = bol_classifiers.featureClassifier(bestTrainData, bestTestData, trainOutcomes,
-                                                                        testOutcomes, subtypeShape, train_patients,
-                                                                        mri_test, brainIndices, lesionIndices,
-                                                                        len(mri_list), results_dir)
+                    (bestFeatureScore, bestFeaturePredictions, drug_rf), (probScore, probDrugPredicted), (
+                    correct, total) = bol_classifiers.random_forest(bestTrainData, bestTestData, trainOutcomes,
+                                                                        testOutcomes, mri_test, mixture_models, results_dir)
 
                     certainNumber[treatment] += total
                     certainCorrect[treatment] += correct
 
                     right, wrong, r1_score, r2_score, r3_score, r4_score = showWhereTreatmentHelped(
-                        pretrainedProbPredicted, probDrugPredicted, bestTrainData, bestTestData, trainOutcomes['newT2'],
-                        testOutcomes['newT2'], trainingPatientsByTreatment[treatment],
+                        pretrainedProbPredicted, probDrugPredicted, bestTrainData, bestTestData, trainOutcomes,
+                        testOutcomes, trainingPatientsByTreatment[treatment],
                         testingPatientsByTreatment[treatment], results_dir)
 
                     respondersRight[treatment] += right
                     respondersWrong[treatment] += wrong
 
-                    print('responders right', respondersRight)
-                    print('responders wrong', respondersWrong)
+                    print('responders right', respondersRight, 'responders wrong', respondersWrong)
 
-                    (responderScore,
-                     responderProbs), responderHighProbScore, count_score = bol_classifiers.identifyResponders(
+                    (responderScore, responderProbs), responderHighProbScore = bol_classifiers.identify_responders(
                         bestTrainData, bestTestData, trainOutcomes, testOutcomes, trainCounts[treatment],
-                        testCounts[treatment], placebo_rf, placebo_nb)
+                        testCounts[treatment], drug_rf, placebo_rf)
 
                 certainNumberPre[treatment] += total
                 certainCorrectPre[treatment] += correct
 
                 for scoreMet in scoringMetrics + ['sensitivity', 'specificity']:
-                    featureScores[treatment][scoreMet].append(featureScore['newT2'][scoreMet])
+                    featureScores[treatment][scoreMet].append(bestFeatureScore[scoreMet])
 
                     # bad classifiers
-                    bestKnnEuclideanScores[treatment][scoreMet].append(bestKnnEuclideanScoreVals['newT2'][scoreMet])
-                    bestKnnMahalanobisScores[treatment][scoreMet].append(bestKnnMahalanobisScoreVals['newT2'][scoreMet])
-                    bestChi2Scores[treatment][scoreMet].append(bestChi2Score['newT2'][scoreMet])
-                    bestChi2svmScores[treatment][scoreMet].append(bestChi2svmscore['newT2'][scoreMet])
-                    bestFeatureScores[treatment][scoreMet].append(bestFeatureScore['newT2'][scoreMet])
-                    bestSvmLinScores[treatment][scoreMet].append(bestSvmLinScore['newT2'][scoreMet])
-                    bestSvmRadScores[treatment][scoreMet].append(bestSvmRadScore['newT2'][scoreMet])
-                    countingScores[treatment][scoreMet].append(countingScore['newT2'][scoreMet])
-                    probScores[treatment][scoreMet].append(probScore[scoreMet])
-                    allProbScores[treatment][scoreMet].append(probScore[scoreMet])
+                    # bestKnnEuclideanScores[treatment][scoreMet].append(bestKnnEuclideanScoreVals[scoreMet])
+                    # bestKnnMahalanobisScores[treatment][scoreMet].append(bestKnnMahalanobisScoreVals[scoreMet])
+                    # bestChi2Scores[treatment][scoreMet].append(bestChi2Score[scoreMet])
+                    # bestChi2svmScores[treatment][scoreMet].append(bestChi2svmscore[scoreMet])
+                    # bestFeatureScores[treatment][scoreMet].append(bestFeatureScore[scoreMet])
+                    # bestSvmLinScores[treatment][scoreMet].append(bestSvmLinScore[scoreMet])
+                    # bestSvmRadScores[treatment][scoreMet].append(bestSvmRadScore[scoreMet])
+                    # countingScores[treatment][scoreMet].append(countingScore[scoreMet])
+                    # probScores[treatment][scoreMet].append(probScore[scoreMet])
+                    # allProbScores[treatment][scoreMet].append(probScore[scoreMet])
 
                     if treatment != "Placebo":
-                        preTrainedFeatureScores[treatment][scoreMet].append(bestPreTrainedFeatureScore['newT2'][scoreMet])
+                        preTrainedFeatureScores[treatment][scoreMet].append(bestPreTrainedFeatureScore[scoreMet])
                         responderScores[treatment][scoreMet].append(responderScore[scoreMet])
                         responderHighProbScores[treatment][scoreMet].append(responderHighProbScore[scoreMet])
-                        countScores[treatment][scoreMet].append(count_score[scoreMet])
+                        # countScores[treatment][scoreMet].append(count_score[scoreMet])
 
                         r1[treatment][scoreMet].append(r1_score[scoreMet])
                         r2[treatment][scoreMet].append(r2_score[scoreMet])
@@ -288,36 +273,40 @@ def predict_responders():
                 for treatment in treatments:
                     if treatment == "Placebo":
                         bestScoring = []
-                        bestScoring.append((bestKnnEuclideanScores[treatment], "NN-Euclidean"))
-                        bestScoring.append((bestKnnMahalanobisScores[treatment], "NN-Mahalanobis"))
-                        bestScoring.append((bestChi2Scores[treatment], "NN-$\chi^2$"))
-
-                        bestScoring.append((bestSvmLinScores[treatment], "SVM-Linear"))
-                        bestScoring.append((bestSvmRadScores[treatment], "SVM-RBF"))
-                        bestScoring.append((bestChi2svmScores[treatment], "SVM-$\chi^2$"))
+                        # bestScoring.append((bestKnnEuclideanScores[treatment], "NN-Euclidean"))
+                        # bestScoring.append((bestKnnMahalanobisScores[treatment], "NN-Mahalanobis"))
+                        # bestScoring.append((bestChi2Scores[treatment], "NN-$\chi^2$"))
+                        #
+                        # bestScoring.append((bestSvmLinScores[treatment], "SVM-Linear"))
+                        # bestScoring.append((bestSvmRadScores[treatment], "SVM-RBF"))
+                        # bestScoring.append((bestChi2svmScores[treatment], "SVM-$\chi^2$"))
 
                         bestScoring.append((bestFeatureScores[treatment], "Random Forest"))
-                        bestScoring.append((countingScores[treatment], "Naive Bayes (Lesion Counts)"))
+                        # bestScoring.append((countingScores[treatment], "Naive Bayes (Lesion Counts)"))
 
-                        plotScores(bestScoring, 'Activity Prediction (Untreated)', results_dir)
+                        plotScores(bestScoring, 'Predicting Future MS Lesion Activity', results_dir)
+                    else:
+                        predictionScores = []
+                        predictionScores.append(bestFeatureScores[treatment])
 
-                    if treatment == "Placebo":
-                        bestScoring = []
+                        plotScores(bestScoring, 'Predicting Future MS Lesion Activity (' + treatment + ')')
 
-                        bestScoring.append((featureScores[treatment], "Random Forest (all lesions)"))
-                        bestScoring.append((allProbScores[treatment], "Random Forest (all lesions, certain)"))
 
-                        bestScoring.append((bestFeatureScores[treatment], "Random Forest (best lesions)"))
-                        bestScoring.append((probScores[treatment], "Random Forest (best lesions, certain)"))
+                    # if treatment == "Placebo":
+                    #     bestScoring = []
+                    #
+                    #     bestScoring.append((featureScores[treatment], "Random Forest (all lesions)"))
+                    #     bestScoring.append((allProbScores[treatment], "Random Forest (all lesions, certain)"))
+                    #
+                    #     bestScoring.append((bestFeatureScores[treatment], "Random Forest (best lesions)"))
+                    #     bestScoring.append((probScores[treatment], "Random Forest (best lesions, certain)"))
 
                 for treatment in treatments:
                     if treatment == "Avonex":
-                        #                plotScores([(responderScores[treatment], 'Responders'), (responderHighProbScores[treatment], 'Responders (certain)'), (countScores[treatment], 'Responders (lesion counts)')], "Avonex Responder Prediction")
                         plotScores([(r1[treatment], 'Responders'), (r2[treatment], 'Responders (certain GT)'),
                                     (r3[treatment], 'Responders (certain prediction)'),
                                     (r4[treatment], 'Responders (all certain)')], "Avonex Responder Prediction", results_dir)
                     elif treatment == "Laquinimod":
-                        #                plotScores([(responderScores[treatment], 'Responders'), (responderHighProbScores[treatment], 'Responders (certain)'), (countScores[treatment], 'Responders (lesion counts)')], "Laquinimod Responder Prediction")
                         plotScores([(r1[treatment], 'Responders'), (r2[treatment], 'Responders (certain GT)'),
                                     (r3[treatment], 'Responders (certain prediction)'),
                                     (r4[treatment], 'Responders (all certain)')], "Laquinimod Responder Prediction", results_dir)

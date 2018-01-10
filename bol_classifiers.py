@@ -1,9 +1,11 @@
 import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.mixture import GMM, DPGMM
+from sklearn.mixture import GaussianMixture
 from sklearn.naive_bayes import GaussianNB, MultinomialNB
 from sklearn.metrics.pairwise import chi2_kernel
+from sklearn.metrics import roc_curve, roc_auc_score
+
 from sklearn.covariance import EmpiricalCovariance
 from sklearn.model_selection import StratifiedShuffleSplit
 
@@ -13,6 +15,8 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 import nibabel as nib
+
+import random
 
 modalities = ['t1p', 't2w', 'pdw', 'flr']
 tissues = ['csf', 'wm', 'gm', 'pv', 'lesion']
@@ -79,18 +83,13 @@ def countingClassifier(trainCounts, testCounts, trainOutcomes, testOutcomes):
     return (countingScore, predictions, nb)
 
 
-def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeShape, mri_train, mri_test, brainIndices, lesionIndices, numWithClinical, results_dir, rf=None):
-    lesionSizeFeatures = {}
-    for index, l in enumerate(['T', 'S', 'M', 'L']):
-        lesionSizeFeatures[l] = subtypeShape[index][1]*subtypeShape[index][2]*subtypeShape[index][3]*subtypeShape[index][4]  
-  
-    rfscore = {}
-    for metric in metrics:
-        if rf == None:
-            print('training random forest...')
-            rf = RandomForestClassifier(class_weight='balanced', n_estimators=3000, n_jobs=-1)
+def random_forest(trainData, testData, trainOutcomes, testOutcomes, mri_test, mixture_models, results_dir, rf=None):
 
-            # for cross-validating tree depth
+    if rf == None:
+        print('training random forest...')
+        rf = RandomForestClassifier(class_weight='balanced', n_estimators=3000, n_jobs=-1)
+
+        # for cross-validating tree depth
 #            sss = StratifiedShuffleSplit(n_splits=1, test_size=0.1, random_state=0)
 #            
 #            for train_index, val_index in sss.split(trainData, trainOutcomes[metric]):
@@ -114,59 +113,62 @@ def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeS
 #                plt.close()
 #
 #            rf = RandomForestClassifier(class_weight='balanced', n_estimators=3000, n_jobs=-1, max_depth=bestDepth)
-            rf.fit(trainData, trainOutcomes[metric])
-        else:
-            print('using pretrained model')
-            
-        predictions = rf.predict(testData)
-        
-        rfscore[metric] = calculateScores(predictions, testOutcomes[metric])
-        
-        correlation = []
-        for featNum in range(np.shape(trainData)[1]):            
-            correlation.append(stats.pearsonr(trainData[:,featNum], trainOutcomes[metric])[0])
-            
-        x = np.linspace(1, len(rf.feature_importances_), num=len(rf.feature_importances_))
-        fig, (ax, ax2) = plt.subplots(1,2, sharex=True)
-        ax.bar(x, rf.feature_importances_)
-        ax.set_xlabel('Lesion-Type')
-        ax.set_ylabel('Gini Impurity (Normalized)')
-               
-        ax2.bar(x, np.abs(correlation))
-        ax2.set_xlabel('Lesion-Type')
-        ax2.set_ylabel('Pearson correlation coefficient (absolute value)')
-        plt.tight_layout()
-        # plt.savefig()
-        plt.close()
-        
-        importance = {}
-        importance['T'] = rf.feature_importances_[0:lesionSizeFeatures['T']]
-        importance['S'] = rf.feature_importances_[lesionSizeFeatures['T']:lesionSizeFeatures['T']+lesionSizeFeatures['S']]
-        importance['M'] = rf.feature_importances_[lesionSizeFeatures['T']+lesionSizeFeatures['S']:lesionSizeFeatures['T']+lesionSizeFeatures['S']+lesionSizeFeatures['M']]
-        importance['L'] = rf.feature_importances_[lesionSizeFeatures['T']+lesionSizeFeatures['S']+lesionSizeFeatures['M']:lesionSizeFeatures['T']+lesionSizeFeatures['S']+lesionSizeFeatures['M']+lesionSizeFeatures['L']]
+        rf.fit(trainData, trainOutcomes)
+    else:
+        print('Using previously trained model')
 
-        allImportances = rf.feature_importances_
-    
-        bestLesions, bestLesionsSize = [], []
-        
-        for i in range(1):
-            goodLesion = np.argmax(allImportances)            
-            allImportances[goodLesion] = 0
-            
-            if goodLesion >= lesionSizeFeatures['T']+lesionSizeFeatures['S']+lesionSizeFeatures['M']:
-                bestLesionsSize.append(3)
-                bestLesions.append(goodLesion - (lesionSizeFeatures['T']+lesionSizeFeatures['S']+lesionSizeFeatures['M']))
-            elif goodLesion >= lesionSizeFeatures['T']+lesionSizeFeatures['S']:
-                bestLesionsSize.append(2)
-                bestLesions.append(goodLesion - (lesionSizeFeatures['T']+lesionSizeFeatures['S']))
-            elif goodLesion >= lesionSizeFeatures['T']:
-                bestLesionsSize.append(1)
-                bestLesions.append(goodLesion - (lesionSizeFeatures['T']))
-            else:
-                bestLesionsSize.append(0)
-                bestLesions.append(goodLesion)
-        
-        # visualizing lesion groups 
+    predictions = rf.predict(testData)
+    rfscore = calculateScores(predictions, testOutcomes)
+
+    correlation = []
+    for featNum in range(np.shape(trainData)[1]):
+        correlation.append(stats.pearsonr(trainData[:, featNum], trainOutcomes)[0])
+
+    # x = np.linspace(1, len(rf.feature_importances_), num=len(rf.feature_importances_))
+    # fig, (ax, ax2) = plt.subplots(1,2, sharex=True)
+    # ax.bar(x, rf.feature_importances_)
+    # ax.set_xlabel('Lesion-Type')
+    # ax.set_ylabel('Gini Impurity (Normalized)')
+    #
+    # ax2.bar(x, np.abs(correlation))
+    # ax2.set_xlabel('Lesion-Type')
+    # ax2.set_ylabel('Pearson correlation coefficient (absolute value)')
+    # plt.tight_layout()
+    # plt.savefig(results_dir + 'feature-importance' + random.randint(10000) + '.png')
+    # plt.close()
+
+    endT = len(mixture_models[0].weights_)
+    endS = endT + len(mixture_models[1].weights_)
+    endM = endS + len(mixture_models[2].weights_)
+    endL = endM + len(mixture_models[3].weights_)
+
+    importance = {}
+    importance['T'] = rf.feature_importances_[0:endT]
+    importance['S'] = rf.feature_importances_[endT:endS]
+    importance['M'] = rf.feature_importances_[endS:endM]
+    importance['L'] = rf.feature_importances_[endM:endL]
+
+    allImportances = rf.feature_importances_
+
+    bestLesions, bestLesionsSize = [], []
+
+    goodLesion = np.argmax(allImportances)
+    allImportances[goodLesion] = 0
+
+    if goodLesion >= endM:
+        bestLesionsSize.append(3)
+        bestLesions.append(goodLesion - endM)
+    elif goodLesion >= endS:
+        bestLesionsSize.append(2)
+        bestLesions.append(goodLesion - endS)
+    elif goodLesion >= endT:
+        bestLesionsSize.append(1)
+        bestLesions.append(goodLesion - endT)
+    else:
+        bestLesionsSize.append(0)
+        bestLesions.append(goodLesion)
+
+    # visualizing lesion groups
 #        n = 10
 #        for lesionNumber, (m, bestLesion) in enumerate(zip(bestLesionsSize, bestLesions)):
 #            print lesionNumber, 'best lesion type:', sizes[m]
@@ -274,121 +276,110 @@ def featureClassifier(trainData, testData, trainOutcomes, testOutcomes, subtypeS
 ##                                    print brainIndices[size][typeNumber]
 #                                
 #                            typeNumber += 1
-        
-        # Predict only high-probability cases
-        probabilities = rf.predict_proba(testData)
-        
-        probPredicted, actual = [], []
-        certainCorrect, certainTotal = 0, 0
 
-        for prob, outcome, scan, bol_rep in zip(probabilities, testOutcomes[metric], mri_test, testData):
-            print(prob, outcome)
-            if prob[0] > 0.8 and outcome == 0:
-                probPredicted.append(0)
-                actual.append(0)
-                
-                img = nib.load(scan.images['t2w']).get_data()
-                lesionMaskImg = np.zeros((np.shape(img)))
-#                bolLesionMaskImg = np.zeros((np.shape(img)))
-                
-                for lesion in scan.lesionList:
-                    for point in lesion:
-                        lesionMaskImg[point[0], point[1], point[2]] = 1
+    # Predict only high-probability cases
+    probabilities = rf.predict_proba(testData)
 
-                maskImg = np.ma.masked_where(lesionMaskImg == 0, np.ones((np.shape(lesionMaskImg)))*5000)                      
-                
-                fig = plt.figure(figsize=(3,6))
-                ax = fig.add_subplot(2, 1, 1)
-                ax.set_xticks([])
-                ax.set_yticks([])
-                ax.imshow(img[30, 20:175, 20:225], cmap = plt.cm.gray, interpolation = 'nearest', origin='lower')
-                ax.imshow(maskImg[30, 20:175, 20:225], cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
-                ax.set_xlabel('High probability inactive')
-                
-                ax = fig.add_subplot(2, 1, 2)
-                x = np.linspace(1, len(bol_rep), num=len(bol_rep))
-                ax.bar(x, bol_rep)
+    probPredicted, actual = [], []
+    certainCorrect, certainTotal = 0, 0
+
+    for prob, outcome, scan, bol_rep in zip(probabilities, testOutcomes, mri_test, testData):
+        # print(prob, outcome)
+        if prob[0] > 0.8 and outcome == 0:
+            probPredicted.append(0)
+            actual.append(0)
+
+            img = nib.load(scan.images['t2w']).get_data()
+            lesionMaskImg = np.zeros((np.shape(img)))
+
+            for lesion in scan.lesionList:
+                for point in lesion:
+                    lesionMaskImg[point[0], point[1], point[2]] = 1
+
+            maskImg = np.ma.masked_where(lesionMaskImg == 0, np.ones((np.shape(lesionMaskImg)))*5000)
+
+            fig = plt.figure(figsize=(3,6))
+            ax = fig.add_subplot(2, 1, 1)
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.imshow(img[30, 20:225, 20:150], cmap = plt.cm.gray, interpolation = 'nearest', origin='lower')
+            ax.imshow(maskImg[30, 20:225, 20:150], cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
+            ax.set_xlabel('High probability inactive')
+
+            ax = fig.add_subplot(2, 1, 2)
+            x = np.linspace(1, len(bol_rep), num=len(bol_rep))
+            ax.bar(x, bol_rep)
 #                ax.set_ylabel('Number of Lesions')
-                ax.set_xlabel('Lesion-Types')
+            ax.set_xlabel('Lesion-Types')
 
-                plt.savefig(results_dir + 'inactive-' + scan.uid, dpi=500)
-                plt.close()
-                
-                certainCorrect += 1
-                certainTotal += 1
-                
-            if prob[0] > 0.8 and outcome == 1:
-                probPredicted.append(0)
-                actual.append(1)
-                
-                certainTotal += 1
-                
-            if prob[1] > 0.8 and outcome == 1:
-                probPredicted.append(1)
-                actual.append(1)
-                
-                img = nib.load(scan.images['t2w']).get_data()
-                lesionMaskImg = np.zeros((np.shape(img)))
-                
-                for lesion in scan.lesionList:
-                    for point in lesion:
-                        lesionMaskImg[point[0], point[1], point[2]] = 1
+            plt.savefig(results_dir + 'inactive-' + scan.uid, dpi=500)
+            plt.close()
 
-                maskImg = np.ma.masked_where(lesionMaskImg == 0, np.ones((np.shape(lesionMaskImg)))*5000)                      
-                   
-                fig = plt.figure(figsize=(3.5,6))
-                ax = fig.add_subplot(2, 1, 1)
-                ax.set_xticks([])
-                ax.set_yticks([])
-                ax.imshow(img[30, 20:175, 20:225], cmap = plt.cm.gray, interpolation = 'nearest',origin='lower')
-                ax.imshow(maskImg[30, 20:175, 20:225], cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
-                ax.set_xlabel('High probability active')
-                
-                ax = fig.add_subplot(2, 1, 2)
-                x = np.linspace(1, len(bol_rep), num=len(bol_rep))
-                ax.bar(x, bol_rep)
-#                ax.set_ylabel('Number of Lesions')
-                ax.set_xlabel('Lesion-Types')
-#                ax.set_xticks(x)
-                
-                plt.savefig(results_dir + 'active-' + scan.uid, dpi=500)
-                plt.close()
-                
-                certainCorrect += 1
-                certainTotal += 1
-                
-            if prob[1] > 0.8 and outcome == 0:
-                probPredicted.append(1)
-                actual.append(0)
-                
-                certainTotal += 1
-            
-        onlyCertainScore = calculateScores(probPredicted, actual)
+            certainCorrect += 1
+            certainTotal += 1
+
+        if prob[0] > 0.8 and outcome == 1:
+            probPredicted.append(0)
+            actual.append(1)
+
+            certainTotal += 1
+
+        if prob[1] > 0.8 and outcome == 1:
+            probPredicted.append(1)
+            actual.append(1)
+
+            img = nib.load(scan.images['t2w']).get_data()
+            lesionMaskImg = np.zeros((np.shape(img)))
+
+            for lesion in scan.lesionList:
+                for point in lesion:
+                    lesionMaskImg[point[0], point[1], point[2]] = 1
+
+            maskImg = np.ma.masked_where(lesionMaskImg == 0, np.ones((np.shape(lesionMaskImg)))*5000)
+
+            fig = plt.figure(figsize=(3.5,6))
+            ax = fig.add_subplot(2, 1, 1)
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.imshow(img[30, 20:225, 20:150], cmap = plt.cm.gray, interpolation = 'nearest',origin='lower')
+            ax.imshow(maskImg[30, 20:225, 20:150], cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
+            ax.set_xlabel('High probability active')
+
+            ax = fig.add_subplot(2, 1, 2)
+            x = np.linspace(1, len(bol_rep), num=len(bol_rep))
+            ax.bar(x, bol_rep)
+            ax.set_xlabel('Lesion-Types')
+
+            plt.savefig(results_dir + 'active-' + scan.uid, dpi=500)
+            plt.close()
+
+            certainCorrect += 1
+            certainTotal += 1
+
+        if prob[1] > 0.8 and outcome == 0:
+            probPredicted.append(1)
+            actual.append(0)
+
+            certainTotal += 1
+
+    onlyCertainScore = calculateScores(probPredicted, actual)
         
     return (rfscore, predictions, rf), (onlyCertainScore, probabilities), (certainCorrect, certainTotal)
 
 
-def identifyResponders(bestTrainData, bestTestData, trainOutcomes, testOutcomes, trainCounts, testCounts, placebo_rf, placebo_nb):
-    
+def identify_responders(trainData, testData, trainOutcomes, testOutcomes, train_patients, test_patients, drug_rf, placebo_rf):
     relapse_certainty = 0.8
+
+    train_activity = placebo_rf.predict_proba(trainData)
+    test_activity = placebo_rf.predict_proba(testData)
     
-    activity_counts = placebo_nb.predict_proba(trainCounts)
-    activity_counts_test = placebo_nb.predict_proba(testCounts)
-        
-    activity = placebo_rf.predict_proba(bestTrainData)
-    test_activity = placebo_rf.predict_proba(bestTestData)
-    
-    responder_label_train = np.zeros((len(trainOutcomes['newT2'])), dtype='bool')
-    responder_label_test  = np.zeros((len(testOutcomes['newT2'])), dtype='bool')
-    
-    responder_count_train = np.zeros((len(trainOutcomes['newT2'])), dtype='bool')
-    responder_count_test = np.zeros((len(testOutcomes['newT2'])), dtype='bool')
-    
-    responder_train_weight = np.zeros((len(trainOutcomes['newT2'])), dtype='float')
-    responder_count_weight = np.zeros((len(testOutcomes['newT2'])), dtype='float')
-    
+    responder_label_train = np.zeros((len(trainOutcomes)), dtype='bool')
+    responder_label_test  = np.zeros((len(testOutcomes)), dtype='bool')
+
+    responder_train_weight = np.zeros((len(trainOutcomes)), dtype='float')
+
     # BoL RF responder setup
-    for index, (prediction, actual) in enumerate(zip(activity, trainOutcomes['newT2'])):
+    for index, (prediction, actual) in enumerate(zip(train_activity, trainOutcomes)):
         #predicted active but actually inactive
         if prediction[1] > relapse_certainty and actual == 0:
             responder_label_train[index] = 1
@@ -397,26 +388,11 @@ def identifyResponders(bestTrainData, bestTestData, trainOutcomes, testOutcomes,
             responder_label_train[index] = 0
             responder_train_weight[index] = prediction[0]
     
-    for index, (prediction, actual) in enumerate(zip(test_activity, testOutcomes['newT2'])):
+    for index, (prediction, actual) in enumerate(zip(test_activity, testOutcomes)):
         if prediction[1] > relapse_certainty and actual == 0:
             responder_label_test[index] = 1
         else:
             responder_label_test[index] = 0
-    
-    # Naive Bayes responder training setup
-    for index, (prediction, actual) in enumerate(zip(activity_counts, testOutcomes['newT2'])):
-        if prediction[1] > relapse_certainty and actual == 0:
-            responder_count_train[index] = 1
-            responder_count_weight = prediction[1]
-        else:
-            responder_count_train[index] = 0
-            responder_count_weight = prediction[0]
-            
-    for index, (prediction, actual) in enumerate(zip(activity_counts_test, testOutcomes['newT2'])):
-        if prediction[1] > 0.5 and actual == 0:
-            responder_count_test[index] = 1
-        else:
-            responder_count_test[index] = 0
             
     print('training responders:', np.sum(responder_label_train))
     print('training non-responders:', (len(trainOutcomes['newT2']) - np.sum(responder_label_train)))
@@ -424,16 +400,7 @@ def identifyResponders(bestTrainData, bestTestData, trainOutcomes, testOutcomes,
     print('testing responders:', np.sum(responder_label_test))
     print('testing non-responders:', (len(testOutcomes['newT2']) - np.sum(responder_label_test)))
 
-#    trainData, testData, meh = randomForestFeatureSelection(bestTrainData, bestTestData, responder_label_train, responder_label_test, 10)
-    trainData, testData = bestTrainData, bestTestData
-
-    # BoL RF responder method
-#    responder_classifier = RandomForestClassifier(class_weight='balanced', n_estimators=3000, n_jobs=-1)
-    responder_classifier = SVC(probability=True, class_weight='balanced', kernel='linear')    
-
-    responder_classifier.fit(trainData, responder_label_train, responder_train_weight)
-      
-    predictions = responder_classifier.predict_proba(testData)
+    predictions = drug_rf.predict_proba(testData)
     
     responder_predictions = []    
     
@@ -461,16 +428,7 @@ def identifyResponders(bestTrainData, bestTestData, trainOutcomes, testOutcomes,
     print('high probability predictions:', len(high_prob_responder_predictions))
     high_prob_scores = calculateScores(high_prob_responder_predictions, high_prob_responder_actual)
 
-    # Naive Bayes responder
-    responder_nb = GaussianNB()
-    responder_nb.fit(trainCounts, responder_count_train)
-    
-    responder_count_predictions = responder_nb.predict(testCounts)
-    print('count predictions shape', np.shape(responder_count_predictions))
-    print('responder_count_test', np.shape(responder_count_test))
-    count_score = calculateScores(responder_count_predictions, responder_count_test)
-    
-    return (responder_score, responder_predictions), high_prob_scores, count_score
+    return (responder_score, responder_predictions), high_prob_scores
 
 def chi2Knn(trainData, testData, trainOutcomes, testOutcomes):
     print('computing chi2 kernel...')

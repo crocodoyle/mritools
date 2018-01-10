@@ -2,7 +2,7 @@ import numpy as np
 import pickle as pkl
 
 from sklearn.cluster import KMeans
-from sklearn.mixture import GMM
+from sklearn.mixture import GaussianMixture
 
 from sklearn.decomposition import PCA, FastICA
 from sklearn.model_selection import StratifiedKFold, train_test_split
@@ -153,6 +153,159 @@ def getNClosestMahalanobis(candidate, n, allLesionFeatures):
     return nClosest    
 
 
+def learn_bol(mri_list, feature_data, numWithClinical, results_dir):
+    brainIndices, lesionIndices, bol_representation, mixture_models = {}, {}, {}, {}
+
+    codebook_length = 0
+
+    for m, size in enumerate(sizes):
+        brainIndices[size], lesionIndices[size] = defaultdict(list), defaultdict(list)
+
+        lesionFeatures = feature_data[size]
+        print('lesion feature shape:', np.shape(lesionFeatures))
+
+        numClusters, bics, aics, scores, clustSearch = [], [], [], [], []
+        clustSearch.append("")
+        clustSearch.append("")
+
+        clusterData, validationData = train_test_split(lesionFeatures, test_size=0.1, random_state=5)
+        for k in range(2, 12):
+            print('trying ' + str(k) + ' clusters...')
+            clustSearch.append(GaussianMixture(n_components=k, covariance_type='full'))
+            clustSearch[k].fit(clusterData)
+
+            numClusters.append(k)
+            bics.append(clustSearch[k].bic(validationData))
+            aics.append(clustSearch[k].aic(validationData))
+            scores.append(np.mean(clustSearch[k].score(validationData)))
+
+        nClusters = numClusters[np.argmin(bics)]
+        codebook_length += nClusters
+
+        fig, (ax) = plt.subplots(1,1, figsize=(6, 4))
+
+        ax.plot(numClusters, bics, label="BIC")
+        ax.plot(numClusters, aics, label="AIC")
+        ax.set_xlabel("# of " + sizes[m] + " lesion-types")
+        ax.set_ylabel("Information Criterion")
+        ax.legend()
+
+        plt.savefig(results_dir + 'choosing_clusters-' + random.randint(100000) + '.png', bbox_inches='tight')
+        plt.close()
+
+        c = GaussianMixture(n_components=nClusters, covariance_type='full')
+        c.fit(lesionFeatures)
+
+        cluster_assignments = c.predict(lesionFeatures)
+        cluster_probabilities = c.predict_proba(lesionFeatures)
+
+        bol_representation[size] = np.zeros(cluster_assignments.shape)
+
+        for n_lesion_types in nClusters:
+            brainIndices[size].append([])
+            lesionIndices[size].append([])
+
+        lesionIndex = 0
+        for i, scan in enumerate(mri_list):
+            for j, lesion in enumerate(scan.lesionList):
+                if (len(lesion) > 2 and len(lesion) < 11 and m == 0) or (
+                            len(lesion) > 10 and len(lesion) < 26 and m == 1) or (
+                            len(lesion) > 25 and len(lesion) < 101 and m == 2) or (len(lesion) > 100 and m == 3):
+
+                    bol_representation[size][i, ...] += cluster_probabilities[lesionIndex, ...]
+
+                    brainIndices[size][cluster_assignments[lesionIndex]].append(i)
+                    lesionIndices[size][cluster_assignments[lesionIndex]].append(j)
+
+                    lesionIndex += 1
+
+        if visualizeAGroup:
+            n = 6
+            for k in range(nClusters):
+                if len(lesionIndices[size][k]) > n:
+                    plt.figure(figsize=(8.5, 2.5))
+
+                    for i, (brainIndex, lesionIndex) in enumerate(zip(brainIndices[size][k][0:n], lesionIndices[size][k][0:n])):
+                        scan = mri_list[brainIndex]
+                        img = nib.load(scan.images['t2w']).get_data()
+                        lesionMaskImg = np.zeros((np.shape(img)))
+
+                        for point in scan.lesionList[lesionIndex]:
+                            lesionMaskImg[point[0], point[1], point[2]] = 1
+
+                        x, y, z = [int(np.mean(xxx)) for xxx in zip(*scan.lesionList[lesionIndex])]
+
+                        maskImg = np.ma.masked_where(lesionMaskImg == 0,
+                                                     np.ones((np.shape(lesionMaskImg))) * 5000)
+                        maskSquare = np.zeros((np.shape(img)))
+                        maskSquare[x, y-20:y+20, z-20] = 1
+                        maskSquare[x, y-20:y+20, z+20] = 1
+                        maskSquare[x, y-20, z-20:z+20] = 1
+                        maskSquare[x, y+20, z-20:z+20] = 1
+
+                        square = np.ma.masked_where(maskSquare == 0, np.ones(np.shape(maskSquare)) * 5000)
+
+                        lesionMaskPatch = maskImg[x, y-20:y+20, z-20:z+20]
+                        ax = plt.subplot(2, n, i + 1)
+                        ax.axis('off')
+                        ax.imshow(img[x, 20:225, 20:150], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
+                        ax.imshow(maskImg[x, 20:225, 20:150], cmap=plt.cm.autumn, interpolation='nearest', alpha=0.3, origin='lower')
+                        ax.imshow(square[x, 20:225, 20:150], cmap=plt.cm.autumn, interpolation='nearest', origin='lower')
+
+                        ax3 = plt.subplot(2, n, i + 1 + n)
+                        ax3.imshow(img[x, y-20:y+20, z-20:z+20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
+                        ax3.imshow(lesionMaskPatch, cmap=plt.cm.autumn, alpha=0.3, interpolation='nearest', origin='lower')
+                        ax3.axes.get_yaxis().set_visible(False)
+                        ax3.set_xticks([])
+                        ax3.set_xlabel(letters[i])
+
+                    plt.subplots_adjust(wspace=0.01, hspace=0.01)
+                    plt.savefig(results_dir + 'lesion-type-' + str(n) + 'png', dpi=600)
+                    plt.clf()
+
+    bol = np.zeros(numWithClinical, codebook_length)
+
+    offset = 0
+    for size in sizes:
+        bol[:, offset:offset+bol_representation[size].shape[-1]] += bol_representation[size][0:numWithClinical, :]
+
+
+    return bol, mixture_models
+
+
+def project_to_bol(mri_list, feature_data, mixture_models):
+    bol_representation = {}
+    codebook_length = 0
+
+    for m, size in enumerate(sizes):
+        model = mixture_models[size]
+        lesion_types = model.predict_proba(feature_data[size])
+        codebook_length += feature_data[size].shape[-1]
+
+        bol_representation[size] = np.zeros((len(mri_list), lesion_types.shape[-1]))
+
+        lesionIndex = 0
+        for i, scan in enumerate(mri_list):
+            for j, lesion in enumerate(scan.lesionList):
+                if (len(lesion) > 2 and len(lesion) < 11 and m == 0) or (
+                    len(lesion) > 10 and len(lesion) < 26 and m == 1) or (
+                    len(lesion) > 25 and len(lesion) < 101 and m == 2) or (len(lesion) > 100 and m == 3):
+
+                    bol_representation[size][i, :] += lesion_types[lesionIndex, :]
+
+                    lesionIndex += 1
+
+    bol = np.zeros((len(mri_list), codebook_length))
+
+    offset = 0
+    for size in sizes:
+        num_lesion_types = bol_representation[size].shape[-1]
+        bol[:, offset:offset+num_lesion_types] = bol_representation[size]
+        offset += num_lesion_types
+
+    return bol
+
+
 def createRepresentationSpace(mri_list, dataVectors, lesionSizes, numWithClinical, lesionCentroids, examineClusters=False):
     subtypeShape, clusters, lesionTypes = [], [], []
     brainIndices, lesionIndices, brainsOfType, lesionsOfType = {}, {}, {}, {}
@@ -180,7 +333,7 @@ def createRepresentationSpace(mri_list, dataVectors, lesionSizes, numWithClinica
             clusterData, validationData = train_test_split(lesionFeatures, test_size=0.3, random_state=5)
             for k in range(2,4):
                 print('trying ' + str(k) + ' clusters...')
-                clustSearch.append(GMM(n_components = k, covariance_type = 'full'))
+                clustSearch.append(GaussianMixture(n_components = k, covariance_type = 'full'))
                 clustSearch[k].fit(clusterData)
                             
                 numClusters.append(k)
@@ -220,7 +373,7 @@ def createRepresentationSpace(mri_list, dataVectors, lesionSizes, numWithClinica
             print("Selected " + str(nClusters) + " clusters for " + feats[d] + " in " + sizes[m] + " lesions")
             sys.stdout.flush()
             
-            c = GMM(n_components = nClusters, covariance_type = 'full')
+            c = GaussianMixture(n_components = nClusters, covariance_type = 'full')
             c.fit(lesionFeatures)
             
             subtypeShape[m] += (nClusters, )
@@ -337,6 +490,7 @@ def createRepresentationSpace(mri_list, dataVectors, lesionSizes, numWithClinica
                         lesionType += 1
 
     return data, clusters, pcas, subtypeShape, brainsOfType, lesionsOfType
+
 
 def testRepresentationSpace(mri_list, dataVectors, lesionSizes, clusters, pcas):
     subtypeShape = []
