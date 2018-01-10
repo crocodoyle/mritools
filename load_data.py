@@ -344,23 +344,29 @@ def loadAllData(mri_list, numLesions, lbpPCA=None):
 
     feature_data = [context, rift, lbp, intensity]
 
-    data = {}
+    combined_data, flat_data = {}, {}
 
     # first, flatten each feature
-    for feature in feature_data:
+    for j, feature in enumerate(feature_data):
+        flat_data[j] = {}
         for size in sizes:
-            oneDataSourceDims = 1
+            flat_dims = 1
             for dim in feature[size][0].shape:
-                oneDataSourceDims *= dim
-            oneDataSourceDims //= feature[size][0].shape[0]
+                flat_dims *= dim
+            flat_dims //= feature[size][0].shape[0]
 
-            feature[size] = np.reshape(np.vstack(feature[size]), feature[size].shape[0], oneDataSourceDims)
+            n_lesions = len(feature[size])
+            flat_data[j][size] = np.zeros((n_lesions, flat_dims))
 
+            for i, lesion_feature in enumerate(feature[size]):
+                flat_data[j][size][i, :] = np.reshape(lesion_feature, flat_dims)
+
+    # concatenate features
     for size in sizes:
-        data[size] = np.hstack((feature_data[0][size], feature_data[1][size], feature_data[2][size], feature_data[3][size]))
-        print(size, 'data shape:', data[size].shape)
+        combined_data[size] = np.hstack((flat_data[0][size], flat_data[1][size], flat_data[2][size], flat_data[3][size]))
+        print(size, 'data shape:', combined_data[size].shape)
 
-    return data, lbpPCA
+    return combined_data, lbpPCA
     
     
 def loadClinical(mri_list):
