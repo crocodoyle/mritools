@@ -355,12 +355,6 @@ def loadAllData(mri_list, numLesions, lbpPCA=None):
                 flat_dims *= dim
 
             n_lesions = len(feature[size])
-            flat_dims //= feature[size][0].shape[0]
-
-            print('feature dimensions:', feature[size][0].shape)
-            print('n_lesions:', len(feature[size]), n_lesions)
-            print('flat dims:', flat_dims)
-
             flat_data[j][size] = np.reshape(np.asarray(feature[size]), (n_lesions, flat_dims))
 
     # concatenate features
