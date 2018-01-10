@@ -58,7 +58,7 @@ def predict_responders():
     outcomes = load_data.get_outcomes(mri_list)
 
     patient_results = {}
-    for scan, outcomes in mri_list:
+    for scan in mri_list:
         patient_results[scan.uid] = {}
 
     kf = StratifiedKFold(50, shuffle=True, random_state=42)
