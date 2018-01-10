@@ -54,8 +54,12 @@ def predict_responders():
     mri_list = pickle.load(open(mri_list_location, 'rb'))
     mri_list, without_clinical = load_data.loadClinical(mri_list)
 
-    print('We have', len(mri_list), 'patients')
+    print('We have', len(mri_list), 'patients who finished the study and ' + len(without_clinical) + ' who did not')
     outcomes = load_data.get_outcomes(mri_list)
+
+    patient_results = {}
+    for scan, outcomes in mri_list:
+        patient_results[scan.uid] = {}
 
     kf = StratifiedKFold(50, shuffle=True, random_state=42)
 
@@ -129,15 +133,15 @@ def predict_responders():
         for scan in without_clinical:
             train_patients.append(scan)
 
-        print('loading feature data...')
-        startLoad = time.time()
+        # print('loading feature data...')
+        # startLoad = time.time()
         numLesionsTrain, lesionSizesTrain, lesionCentroids, brainUids = load_data.getLesionSizes(train_patients)
         trainDataVectors, lbpPCA = load_data.loadAllData(train_patients, numLesionsTrain)
 
         numLesionsTest, lesionSizesTest, lesionCentroids, brainUids = load_data.getLesionSizes(mri_test)
         dataVectorsTest, lbpPCA = load_data.loadAllData(mri_test, numLesionsTest, lbpPCA=lbpPCA)
 
-        print('loading data took', (time.time() - startLoad) / 60.0, 'minutes')
+        # print('loading data took', (time.time() - startLoad) / 60.0, 'minutes')
 
         # print('removing infrequent features...')
         # startPruneTime = time.time()

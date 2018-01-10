@@ -190,7 +190,7 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir):
         ax.set_ylabel("Information Criterion")
         ax.legend()
 
-        plt.savefig(results_dir + 'choosing_clusters-' + random.randint(100000) + '.png', bbox_inches='tight')
+        plt.savefig(results_dir + 'choosing_clusters-' + np.random.randint(100000) + '.png', bbox_inches='tight')
         plt.close()
 
         c = GaussianMixture(n_components=nClusters, covariance_type='full')

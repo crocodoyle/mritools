@@ -360,7 +360,7 @@ def loadAllData(mri_list, numLesions, lbpPCA=None):
     # concatenate features
     for size in sizes:
         combined_data[size] = np.hstack((flat_data[0][size], flat_data[1][size], flat_data[2][size], flat_data[3][size]))
-        print(size, 'data shape:', combined_data[size].shape)
+        print(size, 'feature data shape:', combined_data[size].shape)
 
     return combined_data, lbpPCA
     
