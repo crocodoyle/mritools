@@ -354,6 +354,9 @@ def loadAllData(mri_list, numLesions, lbpPCA=None):
             for dim in feature[size][0].shape:
                 flat_dims *= dim
 
+            print('feature dimensions:', feature[size][0].shape)
+            print('n_lesions:', len(feature[size]))
+
             n_lesions = len(feature[size])
             flat_dims //= feature[size][0].shape[0]
 
