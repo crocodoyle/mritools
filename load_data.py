@@ -350,9 +350,9 @@ def loadAllData(mri_list, numLesions, lbpPCA=None):
     for feature in feature_data:
         for size in sizes:
             oneDataSourceDims = 1
-            for dim in feature[size].shape:
+            for dim in feature[size][0].shape:
                 oneDataSourceDims *= dim
-            oneDataSourceDims //= feature[size].shape[0]
+            oneDataSourceDims //= feature[size][0].shape[0]
 
             feature[size] = np.reshape(np.vstack(feature[size]), feature[size].shape[0], oneDataSourceDims)
 
