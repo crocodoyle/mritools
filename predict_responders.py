@@ -54,7 +54,7 @@ def predict_responders():
     mri_list = pickle.load(open(mri_list_location, 'rb'))
     mri_list, without_clinical = load_data.loadClinical(mri_list)
 
-    print('We have' + str(len(mri_list)) + 'patients who finished the study and ' + str(len(without_clinical)) + ' who did not')
+    print('We have ' + str(len(mri_list)) + ' patients who finished the study and ' + str(len(without_clinical)) + ' who did not')
     outcomes = load_data.get_outcomes(mri_list)
 
     patient_results = {}
