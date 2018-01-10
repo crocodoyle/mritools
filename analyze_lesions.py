@@ -159,7 +159,7 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir):
     codebook_length = 0
 
     for m, size in enumerate(sizes):
-        brainIndices[size], lesionIndices[size] = defaultdict(list), defaultdict(list)
+        brainIndices[size], lesionIndices[size] = [], []
 
         lesionFeatures = feature_data[size]
         print('lesion feature shape:', np.shape(lesionFeatures))
