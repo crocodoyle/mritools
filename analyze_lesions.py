@@ -178,7 +178,7 @@ def createRepresentationSpace(mri_list, dataVectors, lesionSizes, numWithClinica
             clustSearch.append("")
             
             clusterData, validationData = train_test_split(lesionFeatures, test_size=0.3, random_state=5)
-            for k in range(2,5):
+            for k in range(2,4):
                 print('trying ' + str(k) + ' clusters...')
                 clustSearch.append(GMM(n_components = k, covariance_type = 'full'))
                 clustSearch[k].fit(clusterData)
