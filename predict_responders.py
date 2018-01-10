@@ -115,7 +115,7 @@ def predict_responders():
 
     # initialization of result structures complete
     # start learning BoL, predicting activity
-    for foldNum, (train_index, test_index) in enumerate(kf.split(range(len(mri_list)), outcomes['newT2'])):
+    for foldNum, (train_index, test_index) in enumerate(kf.split(range(len(mri_list)), outcomes)):
         print(foldNum+1, '/', kf.get_n_splits())
         scoreThisFold = True
 
