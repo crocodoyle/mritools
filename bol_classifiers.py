@@ -134,7 +134,7 @@ def random_forest(trainData, testData, trainOutcomes, testOutcomes, mri_test, mi
     # ax2.set_xlabel('Lesion-Type')
     # ax2.set_ylabel('Pearson correlation coefficient (absolute value)')
     # plt.tight_layout()
-    # plt.savefig(results_dir + 'feature-importance' + random.randint(10000) + '.png')
+    # plt.savefig(results_dir + 'feature-importance' + np.random.randint(10000) + '.png')
     # plt.close()
 
     endT = len(mixture_models[0].weights_)

@@ -169,7 +169,7 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir):
         clustSearch.append("")
 
         clusterData, validationData = train_test_split(lesionFeatures, test_size=0.1, random_state=5)
-        for k in range(2, 12):
+        for k in range(2, 5):
             print('trying ' + str(k) + ' clusters...')
             clustSearch.append(GaussianMixture(n_components=k, covariance_type='full'))
             clustSearch[k].fit(clusterData)
@@ -190,7 +190,7 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir):
         ax.set_ylabel("Information Criterion")
         ax.legend()
 
-        plt.savefig(results_dir + 'choosing_clusters-' + np.random.randint(100000) + '.png', bbox_inches='tight')
+        plt.savefig(results_dir + 'choosing_clusters-' + str(np.random.randint(100000)) + '.png', bbox_inches='tight')
         plt.close()
 
         c = GaussianMixture(n_components=nClusters, covariance_type='full')
