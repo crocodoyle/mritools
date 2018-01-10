@@ -201,7 +201,7 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir):
 
         bol_representation[size] = np.zeros(cluster_assignments.shape)
 
-        for n_lesion_types in nClusters:
+        for n_lesion_types in range(nClusters):
             brainIndices[size].append([])
             lesionIndices[size].append([])
 
