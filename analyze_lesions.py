@@ -279,7 +279,7 @@ def project_to_bol(mri_list, feature_data, mixture_models):
     codebook_length = 0
 
     for m, size in enumerate(sizes):
-        model = mixture_models[size]
+        model = mixture_models[m]
         lesion_types = model.predict_proba(feature_data[size])
         codebook_length += feature_data[size].shape[-1]
 
