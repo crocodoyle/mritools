@@ -282,7 +282,7 @@ def project_to_bol(mri_list, feature_data, mixture_models):
     for m, size in enumerate(sizes):
         model = mixture_models[size]
         lesion_types = model.predict_proba(feature_data[size])
-        codebook_length += feature_data[size].shape[-1]
+        codebook_length += lesion_types.shape[-1]
 
         bol_representation[size] = np.zeros((len(mri_list), lesion_types.shape[-1]))
 
