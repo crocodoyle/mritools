@@ -296,7 +296,7 @@ def predict_responders():
                         predictionScores = []
                         predictionScores.append(bestFeatureScores[treatment])
 
-                        plotScores(bestScoring, 'Predicting Future MS Lesion Activity (' + treatment + ')')
+                        plotScores(bestScoring, 'Predicting Future MS Lesion Activity (' + treatment + ')', results_dir)
 
 
                     # if treatment == "Placebo":
