@@ -195,6 +195,7 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir):
 
         c = GaussianMixture(n_components=nClusters, covariance_type='full')
         c.fit(lesionFeatures)
+        mixture_models[size] = c
 
         cluster_assignments = c.predict(lesionFeatures)
         cluster_probabilities = c.predict_proba(lesionFeatures)
@@ -279,7 +280,7 @@ def project_to_bol(mri_list, feature_data, mixture_models):
     codebook_length = 0
 
     for m, size in enumerate(sizes):
-        model = mixture_models[m]
+        model = mixture_models[size]
         lesion_types = model.predict_proba(feature_data[size])
         codebook_length += feature_data[size].shape[-1]
 
