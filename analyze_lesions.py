@@ -264,7 +264,7 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir):
                     plt.savefig(results_dir + 'lesion-type-' + str(n) + 'png', dpi=600)
                     plt.clf()
 
-    bol = np.zeros(numWithClinical, codebook_length)
+    bol = np.zeros((numWithClinical, codebook_length))
 
     offset = 0
     for size in sizes:
