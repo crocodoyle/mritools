@@ -137,10 +137,10 @@ def random_forest(trainData, testData, trainOutcomes, testOutcomes, mri_test, mi
     # plt.savefig(results_dir + 'feature-importance' + np.random.randint(10000) + '.png')
     # plt.close()
 
-    endT = len(mixture_models[0].weights_)
-    endS = endT + len(mixture_models[1].weights_)
-    endM = endS + len(mixture_models[2].weights_)
-    endL = endM + len(mixture_models[3].weights_)
+    endT = len(mixture_models[sizes[0]].weights_)
+    endS = endT + len(mixture_models[sizes[1]].weights_)
+    endM = endS + len(mixture_models[sizes[2]].weights_)
+    endL = endM + len(mixture_models[sizes[3]].weights_)
 
     importance = {}
     importance['T'] = rf.feature_importances_[0:endT]
