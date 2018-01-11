@@ -164,6 +164,9 @@ def predict_responders():
         print('transforming test data to bag of lesions representation...')
         allTestData = project_to_bol(mri_test, dataVectorsTest, mixture_models)
 
+        print('train BoL shape:', allTrainData.shape)
+        print('test BoL shape:', allTestData.shape)
+
         trainingPatientsByTreatment, testingPatientsByTreatment, trainingData, testingData, trainCounts, testCounts = separatePatientsByTreatment(mri_train, mri_test, allTrainData, allTestData, trainCounts, testCounts)
 
         # feature selection
