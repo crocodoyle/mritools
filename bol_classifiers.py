@@ -395,10 +395,10 @@ def identify_responders(trainData, testData, trainOutcomes, testOutcomes, train_
             responder_label_test[index] = 0
             
     print('training responders:', np.sum(responder_label_train))
-    print('training non-responders:', (len(trainOutcomes['newT2']) - np.sum(responder_label_train)))
+    print('training non-responders:', (len(trainOutcomes) - np.sum(responder_label_train)))
     
     print('testing responders:', np.sum(responder_label_test))
-    print('testing non-responders:', (len(testOutcomes['newT2']) - np.sum(responder_label_test)))
+    print('testing non-responders:', (len(testOutcomes) - np.sum(responder_label_test)))
 
     predictions = drug_rf.predict_proba(testData)
     
