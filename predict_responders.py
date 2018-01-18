@@ -30,7 +30,6 @@ scoringMetrics = ['TP', 'FP', 'TN', 'FN']
 
 metrics = ['newT2']
 
-
 datadir = '/data1/users/adoyle/MS-LAQ/MS-LAQ-302-STX/'
 
 mri_list_location = datadir + 'mri_list.pkl'
@@ -354,8 +353,8 @@ def predict_responders():
                     plotScores(bestScoring, "Activity Prediction", results_dir)
 
         for treatment in treatments:
-            print('GT:', activity_truth[treatment][0].shape, activity_truth[treatment][1].shape)
-            print('Predictions:', activity_probabilities[treatment][0].shape, activity_probabilities[treatment][1].shape)
+            print('GT:', np.asarray(activity_truth[treatment][0]).shape, np.asarray(activity_truth[treatment][1]).shape)
+            print('Predictions:', np.asarray(activity_probabilities[treatment][0]).shape, np.asarray(activity_probabilities[treatment][1]).shape)
 
             y_true = np.hstack(tuple(activity_truth[treatment]))
             y_prob = np.hstack(tuple(activity_probabilities[treatment]))

@@ -44,7 +44,7 @@ scoringMetrics = ['TP', 'FP', 'TN', 'FN']
 lbpRadii = [1,2,3]
 riftRadii = [1,2,3]
 selectK = False
-visualizeAGroup = False
+visualizeAGroup = True
 
 letters = ['(a)', '(b)', '(c)', '(d)', '(e)', '(f)', '(g)', '(h)', '(i)', '(j)', '(k)', '(l)', '(m)', '(n)', '(o)']
 
@@ -169,7 +169,7 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir):
         clustSearch.append("")
 
         clusterData, validationData = train_test_split(lesionFeatures, test_size=0.1, random_state=5)
-        for k in range(2, 5):
+        for k in range(2, 4):
             print('trying ' + str(k) + ' clusters...')
             clustSearch.append(GaussianMixture(n_components=k, covariance_type='full'))
             clustSearch[k].fit(clusterData)
@@ -250,9 +250,9 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir):
                         lesionMaskPatch = maskImg[x, y-20:y+20, z-20:z+20]
                         ax = plt.subplot(2, n, i + 1)
                         ax.axis('off')
-                        ax.imshow(img[x, 20:225, 20:150], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
-                        ax.imshow(maskImg[x, 20:225, 20:150], cmap=plt.cm.autumn, interpolation='nearest', alpha=0.3, origin='lower')
-                        ax.imshow(square[x, 20:225, 20:150], cmap=plt.cm.autumn, interpolation='nearest', origin='lower')
+                        ax.imshow(img[x, :, :], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
+                        ax.imshow(maskImg[x, :, :], cmap=plt.cm.autumn, interpolation='nearest', alpha=0.3, origin='lower')
+                        ax.imshow(square[x, :, :], cmap=plt.cm.autumn, interpolation='nearest', origin='lower')
 
                         ax3 = plt.subplot(2, n, i + 1 + n)
                         ax3.imshow(img[x, y-20:y+20, z-20:z+20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
