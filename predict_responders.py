@@ -235,8 +235,8 @@ def predict_responders():
                         correct, total) = bol_classifiers.random_forest(bestTrainData, bestTestData, trainOutcomes,
                                                                             testOutcomes, mri_test, mixture_models, results_dir)
 
-                        activity_probabilities[treatment].append(probDrugPredicted)
-                        activity_truth[treatment].append(testOutcomes)
+                        activity_probabilities[treatment].append(np.asarray(probDrugPredicted))
+                        activity_truth[treatment].append(np.asarray(testOutcomes))
 
                         certainNumber[treatment] += total
                         certainCorrect[treatment] += correct
