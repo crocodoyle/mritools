@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 
 from sklearn.mixture import GMM
 from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import roc_curve, roc_auc_score
 
 import load_data
 import bol_classifiers
@@ -69,6 +70,7 @@ def predict_responders():
     certainNumber, certainCorrect, certainNumberPre, certainCorrectPre = defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict)
 
     scores = defaultdict(dict)
+    activity_probabilities, activity_truth = defaultdict(dict), defaultdict(dict)
 
     knnEuclideanScores, knnMahalanobisScores, chi2Scores, chi2svmScores, featureScores, svmLinScores, svmRadScores, preTrainedFeatureScores, preTrainedSvmLinScores, preTrainedSvmRadScores = defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict)
     countingScores = defaultdict(dict)
@@ -106,6 +108,7 @@ def predict_responders():
         preTrainedSvmLinScores[treatment] = defaultdict(list)
         preTrainedSvmRadScores[treatment] = defaultdict(list)
         probScores[treatment], allProbScores[treatment] = defaultdict(list), defaultdict(list)
+        activity_probabilities[treatment], activity_truth[treatment] = defaultdict(list), defaultdict(list)
 
         responderScores[treatment], responderHighProbScores[treatment], countScores[treatment] = defaultdict(
             list), defaultdict(list), defaultdict(list)
@@ -196,6 +199,9 @@ def predict_responders():
                     correct, total) = bol_classifiers.random_forest(bestTrainData, bestTestData, trainOutcomes,
                                                                         testOutcomes, mri_test, mixture_models, results_dir)
 
+                    activity_probabilities[treatment].append(probPredicted)
+                    activity_truth[treatment].append(testOutcomes)
+
                     # (bestChi2Score, bestChi2Predictions), (
                     # bestChi2svmscore, bestChi2svmPredictions) = bol_classifiers.chi2Knn(bestTrainData, bestTestData,
                     #                                                                     trainOutcomes, testOutcomes)
@@ -224,6 +230,9 @@ def predict_responders():
                     (bestFeatureScore, bestFeaturePredictions, drug_rf), (probScore, probDrugPredicted), (
                     correct, total) = bol_classifiers.random_forest(bestTrainData, bestTestData, trainOutcomes,
                                                                         testOutcomes, mri_test, mixture_models, results_dir)
+
+                    activity_probabilities[treatment].append(probDrugPredicted)
+                    activity_truth[treatment].append(testOutcomes)
 
                     certainNumber[treatment] += total
                     certainCorrect[treatment] += correct
@@ -338,7 +347,29 @@ def predict_responders():
 
                 plotScores(bestScoring, "Activity Prediction", results_dir)
 
-    print("FAILED FOLDS:", failedFolds)
+
+    for treatment in treatments:
+
+        y_true = np.vstack(tuple(activity_truth[treatment]))
+        y_prob = np.vstack(tuple(activity_probabilities[treatment]))
+
+        roc_auc = roc_auc_score(y_true, y_prob, 'weighted')
+
+        fpr, tpr, _ = roc_curve(y_true, y_prob)
+
+        plt.figure()
+        lw = 2
+        plt.plot(fpr, tpr, color='darkorange', lw=lw, label='ROC curve (area = %0.2f)' % roc_auc)
+        plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate', fontsize=20)
+        plt.ylabel('True Positive Rate', fontsize=20)
+        # plt.title('Receiver operating characteristic example', fontsize=24)
+        plt.legend(loc="lower right", shadow=True, fontsize=20)
+        plt.savefig(results_dir + 'roc.png', bbox_inches='tight')
+
+    # print("FAILED FOLDS:", failedFolds)
 
     print('certain correct pretrained', certainCorrectPre)
     print('certain total pretrained', certainNumberPre)

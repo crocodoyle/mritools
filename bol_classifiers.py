@@ -4,7 +4,6 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.mixture import GaussianMixture
 from sklearn.naive_bayes import GaussianNB, MultinomialNB
 from sklearn.metrics.pairwise import chi2_kernel
-from sklearn.metrics import roc_curve, roc_auc_score
 
 from sklearn.covariance import EmpiricalCovariance
 from sklearn.model_selection import StratifiedShuffleSplit
