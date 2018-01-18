@@ -18,6 +18,8 @@ from analyze_lesions import learn_bol, project_to_bol, separatePatientsByTreatme
 from mri import mri
 
 treatments = ['Placebo', 'Laquinimod', 'Avonex']
+treatment_labels = ['Placebo', 'Drug A', 'Drug B']
+
 modalities = ['t1p', 't2w', 'pdw', 'flr']
 tissues = ['csf', 'wm', 'gm', 'pv', 'lesion']
 
@@ -349,8 +351,11 @@ def predict_responders():
 
     for treatment in treatments:
 
-        y_true = np.vstack(tuple(activity_truth[treatment]))
-        y_prob = np.vstack(tuple(activity_probabilities[treatment]))
+        print('GT:', activity_truth[treatment][0].shape, activity_truth[treatment][1].shape)
+        print('Predictions:', activity_probabilities[treatment][0].shape, activity_probabilities[treatment][1].shape)
+
+        y_true = np.hstack(tuple(activity_truth[treatment]))
+        y_prob = np.hstack(tuple(activity_probabilities[treatment]))
 
         roc_auc = roc_auc_score(y_true, y_prob, 'weighted')
 
@@ -366,7 +371,7 @@ def predict_responders():
         plt.ylabel('True Positive Rate', fontsize=20)
         # plt.title('Receiver operating characteristic example', fontsize=24)
         plt.legend(loc="lower right", shadow=True, fontsize=20)
-        plt.savefig(results_dir + 'roc.png', bbox_inches='tight')
+        plt.savefig(results_dir + 'rf_' + treatment + '_roc.png', bbox_inches='tight')
 
     # print("FAILED FOLDS:", failedFolds)
 
