@@ -996,7 +996,9 @@ def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, te
     respondersRight, respondersWrong = 0, 0
     
     responder_prediction, responder_actual, responder_certain_actual, responder_certain_prediction = [], [], [], []
-    
+
+    all_responders_info = []
+
     for test_index, (pretrained_prediction, prediction, test_outcome) in enumerate(zip(pretrained_predictions, predictions, test_outcomes)):
         
         if pretrained_prediction[1] > 0.5 and test_outcome == 0:            
@@ -1021,11 +1023,19 @@ def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, te
         else:
             responder_certain_prediction.append(0)
             
-        if pretrained_prediction[1] > 0.5 and prediction[1] < 0.5 and test_outcome == 0:
+        if pretrained_prediction[1] > 0.8 and prediction[1] < 0.8 and test_outcome == 0:
             scan = test_mri[test_index]
             t2_test = nib.load(scan.images['t2w']).get_data()
             testLesionPoints = nib.load(scan.lesions).get_data()
             testLesionList = list(np.asarray(np.nonzero(testLesionPoints)).T)
+
+            responder_info = dict()
+            responder_info['uid'] = scan.uid
+            responder_info['treatment'] = scan.treatment
+            responder_info['t2_lesions'] = len(testLesionList)
+            responder_info['P(A=1|BoL, untr)'] = pretrained_prediction[1]
+            responder_info['P(A=0|BoL, tr)'] = prediction[0]
+            all_responders_info.append(responder_info)
 
             testLesionImg = np.zeros(np.shape(t2_test))
 
@@ -1038,8 +1048,8 @@ def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, te
             fig, axes = plt.subplots(2, n+1, sharey='row', figsize=(10, 4))
             axes[0,0].set_xticks([])
             axes[0,0].set_yticks([])
-            axes[0,0].imshow(t2_test[30, 20:175, 20:225], cmap=plt.cm.gray, origin='lower')
-            axes[0,0].imshow(maskImg[30, 20:175, 20:225], cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
+            axes[0,0].imshow(t2_test[30, :, :], cmap=plt.cm.gray, origin='lower')
+            axes[0,0].imshow(maskImg[30, :, :], cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
             
             if scan.treatment == "Avonex":
                 axes[0,0].set_xlabel('Responder (Drug A)')
@@ -1072,8 +1082,8 @@ def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, te
                 axes[0,i+1].set_xticks([])
                 axes[0,i+1].set_yticks([])
                 
-                axes[0,i+1].imshow(t2_train[30, 20:175, 20:225], cmap=plt.cm.gray, origin='lower')
-                axes[0,i+1].imshow(newMaskImg[30, 20:175, 20:225], cmap=plt.cm.autumn, interpolation = 'nearest', alpha=0.4, origin='lower')
+                axes[0,i+1].imshow(t2_train[30, :, :], cmap=plt.cm.gray, origin='lower')
+                axes[0,i+1].imshow(newMaskImg[30, :, :], cmap=plt.cm.autumn, interpolation = 'nearest', alpha=0.4, origin='lower')
                 axes[0,i+1].set_title('Close Patient')                
                 if scan.newT2 > 0:
                     axes[0,i+1].set_xlabel('(active)')
@@ -1102,7 +1112,7 @@ def showWhereTreatmentHelped(pretrained_predictions, predictions, train_data, te
     
     print("Responders(right, wrong)", respondersRight, respondersWrong)
 
-    return respondersRight, respondersWrong, responder_score, responder_uncertain_score, responder_certain_score, responder_more_certain_score
+    return respondersRight, respondersWrong, responder_score, responder_uncertain_score, responder_certain_score, responder_more_certain_score, all_responders_info
 
 
 def justTreatmentGroups():
