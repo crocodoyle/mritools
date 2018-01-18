@@ -70,7 +70,7 @@ def predict_responders():
     certainNumber, certainCorrect, certainNumberPre, certainCorrectPre = defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict)
 
     scores = defaultdict(dict)
-    activity_probabilities, activity_truth = defaultdict(dict), defaultdict(dict)
+    activity_probabilities, activity_truth = defaultdict(list), defaultdict(list)
 
     knnEuclideanScores, knnMahalanobisScores, chi2Scores, chi2svmScores, featureScores, svmLinScores, svmRadScores, preTrainedFeatureScores, preTrainedSvmLinScores, preTrainedSvmRadScores = defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict)
     countingScores = defaultdict(dict)
@@ -108,7 +108,6 @@ def predict_responders():
         preTrainedSvmLinScores[treatment] = defaultdict(list)
         preTrainedSvmRadScores[treatment] = defaultdict(list)
         probScores[treatment], allProbScores[treatment] = defaultdict(list), defaultdict(list)
-        activity_probabilities[treatment], activity_truth[treatment] = defaultdict(list), defaultdict(list)
 
         responderScores[treatment], responderHighProbScores[treatment], countScores[treatment] = defaultdict(
             list), defaultdict(list), defaultdict(list)
