@@ -163,7 +163,7 @@ def predict_responders():
             print('learning bag of lesions...')
 
             startBol = time.time()
-            allTrainData, mixture_models = learn_bol(train_patients, trainDataVectors, len(mri_train), results_dir)
+            allTrainData, mixture_models = learn_bol(train_patients, trainDataVectors, len(mri_train), results_dir, foldNum)
             elapsedBol = time.time() - startBol
             print(str(elapsedBol / 60), 'minutes to learn BoL.')
 
@@ -356,12 +356,12 @@ def predict_responders():
             print('GT:', np.asarray(activity_truth[treatment][0]).shape, np.asarray(activity_truth[treatment][1]).shape)
             print('Predictions:', np.asarray(activity_probabilities[treatment][0]).shape, np.asarray(activity_probabilities[treatment][1]).shape)
 
-            y_true = np.hstack(tuple(activity_truth[treatment]))
-            y_prob = np.hstack(tuple(activity_probabilities[treatment]))
+            y_true = np.concatenate(tuple(activity_truth[treatment]), axis=-1)
+            y_prob = np.concatenate(tuple(activity_probabilities[treatment]), axis=-1)
 
-            roc_auc = roc_auc_score(y_true, y_prob, 'weighted')
+            roc_auc = roc_auc_score(y_true, y_prob[:, 1], 'weighted')
 
-            fpr, tpr, _ = roc_curve(y_true, y_prob)
+            fpr, tpr, _ = roc_curve(y_true, y_prob[:, 1])
 
             plt.figure()
             lw = 2

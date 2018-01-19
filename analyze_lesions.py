@@ -153,7 +153,7 @@ def getNClosestMahalanobis(candidate, n, allLesionFeatures):
     return nClosest    
 
 
-def learn_bol(mri_list, feature_data, numWithClinical, results_dir):
+def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
     brainIndices, lesionIndices, bol_representation, mixture_models = {}, {}, {}, {}
 
     codebook_length = 0
@@ -261,8 +261,8 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir):
                         ax3.set_xticks([])
                         ax3.set_xlabel(letters[i])
 
-                    plt.subplots_adjust(wspace=0.01, hspace=0.01)
-                    plt.savefig(results_dir + 'lesion-type-' + str(n) + 'png', dpi=600)
+                    # plt.subplots_adjust(wspace=0.01, hspace=0.01)
+                    plt.savefig(results_dir + 'lesion-type-' + str(k) + 'fold_' + str(fold_num) + '.png', dpi=600, bbox_inches='tight')
                     plt.clf()
 
     bol = np.zeros((numWithClinical, codebook_length))
