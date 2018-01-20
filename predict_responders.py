@@ -356,8 +356,8 @@ def predict_responders():
             print('GT:', np.asarray(activity_truth[treatment][0]).shape, np.asarray(activity_truth[treatment][1]).shape)
             print('Predictions:', np.asarray(activity_probabilities[treatment][0]).shape, np.asarray(activity_probabilities[treatment][1]).shape)
 
-            y_true = np.concatenate(tuple(activity_truth[treatment]), axis=-1)
-            y_prob = np.concatenate(tuple(activity_probabilities[treatment]), axis=-1)
+            y_true = np.concatenate(tuple(activity_truth[treatment]), axis=0)
+            y_prob = np.concatenate(tuple(activity_probabilities[treatment]), axis=0)
 
             roc_auc = roc_auc_score(y_true, y_prob[:, 1], 'weighted')
 
