@@ -20,6 +20,8 @@ from mri import mri
 treatments = ['Placebo', 'Laquinimod', 'Avonex']
 treatment_labels = ['Placebo', 'Drug A', 'Drug B']
 
+classifier_names = ['Random Forest', 'SVM (Linear)', 'SVM (RBF)', '1-NN ($\\chi^2$)', '1-NN (Mahalanobis)']
+
 modalities = ['t1p', 't2w', 'pdw', 'flr']
 tissues = ['csf', 'wm', 'gm', 'pv', 'lesion']
 
@@ -33,6 +35,77 @@ metrics = ['newT2']
 datadir = '/data1/users/adoyle/MS-LAQ/MS-LAQ-302-STX/'
 
 mri_list_location = datadir + 'mri_list.pkl'
+
+def responder_roc(activity_posterior, activity_truth, results_dir):
+
+    for treatment in treatments:
+        plt.figure()
+
+        p_a_auc = []
+        p_d_auc = []
+
+        if 'Placebo' not in treatment:
+            a_true = np.concatenate(tuple(activity_truth['Placebo']), axis=0)
+            a_prob = np.concatenate(tuple(activity_posterior['Placebo']), axis=0)
+
+            d_true = np.concatenate(tuple(activity_truth[treatment]), axis=0)
+            d_prob = np.concatenate(tuple(activity_posterior[treatment]), axis=0)
+
+            a_range = np.linspace(0, 1, 50)
+            d_range = np.linspace(0, 1, 50)
+
+            for p_a in a_range:
+                a_predicted = np.zeros(a_prob.shape)
+                a_predicted[a_prob <= p_a] = 0
+                a_predicted[a_prob < p_a] = 1
+
+                p_a_auc.append(roc_auc_score(a_true, a_predicted[:, 1], 'weighted'))
+
+            for p_d in d_range:
+                d_predicted = np.zeros(d_prob.shape)
+                d_predicted[d_prob <= p_d] = 0
+                d_predicted[d_prob > p_d] = 1
+
+                p_d_auc.append(roc_auc_score(d_true, d_predicted[:, 1], 'weighted'))
+
+            # select operating point with best AUC
+            best_p_a = np.argmax(p_d_auc)
+            best_p_d = np.argmax(p_a_auc)
+
+            a_predicted = np.copy(a_prob)
+            a_predicted[a_prob <= best_p_a] = 0
+            a_predicted[a_prob < best_p_a] = 1
+
+            d_predicted = np.zeros(d_prob.shape)
+            d_predicted[d_prob <= best_p_d] = 0
+            d_predicted[d_prob > best_p_d] = 1
+
+            r_true = np.zeros(a_true.shape)          # Assumption that our Placebo future lesion activity classifier is perfect
+            r_true[d_true == 0 and a_true == 1] = 1  # and that responders have no future lesion activity
+
+            r_predicted = np.zeros(a_predicted.shape)                             # Responders are predicted when active on Placebo
+            r_predicted[d_predicted < (1-best_p_d) and a_predicted > p_a] = 0     # and inactive on the drug
+
+            roc_auc = roc_auc_score(r_true, r_predicted[:, 1], 'weighted')
+            fpr, tpr, _ = roc_curve(r_true, r_predicted[:, 1])
+
+            lw = 2
+            if 'Laquinimod' in treatment:
+                plt.plot(fpr, tpr, color='darkorange', lw=lw, label=treatment + ' ROC (AUC = %0.2f)' % roc_auc)
+                plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+            else:
+                plt.plot(fpr, tpr, color='darkred', lw=lw, label=treatment + ' ROC (AUC = %0.2f)' % roc_auc)
+
+            plt.xlim([0.0, 1.0])
+            plt.ylim([0.0, 1.05])
+            plt.xlabel('False Positive Rate', fontsize=20)
+            plt.ylabel('True Positive Rate', fontsize=20)
+            # plt.title('Receiver operating characteristic example', fontsize=24)
+            plt.legend(loc="lower right", shadow=True, fontsize=20)
+
+        print(treatment + ' optimal thresholds (activity, drug_activity): ', best_p_a, best_p_d)
+
+    plt.savefig(results_dir + 'responder_' + 'p_a_'+ str(best_p_a) + '_p_d_' + str(best_p_d) + '_roc.png', bbox_inches='tight')
 
 
 def predict_responders():
@@ -74,7 +147,8 @@ def predict_responders():
         certainNumber, certainCorrect, certainNumberPre, certainCorrectPre = defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict)
 
         scores = defaultdict(dict)
-        activity_probabilities, activity_truth = defaultdict(list), defaultdict(list)
+        activity_posterior, activity_truth = defaultdict(list), defaultdict(list)
+
 
         knnEuclideanScores, knnMahalanobisScores, chi2Scores, chi2svmScores, featureScores, svmLinScores, svmRadScores, preTrainedFeatureScores, preTrainedSvmLinScores, preTrainedSvmRadScores = defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict)
         countingScores = defaultdict(dict)
@@ -202,7 +276,7 @@ def predict_responders():
                         correct, total) = bol_classifiers.random_forest(bestTrainData, bestTestData, trainOutcomes,
                                                                             testOutcomes, mri_test, mixture_models, results_dir)
 
-                        activity_probabilities[treatment].append(probPredicted)
+                        activity_posterior[treatment].append(probPredicted)
                         activity_truth[treatment].append(testOutcomes)
 
                         # (bestChi2Score, bestChi2Predictions), (
@@ -234,7 +308,7 @@ def predict_responders():
                         correct, total) = bol_classifiers.random_forest(bestTrainData, bestTestData, trainOutcomes,
                                                                             testOutcomes, mri_test, mixture_models, results_dir)
 
-                        activity_probabilities[treatment].append(np.asarray(probDrugPredicted))
+                        activity_posterior[treatment].append(np.asarray(probDrugPredicted))
                         activity_truth[treatment].append(np.asarray(testOutcomes))
 
                         certainNumber[treatment] += total
@@ -352,12 +426,17 @@ def predict_responders():
 
                     plotScores(bestScoring, "Activity Prediction", results_dir)
 
+        try:
+            responder_roc(activity_posterior, activity_truth, results_dir)
+        except Exception as e:
+            print('Exception making responder plot:', e)
+
         for treatment in treatments:
             print('GT:', np.asarray(activity_truth[treatment][0]).shape, np.asarray(activity_truth[treatment][1]).shape)
-            print('Predictions:', np.asarray(activity_probabilities[treatment][0]).shape, np.asarray(activity_probabilities[treatment][1]).shape)
+            print('Predictions:', np.asarray(activity_posterior[treatment][0]).shape, np.asarray(activity_posterior[treatment][1]).shape)
 
             y_true = np.concatenate(tuple(activity_truth[treatment]), axis=0)
-            y_prob = np.concatenate(tuple(activity_probabilities[treatment]), axis=0)
+            y_prob = np.concatenate(tuple(activity_posterior[treatment]), axis=0)
 
             roc_auc = roc_auc_score(y_true, y_prob[:, 1], 'weighted')
 
