@@ -429,328 +429,42 @@ def identify_responders(trainData, testData, trainOutcomes, testOutcomes, train_
 
     return (responder_score, responder_predictions), high_prob_scores
 
-def chi2Knn(trainData, testData, trainOutcomes, testOutcomes):
-    print('computing chi2 kernel...')
 
-    distances = chi2_kernel(trainData, testData)
+def svms(trainData, testData, trainOutcomes):
+
+    linear = SVC(kernel='linear', class_weight='balanced')
+    linear.fit(trainData, trainOutcomes)
+    svm_linear_posterior = linear.predict_proba(testData)
+
+    rbf = SVC(class_weight='balanced')
+    rbf.fit(trainData, trainOutcomes)
+    svm_rbf_posterior = rbf.predict_proba(testData)
 
     trainDistances = chi2_kernel(trainData, trainData)
     testDistances = chi2_kernel(testData, trainData)
-    
-    chi2knnscore, chi2svmscore = {}, {}
 
-    for metric in metrics:
-        chi2predictions = np.zeros(len(testOutcomes[metric]))
-        
-        for i in range(len(testOutcomes[metric])):
-            minIndex = np.argmin(distances[i, :])
-           
-            chi2predictions[i] = trainOutcomes[metric][minIndex]
+    svc = SVC(kernel='precomputed', class_weight='balanced')
+    svc.fit(trainDistances, trainOutcomes)
 
-        chi2knnscore[metric] = calculateScores(chi2predictions, testOutcomes[metric])
+    chi2svm_posterior = svc.predict_proba(testDistances)
 
-        svc = SVC(kernel='precomputed', class_weight='balanced')
-        svc.fit(trainDistances, trainOutcomes[metric])
-        
-        chi2svmpredictions = svc.predict(testDistances)
-        
-        chi2svmscore[metric] = calculateScores(chi2svmpredictions, testOutcomes[metric])
-        
-    
-    return (chi2knnscore, chi2predictions), (chi2svmscore, chi2svmpredictions)
+    return svm_linear_posterior, svm_rbf_posterior, chi2svm_posterior
 
 
-def svmClassifier(trainData, testData, trainOutcomes, testOutcomes, svc1=None, svc2=None):
-    svmLinearScore = {}
-    svmRadialScore = {}
-    
-    for metric in metrics:
-
-        if svc1 == None:
-            svc1 = SVC(kernel='linear', class_weight='balanced')
-            svc1.fit(trainData, trainOutcomes[metric])
-        svmLinearPredictions = svc1.predict(testData)
-
-        if svc2 == None:
-            svc2 = SVC(class_weight='balanced')
-            svc2.fit(trainData, trainOutcomes[metric])
-        svmRadialPredictions = svc2.predict(testData)
-
-        svmLinearScore[metric] = calculateScores(svmLinearPredictions, testOutcomes[metric])
-        svmRadialScore[metric] = calculateScores(svmRadialPredictions, testOutcomes[metric])
-        
-    return (svmLinearScore, svmLinearPredictions, svc1), (svmRadialScore, svmRadialPredictions, svc2)
-    
-    
-def subdividePredictGroups(trainData, trainClusterAssignments, trainOutcomes, testData, testClusterAssignments, testOutcomes, testClusterProbs):
-    subdivisionScore = {}
-    
-    for metric in metrics:        
-        activeTrain = []
-        nonActiveTrain = []
-        testing = []
-        testOutcome = []
-        
-        subdivisionScore[metric] = {}
-
-        for scoreMet in scoringMetrics:
-            subdivisionScore[metric][scoreMet] = 0.0
-            
-        for group in set(trainClusterAssignments):
-            activeTrain.append([])
-            nonActiveTrain.append([])
-            testing.append([])
-            testOutcome.append([])
-
-        #separate training            
-        for example, exampleGroup, outcome in zip(trainData, trainClusterAssignments, trainOutcomes[metric]):
-            if outcome == 1:
-                activeTrain[exampleGroup].append(example)
-            else:
-                nonActiveTrain[exampleGroup].append(example)
-            
-        #separate testing
-        for example, exampleGroup, outcome in zip(testData, testClusterAssignments, testOutcomes[metric]):
-            testing[exampleGroup].append(example)
-            testOutcome[exampleGroup].append(outcome)
-
-        #find subgroups
-        for g, group in enumerate(set(trainClusterAssignments)):
-            trainActive = np.asarray(activeTrain[group])
-            trainNonActive = np.asarray(nonActiveTrain[group])
-            
-            test = np.asarray(testing[group])
-            
-            if np.shape(test)[0] > 0 and np.shape(trainNonActive)[0] > 1:
-                try:
-                    activeDistribution = GMM(n_components=1)
-                    nonActiveDistribution = GMM(n_components=1)
-                    
-                    activeDistribution.fit(trainActive)
-                    nonActiveDistribution.fit(trainNonActive)
-                    
-                    activeProb = activeDistribution.score(test)
-                    nonActiveProb = nonActiveDistribution.score(test)
-    
-                    nPositive = np.sum(testOutcome[group])
-                    nNegative = len(testOutcome[group]) - nPositive
-                    
-                    for p_active, p_nonactive, outcome in zip(activeProb, nonActiveProb, testOutcome[group]):
-    #                    print p_active, p_nonactive, outcome
-                        if p_nonactive > p_active and outcome == 0:
-                            subdivisionScore[metric]['TN'] += (1.0 / nNegative) * len(testOutcome[group]) / len(testOutcomes[metric])
-                        elif p_nonactive > p_active and outcome == 1:
-                            subdivisionScore[metric]['FN'] += (1.0 / nPositive) * len(testOutcome[group]) / len(testOutcomes[metric])
-                        elif p_active > p_nonactive and outcome == 0:
-                            subdivisionScore[metric]['FP'] += (1.0 / nNegative) * len(testOutcome[group]) / len(testOutcomes[metric])
-                        elif p_active > p_nonactive and outcome == 1:
-                            subdivisionScore[metric]['TP'] += (1.0 / nPositive) * len(testOutcome[group]) / len(testOutcomes[metric])
-                    
-                except:
-                    print('EM messed up!')
-            else:
-                if np.shape(test)[0] > 0:
-                    
-                    nPositive = np.sum(testOutcome[group])
-                    nNegative = len(testOutcome[group]) - nPositive
-                    
-                    for outcome in testOutcome[group]:
-                        if outcome == 1:
-                            subdivisionScore[metric]['TP'] += (1.0 / nPositive) * len(testOutcome[group]) / len(testOutcomes[metric])
-                        else:
-                            subdivisionScore[metric]['FP'] += (1.0 / nNegative) * len(testOutcome[group]) / len(testOutcomes[metric])
-
-
-        nPositive = np.sum(testOutcomes[metric])
-        nNegative = len(testOutcomes[metric]) - nPositive
-        subdivisionScore[metric]['sensitivity'] = subdivisionScore[metric]['TP'] * len(testOutcomes[metric]) / nPositive
-        subdivisionScore[metric]['specificity'] = subdivisionScore[metric]['TN'] * len(testOutcomes[metric]) / nNegative
-        
-    return subdivisionScore
-    
-def predictOutcomeGivenGroups(trainGroupProbs, trainOutcomes, testGroupProbs, testOutcomes, testClusterAssignments):
-    classifier = GaussianNB()
-     
-    bayesScores = {}
-
-    for metric in metrics:
-        #bayesian classifier
-        classifier.fit(trainGroupProbs, trainOutcomes[metric])
-        predictions = classifier.predict(testGroupProbs)        
-        
-        bayesScores[metric] = calculateScores(predictions, testOutcomes[metric])
-                      
-    return (bayesScores, predictions)
-    
-    
-def knn(trainData, trainOutcomes, testData, testOutcomes, knnEuclidean=None):
-    
-    
+def knn(trainData, trainOutcomes, testData):
     ec = EmpiricalCovariance()
     ec.fit(trainData)
     
     knnMahalanobis = KNeighborsClassifier(n_neighbors=1, algorithm='brute', metric = 'mahalanobis', metric_params={'V': ec.covariance_})
-    knnEuclideanScores, knnMahalanobisScores = {}, {}
+    knnEuclidean = KNeighborsClassifier(n_neighbors=1)
+    knnEuclidean.fit(trainData, trainOutcomes)
 
-    for metric in metrics:
-        #euclidean nearest neighbour
-        if knnEuclidean == None:
-            knnEuclidean = KNeighborsClassifier(n_neighbors=1)
-            knnEuclidean.fit(trainData, trainOutcomes[metric])
-            
-        euclideanPredictions = knnEuclidean.predict(testData)
-        
-        knnEuclideanScores[metric] = calculateScores(euclideanPredictions, testOutcomes[metric])
-        
-        #mahalanobis nearest neighbour
-        knnMahalanobis.fit(trainData, trainOutcomes[metric])
-        mahalanobisPredictions = knnMahalanobis.predict(testData)
+    knn_euclid_posterior = knnEuclidean.predict_proba(testData)
 
-        knnMahalanobisScores[metric] = calculateScores(mahalanobisPredictions, testOutcomes[metric])
-    
-    return (knnEuclideanScores, euclideanPredictions), (knnMahalanobisScores, mahalanobisPredictions)
-#    return (knnEuclideanScores, euclideanPredictions, knnEuclidean)
+    knnMahalanobis.fit(trainData, trainOutcomes)
+    knn_maha_posterior = knnMahalanobis.predict_proba(testData)
 
-def softSubdividePredictGroups(trainData, trainClusterAssignments, trainOutcomes, testData, testClusterProbs, testOutcomes, nClusters):
-    subdivisionScore = {}    
-    
-    predictions = np.ones((np.shape(testData)[0], nClusters))
-    for metric in metrics:
-        activeTrain = []
-        nonActiveTrain = []
-        
-        for group in range(nClusters):
-            activeTrain.append([])
-            nonActiveTrain.append([])
-            
-        #separate training            
-        for example, exampleGroup, outcome in zip(trainData, trainClusterAssignments, trainOutcomes[metric]):
-            if outcome == 1:
-                activeTrain[exampleGroup].append(example)
-            else:
-                nonActiveTrain[exampleGroup].append(example)
-
-        #find subgroups
-        for group in range(nClusters):
-            trainActive = np.asarray(activeTrain[group])
-            trainNonActive = np.asarray(nonActiveTrain[group])
-                        
-            if np.shape(trainNonActive)[0] > 1:
-                try:
-                    activeDistribution = GMM(n_components=1)
-                    nonActiveDistribution = GMM(n_components=1)
-                    
-                    activeDistribution.fit(trainActive)
-                    nonActiveDistribution.fit(trainNonActive)
-                    
-                    activeProb = activeDistribution.score(testData)
-                    nonActiveProb = nonActiveDistribution.score(testData)
-                    
-                    for i, (p_active, p_nonactive, outcome) in enumerate(zip(activeProb, nonActiveProb, testOutcomes[metric])):
-                        if p_nonactive >= p_active:
-                            predictions[i, group] = 0
-                        else:
-                            predictions[i, group] = 1
-                except:
-                    print('not enough samples to fit Gaussian in group', group)
-
-        prediction = np.zeros(len(testOutcomes[metric]))
-
-        for i, (clusterProb, outcome) in enumerate(zip(testClusterProbs, testOutcomes[metric])):
-            for group in range(nClusters):
-                prediction[i] += clusterProb[group]*predictions[i, group]
-            
-        subdivisionScore[metric] = calculateScores(prediction, testOutcomes[metric])
-            
-    return (subdivisionScore, prediction)
-
-def predictGroupsGivenTreatment(trainData, mri_train, trainClusterAssignments, trainOutcomes, testData, mri_test, testClusterProbs, testOutcomes):
-    subdivisionScore = {}
-    
-    groupPredictions = np.ones((np.shape(testData)[0], len(set(trainClusterAssignments))))
-    
-    for metric in metrics:
-        activeTrain = []
-        nonActiveTrain = []
-        
-        subdivisionScore[metric] = {}
-
-        for scoreMet in scoringMetrics:
-            subdivisionScore[metric][scoreMet] = 0.0
-            
-        for group in set(trainClusterAssignments):
-            treatmentGroups = {}
-            treatmentGroups2 = {}
-            for treatment in treatments:
-                treatmentGroups[treatment] = []
-                treatmentGroups2[treatment] = []
-            activeTrain.append(treatmentGroups)
-            nonActiveTrain.append(treatmentGroups2)
-            
-        #separate training            
-        for example, exampleGroup, outcome, scan in zip(trainData, trainClusterAssignments, trainOutcomes[metric], mri_train):
-            if outcome == 1:
-                activeTrain[exampleGroup][scan.treatment].append(example)
-            else:
-                nonActiveTrain[exampleGroup][scan.treatment].append(example)
-
-        #find subgroups
-        for group in set(trainClusterAssignments):
-            for tr, treatment in enumerate(treatments):
-#                print 'activeLength', len(activeTrain[group][treatment])
-#                print 'nonActiveLength', len(nonActiveTrain[group][treatment])
-                trainActive = np.asarray(activeTrain[group][treatment])
-                trainNonActive = np.asarray(nonActiveTrain[group][treatment])
-                        
-#                if np.shape(trainNonActive)[0] > 1 and np.shape(trainActive)[0] > 1:
-                activeDistribution = np.mean(trainActive, axis=0)
-                nonActiveDistribution = np.mean(trainNonActive, axis=0)
-
-                for i, (testBol, outcome, scan) in enumerate(zip(testData, testOutcomes[metric], mri_test)):
-#                       print p_active, p_nonactive, outcome                            
-                        if scan.treatment == treatment:
-                            if np.sum((testBol - activeDistribution)**2) > np.sum((testBol - nonActiveDistribution)**2):
-                                groupPredictions[i, group] = 0
-                            else:
-                                groupPredictions[i, group] = 1
-
-        
-        predictions = np.zeros(len(testOutcomes[metric]))
-        for i, (clusterProb, outcome, scan) in enumerate(zip(testClusterProbs, testOutcomes[metric], mri_test)):
-            
-            for group in set(trainClusterAssignments):
-                predictions[i] += clusterProb[group]*groupPredictions[i, group]
-            
-        subdivisionScore[metric] = calculateScores(predictions, testOutcomes[metric])
-            
-    return (subdivisionScore, predictions)
-    
-def predictOutcomeBayesian(trainData, testData, trainOutcomes, testOutcomes, testGroupProbs, pActiveGivenGroup):
-    classifier = MultinomialNB()
- 
-    accuracy = {} 
- 
-    for metric in metrics:
-        accuracy[metric] = 0.0
-        predictionsGivenGroup = np.zeros(len(testOutcomes[metric]))        
-        
-        classifier.fit(trainData, trainOutcomes[metric])
-        predictions = classifier.predict_proba(testData)
-        
-        for i, (outcomeProbs, groupProbs) in enumerate(zip(predictions, testGroupProbs)):
-            
-            for j, groupProb in enumerate(groupProbs):
-                predictionsGivenGroup[i] += groupProb*pActiveGivenGroup[metric][j]
-                
-            predictionsGivenGroup[i] *= outcomeProbs[1]
-#        print 'predictionsGivenGroup', np.shape(predictionsGivenGroup)
-        
-        for predicted, actual in zip(predictionsGivenGroup, testOutcomes[metric]):
-            print('predicted, actual:', predicted, actual)
-            if (predicted >= 0.5 and actual == 1) or (predicted < 0.5 and actual == 0):
-                accuracy[metric] += 1 / len(testData)
-
-    return accuracy
+    return knn_euclid_posterior, knn_maha_posterior
 
 
 def randomForestFeatureSelection(trainData, testData, trainOutcomes, testOutcomes, minTypes):
