@@ -457,7 +457,7 @@ def knn(trainData, trainOutcomes, testData):
         knnEuclidean.fit(trainData, trainOutcomes)
         knn_euclid_posterior = knnEuclidean.predict_proba(testData)
     except np.linalg.linalg.LinAlgError as e:
-        knn_euclid_posterior = np.zeros((len(trainOutcomes)), 2)
+        knn_euclid_posterior = np.zeros((len(trainOutcomes), 2))
         knn_euclid_posterior[:, 1] = 1
         print('Not enough samples for Euclidean covariance estimation! Predicting all active.')
         print(e)
