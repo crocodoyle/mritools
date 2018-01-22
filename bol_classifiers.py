@@ -453,14 +453,16 @@ def svms(trainData, testData, trainOutcomes):
 
 def knn(trainData, trainOutcomes, testData):
 
-    knnMahalanobis = KNeighborsClassifier(n_neighbors=1, algorithm='brute', metric = 'mahalanobis')
     knnEuclidean = KNeighborsClassifier(n_neighbors=1)
     knnEuclidean.fit(trainData, trainOutcomes)
-
     knn_euclid_posterior = knnEuclidean.predict_proba(testData)
 
-    knnMahalanobis.fit(trainData, trainOutcomes)
-    knn_maha_posterior = knnMahalanobis.predict_proba(testData)
+    try:
+        knnMahalanobis = KNeighborsClassifier(n_neighbors=1, algorithm='brute', metric = 'mahalanobis')
+        knnMahalanobis.fit(trainData, trainOutcomes)
+        knn_maha_posterior = knnMahalanobis.predict_proba(testData)
+    except:
+        knn_maha_posterior = knn_euclid_posterior
 
     return knn_euclid_posterior, knn_maha_posterior
 
