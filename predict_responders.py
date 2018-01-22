@@ -103,7 +103,7 @@ def responder_roc(activity_posterior, activity_truth, results_dir):
             # plt.title('Receiver operating characteristic example', fontsize=24)
             plt.legend(loc="lower right", shadow=True, fontsize=20)
 
-        print(treatment + ' optimal thresholds (activity, drug_activity): ', best_p_a, best_p_d)
+            print(treatment + ' optimal thresholds (activity, drug_activity): ', best_p_a, best_p_d)
 
     plt.savefig(results_dir + 'responder_' + 'p_a_'+ str(best_p_a) + '_p_d_' + str(best_p_d) + '_roc.png', bbox_inches='tight')
 
