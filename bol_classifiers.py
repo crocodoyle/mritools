@@ -452,10 +452,8 @@ def svms(trainData, testData, trainOutcomes):
 
 
 def knn(trainData, trainOutcomes, testData):
-    ec = EmpiricalCovariance()
-    ec.fit(trainData)
-    
-    knnMahalanobis = KNeighborsClassifier(n_neighbors=1, algorithm='brute', metric = 'mahalanobis', metric_params={'V': ec.covariance_})
+
+    knnMahalanobis = KNeighborsClassifier(n_neighbors=1, algorithm='brute', metric = 'mahalanobis')
     knnEuclidean = KNeighborsClassifier(n_neighbors=1)
     knnEuclidean.fit(trainData, trainOutcomes)
 
