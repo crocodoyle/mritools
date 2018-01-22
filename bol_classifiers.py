@@ -119,10 +119,10 @@ def random_forest(trainData, testData, trainOutcomes, testOutcomes, mri_test, mi
     predictions = rf.predict(testData)
     rfscore = calculateScores(predictions, testOutcomes)
 
-    correlation = []
-    for featNum in range(np.shape(trainData)[1]):
-        correlation.append(stats.pearsonr(trainData[:, featNum], trainOutcomes)[0])
-
+    # correlation = []
+    # for featNum in range(np.shape(trainData)[1]):
+    #     correlation.append(stats.pearsonr(trainData[:, featNum], trainOutcomes)[0])
+    #
     # x = np.linspace(1, len(rf.feature_importances_), num=len(rf.feature_importances_))
     # fig, (ax, ax2) = plt.subplots(1,2, sharex=True)
     # ax.bar(x, rf.feature_importances_)
@@ -453,16 +453,22 @@ def svms(trainData, testData, trainOutcomes):
 
 def knn(trainData, trainOutcomes, testData):
 
-    knnEuclidean = KNeighborsClassifier(n_neighbors=1)
-    knnEuclidean.fit(trainData, trainOutcomes)
-    knn_euclid_posterior = knnEuclidean.predict_proba(testData)
-
     try:
+        knnEuclidean = KNeighborsClassifier(n_neighbors=1)
+        knnEuclidean.fit(trainData, trainOutcomes)
+        knn_euclid_posterior = knnEuclidean.predict_proba(testData)
+
         knnMahalanobis = KNeighborsClassifier(n_neighbors=1, algorithm='brute', metric = 'mahalanobis')
         knnMahalanobis.fit(trainData, trainOutcomes)
         knn_maha_posterior = knnMahalanobis.predict_proba(testData)
+
     except:
-        knn_maha_posterior = knn_euclid_posterior
+        print('Not enough samples for covariance estimation! Predicting all active.')
+        knn_euclid_posterior = np.zeros((len(trainOutcomes)), 2)
+        knn_maha_posterior = np.zeros((len(trainOutcomes), 2))
+
+        knn_euclid_posterior[:, 1] = 1
+        knn_maha_posterior[:, 1] = 1
 
     return knn_euclid_posterior, knn_maha_posterior
 
