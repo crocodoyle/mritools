@@ -430,10 +430,8 @@ def predict_responders():
                 #
                 #     plotScores(bestScoring, "Activity Prediction", results_dir)
 
-        try:
-            responder_roc(activity_posterior, activity_truth, results_dir)
-        except Exception as e:
-            print('Exception making responder plot:', e)
+
+        responder_roc(activity_posterior, activity_truth, results_dir)
 
         responder_posteriors = [activity_posterior, euclidean_knn_posterior, mahalanobis_knn_posterior, linear_svm_posterior, chi2_svm_posterior, rbf_svm_posterior]
         classifier_names = ['Random Forest', '1-NN (Euclidean)', '1-NN (Mahalanobis)', 'SVM (linear)', 'SVM ($\\chi^2$)', 'SVM (RBF)']
