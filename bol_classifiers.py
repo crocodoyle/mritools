@@ -432,18 +432,18 @@ def identify_responders(trainData, testData, trainOutcomes, testOutcomes, train_
 
 def svms(trainData, testData, trainOutcomes):
 
-    linear = SVC(kernel='linear', class_weight='balanced')
+    linear = SVC(kernel='linear', class_weight='balanced', probability=True)
     linear.fit(trainData, trainOutcomes)
     svm_linear_posterior = linear.predict_proba(testData)
 
-    rbf = SVC(class_weight='balanced')
+    rbf = SVC(class_weight='balanced', probability=True)
     rbf.fit(trainData, trainOutcomes)
     svm_rbf_posterior = rbf.predict_proba(testData)
 
     trainDistances = chi2_kernel(trainData, trainData)
     testDistances = chi2_kernel(testData, trainData)
 
-    svc = SVC(kernel='precomputed', class_weight='balanced')
+    svc = SVC(kernel='precomputed', class_weight='balanced', probability=True)
     svc.fit(trainDistances, trainOutcomes)
 
     chi2svm_posterior = svc.predict_proba(testDistances)
