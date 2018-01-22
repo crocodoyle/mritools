@@ -462,7 +462,7 @@ def knn(trainData, trainOutcomes, testData):
         print('Not enough samples for Euclidean covariance estimation! Predicting all active.')
         print(e)
     try:
-        knnMahalanobis = KNeighborsClassifier(n_neighbors=1, algorithm='auto', metric = 'mahalanobis')
+        knnMahalanobis = KNeighborsClassifier(n_neighbors=1, algorithm='brute', metric = 'mahalanobis')
         knnMahalanobis.fit(trainData, trainOutcomes)
         knn_maha_posterior = knnMahalanobis.predict_proba(testData)
     except np.linalg.linalg.LinAlgError as e:
