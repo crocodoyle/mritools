@@ -431,7 +431,6 @@ def identify_responders(trainData, testData, trainOutcomes, testOutcomes, train_
 
 
 def svms(trainData, testData, trainOutcomes):
-
     linear = SVC(kernel='linear', class_weight='balanced', probability=True)
     linear.fit(trainData, trainOutcomes)
     svm_linear_posterior = linear.predict_proba(testData)
@@ -457,17 +456,19 @@ def knn(trainData, trainOutcomes, testData):
         knnEuclidean = KNeighborsClassifier(n_neighbors=1)
         knnEuclidean.fit(trainData, trainOutcomes)
         knn_euclid_posterior = knnEuclidean.predict_proba(testData)
-
-        knnMahalanobis = KNeighborsClassifier(n_neighbors=1, algorithm='brute', metric = 'mahalanobis')
+    except np.linalg.linalg.LinAlgError as e:
+        knn_euclid_posterior = np.zeros((len(trainOutcomes)), 2)
+        knn_euclid_posterior[:, 1] = 1
+        print('Not enough samples for Euclidean covariance estimation! Predicting all active.')
+        print(e)
+    try:
+        knnMahalanobis = KNeighborsClassifier(n_neighbors=1, algorithm='auto', metric = 'mahalanobis')
         knnMahalanobis.fit(trainData, trainOutcomes)
         knn_maha_posterior = knnMahalanobis.predict_proba(testData)
-
-    except:
-        print('Not enough samples for covariance estimation! Predicting all active.')
-        knn_euclid_posterior = np.zeros((len(trainOutcomes)), 2)
+    except np.linalg.linalg.LinAlgError as e:
+        print('Not enough samples for Mahalanobis covariance estimation! Predicting all active.')
+        print(e)
         knn_maha_posterior = np.zeros((len(trainOutcomes), 2))
-
-        knn_euclid_posterior[:, 1] = 1
         knn_maha_posterior[:, 1] = 1
 
     return knn_euclid_posterior, knn_maha_posterior
