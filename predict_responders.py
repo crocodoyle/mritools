@@ -36,7 +36,7 @@ datadir = '/data1/users/adoyle/MS-LAQ/MS-LAQ-302-STX/'
 
 mri_list_location = datadir + 'mri_list.pkl'
 
-def responder_roc(activity_posterior, activity_truth, results_dir):
+def responder_roc(activity_truth, activity_posterior, results_dir):
 
     for treatment in treatments:
         plt.figure()
@@ -48,8 +48,12 @@ def responder_roc(activity_posterior, activity_truth, results_dir):
             a_true = np.concatenate(tuple(activity_truth['Placebo']), axis=0)
             a_prob = np.concatenate(tuple(activity_posterior['Placebo']), axis=0)
 
+            a_prob = a_prob[:, 1]                           # just consider the P(A=1|BoL, untr)
+
             d_true = np.concatenate(tuple(activity_truth[treatment]), axis=0)
             d_prob = np.concatenate(tuple(activity_posterior[treatment]), axis=0)
+
+            d_prob = d_prob[:, 1]                          # just consider the P(A=1|BoL, treatment)
 
             a_range = np.linspace(0, 1, 50)
             d_range = np.linspace(0, 1, 50)
@@ -59,18 +63,26 @@ def responder_roc(activity_posterior, activity_truth, results_dir):
                 a_predicted[a_prob <= p_a] = 0
                 a_predicted[a_prob < p_a] = 1
 
-                p_a_auc.append(roc_auc_score(a_true, a_predicted[:, 1], 'weighted'))
+                p_a_auc.append(roc_auc_score(a_true, a_predicted, 'weighted'))
+
+            print('P(A|BoL, untr) AUCs: ', p_a_auc)
+
 
             for p_d in d_range:
                 d_predicted = np.zeros(d_prob.shape)
                 d_predicted[d_prob <= p_d] = 0
                 d_predicted[d_prob > p_d] = 1
 
-                p_d_auc.append(roc_auc_score(d_true, d_predicted[:, 1], 'weighted'))
+                p_d_auc.append(roc_auc_score(d_true, d_predicted, 'weighted'))
+
+            print('P(A|BoL, ' + treatment + ') AUCs: ', p_d_auc)
 
             # select operating point with best AUC
-            best_p_a = np.argmax(p_d_auc)
-            best_p_d = np.argmax(p_a_auc)
+            best_p_a = a_range[np.argmax(p_a_auc)]
+            best_p_d = d_range[np.argmax(p_d_auc)]
+
+            print('Best threshold for untreated activity prediction: ', best_p_a)
+            print('Best threshold for treated activity prediction: ', best_p_d)
 
             a_predicted = np.copy(a_prob)
             a_predicted[a_prob <= best_p_a] = 0
@@ -81,13 +93,15 @@ def responder_roc(activity_posterior, activity_truth, results_dir):
             d_predicted[d_prob > best_p_d] = 1
 
             r_true = np.zeros(a_true.shape)          # Assumption that our Placebo future lesion activity classifier is perfect
-            r_true[d_true == 0 and a_true == 1] = 1  # and that responders have no future lesion activity
+            r_true[d_true == 0] = 1                  # and that responders have no future lesion activity on drug
+            r_true[a_true == 0] = 0
 
-            r_predicted = np.zeros(a_predicted.shape)                             # Responders are predicted when active on Placebo
-            r_predicted[d_predicted < (1-best_p_d) and a_predicted > p_a] = 0     # and inactive on the drug
+            r_predicted = np.zeros(a_predicted.shape)       # Responders are predicted when active on Placebo
+            r_predicted[a_predicted > p_a] = 1              # and inactive on the drug
+            r_predicted[d_predicted < best_p_d] = 0
 
-            roc_auc = roc_auc_score(r_true, r_predicted[:, 1], 'weighted')
-            fpr, tpr, _ = roc_curve(r_true, r_predicted[:, 1])
+            roc_auc = roc_auc_score(r_true, r_predicted, 'weighted')
+            fpr, tpr, _ = roc_curve(r_true, r_predicted)
 
             lw = 2
             if 'Laquinimod' in treatment:
@@ -431,7 +445,7 @@ def predict_responders():
                 #     plotScores(bestScoring, "Activity Prediction", results_dir)
 
 
-        responder_roc(activity_posterior, activity_truth, results_dir)
+        responder_roc(activity_truth, activity_posterior, results_dir)
 
         responder_posteriors = [activity_posterior, euclidean_knn_posterior, mahalanobis_knn_posterior, linear_svm_posterior, chi2_svm_posterior, rbf_svm_posterior]
         classifier_names = ['Random Forest', '1-NN (Euclidean)', '1-NN (Mahalanobis)', 'SVM (linear)', 'SVM ($\\chi^2$)', 'SVM (RBF)']
