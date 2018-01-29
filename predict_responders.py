@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from sklearn.mixture import GMM
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import roc_curve, roc_auc_score
+from sklearn.metrics import confusion_matrix
 
 import load_data
 import bol_classifiers
@@ -36,19 +37,17 @@ datadir = '/data1/users/adoyle/MS-LAQ/MS-LAQ-302-STX/'
 
 mri_list_location = datadir + 'mri_list.pkl'
 
-def responder_roc(activity_truth, activity_posterior, results_dir):
+def responder_roc(activity_truth, activity_posterior, untreated_posterior, results_dir):
 
     for treatment in treatments:
         plt.figure()
 
         p_a_auc = []
-        p_d_auc = []
+        p_d_harmonic_mean = []
 
         if 'Placebo' not in treatment:
-            a_true = np.concatenate(tuple(activity_truth['Placebo']), axis=0)
-            a_prob = np.concatenate(tuple(activity_posterior['Placebo']), axis=0)
-
-            a_prob = a_prob[:, 1]                           # just consider the P(A=1|BoL, untr)
+            a_prob = np.concatenate(tuple(untreated_posterior[treatment]), axis=0) # must use predictions for untreated
+            a_prob = a_prob[:, 1]                                                  # to infer what would have happened if untreate
 
             d_true = np.concatenate(tuple(activity_truth[treatment]), axis=0)
             d_prob = np.concatenate(tuple(activity_posterior[treatment]), axis=0)
@@ -59,34 +58,41 @@ def responder_roc(activity_truth, activity_posterior, results_dir):
             d_range = np.linspace(0, 1, 50)
 
             for p_a in a_range:
-                a_predicted = np.zeros(a_prob.shape)
-                a_predicted[a_prob <= p_a] = 0
-                a_predicted[a_prob < p_a] = 1
+                a_true_inferred = np.ones(a_prob.shape)
+                a_true_inferred[a_prob <= p_a] = 0
 
-                p_a_auc.append(roc_auc_score(a_true, a_predicted, 'weighted'))
+                tn, tp, _ = roc_curve(a_true_inferred, a_prob)
+                p_a_auc.append(roc_auc_score(a_true_inferred, a_prob, 'weighted'))
+
+            best_p_a = a_range[np.argmax(p_a_auc)]
+            a_true = np.ones(a_prob.shape)
+            a_true[a_prob <= best_p_a] = 0
 
             print('P(A|BoL, untr) AUCs: ', p_a_auc)
-
+            print('Best theshold:', best_p_a)
 
             for p_d in d_range:
                 d_predicted = np.zeros(d_prob.shape)
                 d_predicted[d_prob <= p_d] = 0
                 d_predicted[d_prob > p_d] = 1
 
-                p_d_auc.append(roc_auc_score(d_true, d_predicted, 'weighted'))
+                tn, fp, fn, tp = confusion_matrix(d_true, d_predicted).ravel()
 
-            print('P(A|BoL, ' + treatment + ') AUCs: ', p_d_auc)
+                sens = tp/(tp + fn)
+                spec = tn/(tn + fp)
+
+                harmonic_mean = 2*sens*spec / (sens + spec)
+
+                p_d_harmonic_mean.append(harmonic_mean)
+
+            print('P(A|BoL, ' + treatment + ') sensitivity/specificity harmonic means: ', p_d_harmonic_mean)
 
             # select operating point with best AUC
-            best_p_a = a_range[np.argmax(p_a_auc)]
-            best_p_d = d_range[np.argmax(p_d_auc)]
+
+            best_p_d = d_range[np.argmax(p_d_harmonic_mean)]
 
             print('Best threshold for untreated activity prediction: ', best_p_a)
             print('Best threshold for treated activity prediction: ', best_p_d)
-
-            a_predicted = np.copy(a_prob)
-            a_predicted[a_prob <= best_p_a] = 0
-            a_predicted[a_prob < best_p_a] = 1
 
             d_predicted = np.zeros(d_prob.shape)
             d_predicted[d_prob <= best_p_d] = 0
@@ -96,9 +102,9 @@ def responder_roc(activity_truth, activity_posterior, results_dir):
             r_true[d_true == 0] = 1                  # and that responders have no future lesion activity on drug
             r_true[a_true == 0] = 0
 
-            r_predicted = np.zeros(a_predicted.shape)       # Responders are predicted when active on Placebo
-            r_predicted[a_predicted > p_a] = 1              # and inactive on the drug
-            r_predicted[d_predicted < best_p_d] = 0
+            r_predicted = np.zeros(d_predicted.shape)     # Responders are predicted when active on Placebo
+            r_predicted[a_true == 1] = 1                  # and inactive on the drug
+            r_predicted[d_predicted > best_p_d] = 0
 
             roc_auc = roc_auc_score(r_true, r_predicted, 'weighted')
             fpr, tpr, _ = roc_curve(r_true, r_predicted)
@@ -161,7 +167,7 @@ def predict_responders():
         certainNumber, certainCorrect, certainNumberPre, certainCorrectPre = defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict)
 
         scores = defaultdict(dict)
-        activity_posterior, activity_truth = defaultdict(list), defaultdict(list)
+        activity_posterior, activity_truth, untreated_posterior = defaultdict(list), defaultdict(list), defaultdict(list)
         euclidean_knn_posterior, mahalanobis_knn_posterior, chi2_svm_posterior, rbf_svm_posterior, linear_svm_posterior, naive_bayes_posterior =  defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list)
 
         knnEuclideanScores, knnMahalanobisScores, chi2Scores, chi2svmScores, featureScores, svmLinScores, svmRadScores, preTrainedFeatureScores, preTrainedSvmLinScores, preTrainedSvmRadScores = defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict)
@@ -322,6 +328,7 @@ def predict_responders():
 
                         activity_truth[treatment].append(testOutcomes)
                         activity_posterior[treatment].append(np.asarray(probDrugPredicted))
+                        untreated_posterior[treatment].append(np.asarray(pretrainedProbPredicted))
 
                         chi2_svm_posterior[treatment].append(chi2svm_posterior)
                         rbf_svm_posterior[treatment].append(svm_rbf_posterior)
@@ -445,7 +452,7 @@ def predict_responders():
                 #     plotScores(bestScoring, "Activity Prediction", results_dir)
 
 
-        responder_roc(activity_truth, activity_posterior, results_dir)
+        responder_roc(activity_truth, activity_posterior, untreated_posterior, results_dir)
 
         responder_posteriors = [activity_posterior, euclidean_knn_posterior, mahalanobis_knn_posterior, linear_svm_posterior, chi2_svm_posterior, rbf_svm_posterior]
         classifier_names = ['Random Forest', '1-NN (Euclidean)', '1-NN (Mahalanobis)', 'SVM (linear)', 'SVM ($\\chi^2$)', 'SVM (RBF)']
