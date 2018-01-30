@@ -58,11 +58,15 @@ def responder_roc(activity_truth, activity_posterior, untreated_posterior, resul
             d_range = np.linspace(0, 1, 50)
 
             for p_a in a_range:
-                a_true_inferred = np.ones(a_prob.shape)
-                a_true_inferred[a_prob <= p_a] = 0
+                try:
+                    a_true_inferred = np.ones(a_prob.shape)
+                    a_true_inferred[a_prob <= p_a] = 0
 
-                tn, tp, _ = roc_curve(a_true_inferred, a_prob)
-                p_a_auc.append(roc_auc_score(a_true_inferred, a_prob, 'weighted'))
+                    tn, tp, _ = roc_curve(a_true_inferred, a_prob)
+                    p_a_auc.append(roc_auc_score(a_true_inferred, a_prob, 'weighted'))
+                except:
+                    print('AUC undefined for:', p_a)
+                    p_a_auc.append(0)
 
             best_p_a = a_range[np.argmax(p_a_auc)]
             a_true = np.ones(a_prob.shape)
@@ -72,18 +76,22 @@ def responder_roc(activity_truth, activity_posterior, untreated_posterior, resul
             print('Best theshold:', best_p_a)
 
             for p_d in d_range:
-                d_predicted = np.zeros(d_prob.shape)
-                d_predicted[d_prob <= p_d] = 0
-                d_predicted[d_prob > p_d] = 1
+                try:
+                    d_predicted = np.zeros(d_prob.shape)
+                    d_predicted[d_prob <= p_d] = 0
+                    d_predicted[d_prob > p_d] = 1
 
-                tn, fp, fn, tp = confusion_matrix(d_true, d_predicted).ravel()
+                    tn, fp, fn, tp = confusion_matrix(d_true, d_predicted).ravel()
 
-                sens = tp/(tp + fn)
-                spec = tn/(tn + fp)
+                    sens = tp/(tp + fn)
+                    spec = tn/(tn + fp)
 
-                harmonic_mean = 2*sens*spec / (sens + spec)
+                    harmonic_mean = 2*sens*spec / (sens + spec)
 
-                p_d_harmonic_mean.append(harmonic_mean)
+                    p_d_harmonic_mean.append(harmonic_mean)
+                except:
+                    print('Harmonic mean of sens/spec undefined for', p_d)
+                    p_d_harmonic_mean.append(0)
 
             print('P(A|BoL, ' + treatment + ') sensitivity/specificity harmonic means: ', p_d_harmonic_mean)
 
