@@ -59,10 +59,10 @@ def responder_roc(activity_truth, activity_posterior, untreated_posterior, resul
 
             for p_a in a_range:
                 try:
-                    a_true_inferred = np.ones(a_prob.shape)
-                    a_true_inferred[a_prob <= p_a] = 0
+                    a_true_inferred = np.zeros(a_prob.shape)
+                    a_true_inferred[a_prob > p_a] = 1
 
-                    tn, tp, _ = roc_curve(a_true_inferred, a_prob)
+                    # tn, tp, _ = roc_curve(a_true_inferred, a_prob)
                     p_a_auc.append(roc_auc_score(a_true_inferred, a_prob, 'weighted'))
                 except:
                     print('AUC undefined for:', p_a)
@@ -462,7 +462,7 @@ def predict_responders():
 
         responder_roc(activity_truth, activity_posterior, untreated_posterior, results_dir)
 
-        responder_posteriors = [activity_posterior, euclidean_knn_posterior, mahalanobis_knn_posterior, linear_svm_posterior, chi2_svm_posterior, rbf_svm_posterior]
+        activity_posteriors = [activity_posterior, euclidean_knn_posterior, mahalanobis_knn_posterior, linear_svm_posterior, chi2_svm_posterior, rbf_svm_posterior]
         classifier_names = ['Random Forest', '1-NN (Euclidean)', '1-NN (Mahalanobis)', 'SVM (linear)', 'SVM ($\\chi^2$)', 'SVM (RBF)']
 
         for treatment in treatments:
@@ -474,9 +474,10 @@ def predict_responders():
             plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
 
             y_true = np.concatenate(tuple(activity_truth[treatment]), axis=0)
-
-            for p, probabilities in enumerate(responder_posteriors):
+            print('GT size:', y_true.shape)
+            for p, probabilities in enumerate(activity_posteriors):
                 y_prob = np.concatenate(tuple(probabilities[treatment]), axis=0)
+                print('y_prob size:', y_prob.shape)
 
                 roc_auc = roc_auc_score(y_true, y_prob[:, 1], 'weighted')
                 fpr, tpr, _ = roc_curve(y_true, y_prob[:, 1])
