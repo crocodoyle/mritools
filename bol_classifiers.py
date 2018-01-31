@@ -33,6 +33,7 @@ visualizeAGroup = False
 letters = ['(a)', '(b)', '(c)', '(d)', '(e)', '(f)', '(g)', '(h)', '(i)', '(j)', '(k)', '(l)', '(m)', '(n)', '(o)']
 
 treatments = ['Placebo', 'Laquinimod', 'Avonex']
+treatment_labels = ['Untreated', 'Drug A', 'Drug B']
 
 threads = 1
 

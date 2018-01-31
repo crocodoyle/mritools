@@ -43,24 +43,31 @@ def responder_roc(activity_truth, activity_posterior, untreated_posterior, resul
         plt.figure()
 
         p_a_auc = []
+
+        p_d_distance = []
         p_d_harmonic_mean = []
+        p_d_anti_harmonic_mean = []
 
         if 'Placebo' not in treatment:
             a_prob = np.concatenate(tuple(untreated_posterior[treatment]), axis=0) # must use predictions for untreated
-            a_prob = a_prob[:, 1]                                                  # to infer what would have happened if untreate
+            a_prob = a_prob[:, 1]                                                  # to infer what would have happened if untreated
+
+            print('Untreated predictions (' + treatment + '):', a_prob)
 
             d_true = np.concatenate(tuple(activity_truth[treatment]), axis=0)
             d_prob = np.concatenate(tuple(activity_posterior[treatment]), axis=0)
 
             d_prob = d_prob[:, 1]                          # just consider the P(A=1|BoL, treatment)
 
-            a_range = np.linspace(0, 1, 50)
-            d_range = np.linspace(0, 1, 50)
+            a_range = np.linspace(0, 1, 50, endpoint=False)
+            d_range = np.linspace(0, 1, 50, endpoint=False)
 
             for p_a in a_range:
                 try:
                     a_true_inferred = np.zeros(a_prob.shape)
                     a_true_inferred[a_prob > p_a] = 1
+
+                    print('A untreated predictions:', a_true_inferred)
 
                     # tn, tp, _ = roc_curve(a_true_inferred, a_prob)
                     p_a_auc.append(roc_auc_score(a_true_inferred, a_prob, 'weighted'))
@@ -86,18 +93,29 @@ def responder_roc(activity_truth, activity_posterior, untreated_posterior, resul
                     sens = tp/(tp + fn)
                     spec = tn/(tn + fp)
 
+                    distance = np.sqrt( (1 - sens)**2 + (1 - spec)**2 )
                     harmonic_mean = 2*sens*spec / (sens + spec)
+                    anti_harmonic_mean = sens * spec / (2 - sens*spec)
 
+                    p_d_distance.append(distance)
                     p_d_harmonic_mean.append(harmonic_mean)
+                    p_d_anti_harmonic_mean.append(anti_harmonic_mean)
                 except:
-                    print('Harmonic mean of sens/spec undefined for', p_d)
+                    print('sens/spec or something else undefined for', p_d)
+                    p_d_distance.append(1)
                     p_d_harmonic_mean.append(0)
+                    p_d_anti_harmonic_mean.append(0)
 
             print('P(A|BoL, ' + treatment + ') sensitivity/specificity harmonic means: ', p_d_harmonic_mean)
 
             # select operating point with best AUC
 
             best_p_d = d_range[np.argmax(p_d_harmonic_mean)]
+
+            # best is min distance, max (anti) harmonic mean of sens/spec
+            print('Best P(A|BoL, ' + treatment + ') using distance:', d_range[np.argmin(p_d_distance)])
+            print('Best P(A|BoL, ' + treatment + ') using harmonic mean:', d_range[np.argmax(p_d_harmonic_mean)])
+            print('Best P(A|BoL, ' + treatment + ') using anti-harmonic mean:', d_range[np.argmax(p_d_anti_harmonic_mean)])
 
             print('Best threshold for untreated activity prediction: ', best_p_a)
             print('Best threshold for treated activity prediction: ', best_p_d)
@@ -135,6 +153,7 @@ def responder_roc(activity_truth, activity_posterior, untreated_posterior, resul
 
     plt.savefig(results_dir + 'responder_' + 'p_a_'+ str(best_p_a) + '_p_d_' + str(best_p_d) + '_roc.png', bbox_inches='tight')
 
+    return best_p_a, best_p_d
 
 def predict_responders():
     start = time.time()
@@ -460,10 +479,10 @@ def predict_responders():
                 #     plotScores(bestScoring, "Activity Prediction", results_dir)
 
 
-        responder_roc(activity_truth, activity_posterior, untreated_posterior, results_dir)
+        best_p_a, best_p_d = responder_roc(activity_truth, activity_posterior, untreated_posterior, results_dir)
 
-        activity_posteriors = [activity_posterior, euclidean_knn_posterior, mahalanobis_knn_posterior, linear_svm_posterior, chi2_svm_posterior, rbf_svm_posterior]
-        classifier_names = ['Random Forest', '1-NN (Euclidean)', '1-NN (Mahalanobis)', 'SVM (linear)', 'SVM ($\\chi^2$)', 'SVM (RBF)']
+        activity_posteriors = [activity_posterior, euclidean_knn_posterior, linear_svm_posterior, chi2_svm_posterior, rbf_svm_posterior]
+        classifier_names = ['Random Forest', '1-NN (Euclidean)', 'SVM (linear)', 'SVM ($\\chi^2$)', 'SVM (RBF)']
 
         for treatment in treatments:
             print('GT:', np.asarray(activity_truth[treatment][0]).shape, np.asarray(activity_truth[treatment][1]).shape)
