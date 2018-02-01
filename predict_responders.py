@@ -39,14 +39,9 @@ mri_list_location = datadir + 'mri_list.pkl'
 
 def responder_roc(activity_truth, activity_posterior, untreated_posterior, results_dir):
 
+    plt.figure()
     for treatment in treatments:
-        plt.figure()
-
-        p_a_auc = []
-
-        p_d_distance = []
-        p_d_harmonic_mean = []
-        p_d_anti_harmonic_mean = []
+        p_a_auc, p_d_distance, p_d_harmonic_mean, p_d_anti_harmonic_mean = [], [], [], []
 
         if 'Placebo' not in treatment:
             a_prob = np.concatenate(tuple(untreated_posterior[treatment]), axis=0) # must use predictions for untreated
@@ -70,7 +65,14 @@ def responder_roc(activity_truth, activity_posterior, untreated_posterior, resul
                     print('A untreated predictions:', a_true_inferred)
 
                     # tn, tp, _ = roc_curve(a_true_inferred, a_prob)
-                    p_a_auc.append(roc_auc_score(a_true_inferred, a_prob, 'weighted'))
+                    auc_weighted = roc_auc_score(a_true_inferred, a_prob, 'weighted')
+                    auc_macro = roc_auc_score(a_true_inferred, a_prob, 'macro')
+                    auc_micro = roc_auc_score(a_true_inferred, a_prob, 'micro')
+                    auc_samples = roc_auc_score(a_true_inferred, a_prob, 'samples')
+
+                    print('AUCs (weighted, macro, micro, smaples):', auc_weighted, auc_macro, auc_micro, auc_samples)
+
+                    p_a_auc.append(auc_macro)
                 except:
                     print('AUC undefined for:', p_a)
                     p_a_auc.append(0)
@@ -142,15 +144,16 @@ def responder_roc(activity_truth, activity_posterior, untreated_posterior, resul
             else:
                 plt.plot(fpr, tpr, color='darkred', lw=lw, label=treatment + ' ROC (AUC = %0.2f)' % roc_auc)
 
-            plt.xlim([0.0, 1.0])
-            plt.ylim([0.0, 1.05])
-            plt.xlabel('False Positive Rate', fontsize=20)
-            plt.ylabel('True Positive Rate', fontsize=20)
             # plt.title('Receiver operating characteristic example', fontsize=24)
-            plt.legend(loc="lower right", shadow=True, fontsize=20)
 
             print(treatment + ' optimal thresholds (activity, drug_activity): ', best_p_a, best_p_d)
 
+    plt.xlabel('False Positive Rate', fontsize=20)
+    plt.ylabel('True Positive Rate', fontsize=20)
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+
+    plt.legend(loc="lower right", shadow=True, fontsize=20)
     plt.savefig(results_dir + 'responder_' + 'p_a_'+ str(best_p_a) + '_p_d_' + str(best_p_d) + '_roc.png', bbox_inches='tight')
 
     return best_p_a, best_p_d
