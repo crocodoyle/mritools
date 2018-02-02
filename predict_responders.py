@@ -525,5 +525,8 @@ def predict_responders():
         elapsed = end - start
         print(str(elapsed / 60), 'minutes elapsed.')
 
+    return experiment_number
+
 if __name__ == "__main__":
-    predict_responders()
+    experiment_number = predict_responders()
+    print('This experiment was brought to you by the number:', )
