@@ -230,9 +230,6 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
 
                     lesionIndex += 1
 
-        for size in sizes:
-            for lesion_type_key in lesionIndices[size]:
-                print(len(lesionIndices[size][lesion_type_key]), size, 'training lesions of type', lesion_type_key)
 
         if visualizeAGroup:
             n = 6
@@ -277,6 +274,11 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
                     # plt.subplots_adjust(wspace=0.01, hspace=0.01)
                     plt.savefig(results_dir + size + '_lesion_type_' + str(k) + '_fold_' + str(fold_num) + '.png', dpi=600, bbox_inches='tight')
                     plt.clf()
+
+    for size in sizes:
+        for n in range(nClusters):
+            print(len(lesionIndices[size][n]), size, 'training lesions of type', str(n))
+
 
     bol = np.zeros((numWithClinical, codebook_length))
 
