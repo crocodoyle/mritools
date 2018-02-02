@@ -341,8 +341,8 @@ def random_forest(trainData, testData, trainOutcomes, testOutcomes, mri_test, mi
             ax = fig.add_subplot(2, 1, 1)
             ax.set_xticks([])
             ax.set_yticks([])
-            ax.imshow(img[30, 20:225, 20:150], cmap = plt.cm.gray, interpolation = 'nearest',origin='lower')
-            ax.imshow(maskImg[30, 20:225, 20:150], cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
+            ax.imshow(img[30, 20:200, 20:175], cmap = plt.cm.gray, interpolation = 'nearest',origin='lower')
+            ax.imshow(maskImg[30, 20:200, 20:175], cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
             ax.set_xlabel('High probability active')
 
             ax = fig.add_subplot(2, 1, 2)

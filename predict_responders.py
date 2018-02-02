@@ -9,8 +9,9 @@ import matplotlib.pyplot as plt
 
 from sklearn.mixture import GMM
 from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import roc_curve, roc_auc_score
+from sklearn.metrics import roc_curve, roc_auc_score, brier_score_loss
 from sklearn.metrics import confusion_matrix
+from sklearn.calibration import calibration_curve
 
 import load_data
 import bol_classifiers
@@ -39,15 +40,17 @@ mri_list_location = datadir + 'mri_list.pkl'
 
 def responder_roc(activity_truth, activity_posterior, untreated_posterior, results_dir):
 
-    plt.figure()
+    fig1 = plt.figure(0)
+    ax = fig1.add_subplot(1, 1, 1)
     for treatment in treatments:
         p_a_auc, p_d_distance, p_d_harmonic_mean, p_d_anti_harmonic_mean = [], [], [], []
+        p_a_brier = []
 
         if 'Placebo' not in treatment:
             a_prob = np.concatenate(tuple(untreated_posterior[treatment]), axis=0) # must use predictions for untreated
             a_prob = a_prob[:, 1]                                                  # to infer what would have happened if untreated
 
-            print('Untreated predictions (' + treatment + '):', a_prob)
+            # print('Untreated predictions (' + treatment + '):', a_prob)
 
             d_true = np.concatenate(tuple(activity_truth[treatment]), axis=0)
             d_prob = np.concatenate(tuple(activity_posterior[treatment]), axis=0)
@@ -57,12 +60,24 @@ def responder_roc(activity_truth, activity_posterior, untreated_posterior, resul
             a_range = np.linspace(0, 1, 50, endpoint=False)
             d_range = np.linspace(0, 1, 50, endpoint=False)
 
+            fig2 = plt.figure(1, figsize=(10, 10))
+            ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
+            ax2 = plt.subplot2grid((3, 1), (2, 0))
+
+            ax1.plot(a_range, a_range, "k:", label="Perfectly calibrated")
+
             for p_a in a_range:
                 try:
                     a_true_inferred = np.zeros(a_prob.shape)
                     a_true_inferred[a_prob > p_a] = 1
 
-                    print('A untreated predictions:', a_true_inferred)
+                    # print('A untreated predictions:', a_true_inferred)
+                    fraction_of_positives, mean_predicted_value = calibration_curve(a_true_inferred, a_prob, n_bins=10)
+
+                    score = brier_score_loss(a_true_inferred, a_prob)
+                    p_a_brier.append(score)
+
+                    ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label="%s (%1.3f)" % (str(p_a), score))
 
                     # tn, tp, _ = roc_curve(a_true_inferred, a_prob)
                     auc_weighted = roc_auc_score(a_true_inferred, a_prob, 'weighted')
@@ -76,12 +91,27 @@ def responder_roc(activity_truth, activity_posterior, untreated_posterior, resul
                 except:
                     print('AUC undefined for:', p_a)
                     p_a_auc.append(0)
+                    p_a_brier.append(1)
 
-            best_p_a = a_range[np.argmax(p_a_auc)]
+            ax2.hist(a_prob, range=(0, 1), bins=10, label='P(A|BoL, untr)', histtype="step", lw=2)
+
+            ax1.set_ylabel("Fraction of positives")
+            ax1.set_ylim([-0.05, 1.05])
+            ax1.legend(loc="lower right", shadow=True)
+            ax1.set_title('Calibration plots  (reliability curve)')
+
+            ax2.set_xlabel("Mean predicted value")
+            ax2.set_ylabel("Count")
+            ax2.legend(loc="upper center", ncol=2, shadow=True)
+
+            fig2.tight_layout()
+            fig2.savefig(results_dir, treatment + '_calibration_curve.png', bbox_inches='tight')
+
+            best_p_a = a_range[np.argmin(p_a_brier)]
             a_true = np.ones(a_prob.shape)
             a_true[a_prob <= best_p_a] = 0
 
-            print('P(A|BoL, untr) AUCs: ', p_a_auc)
+            print('P(A|BoL, untr) Brier scores: ', p_a_brier)
             print('Best theshold:', best_p_a)
 
             for p_d in d_range:
@@ -139,22 +169,22 @@ def responder_roc(activity_truth, activity_posterior, untreated_posterior, resul
 
             lw = 2
             if 'Laquinimod' in treatment:
-                plt.plot(fpr, tpr, color='darkorange', lw=lw, label=treatment + ' ROC (AUC = %0.2f)' % roc_auc)
-                plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+                ax.plot(fpr, tpr, color='darkorange', lw=lw, label=treatment + ' ROC (AUC = %0.2f)' % roc_auc)
+                ax.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
             else:
-                plt.plot(fpr, tpr, color='darkred', lw=lw, label=treatment + ' ROC (AUC = %0.2f)' % roc_auc)
+                ax.plot(fpr, tpr, color='darkred', lw=lw, label=treatment + ' ROC (AUC = %0.2f)' % roc_auc)
 
             # plt.title('Receiver operating characteristic example', fontsize=24)
 
             print(treatment + ' optimal thresholds (activity, drug_activity): ', best_p_a, best_p_d)
 
-    plt.xlabel('False Positive Rate', fontsize=20)
-    plt.ylabel('True Positive Rate', fontsize=20)
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
+    ax.set_xlabel('False Positive Rate', fontsize=20)
+    ax.set_ylabel('True Positive Rate', fontsize=20)
+    ax.set_xlim([0.0, 1.0])
+    ax.set_ylim([0.0, 1.05])
 
-    plt.legend(loc="lower right", shadow=True, fontsize=20)
-    plt.savefig(results_dir + 'responder_' + 'p_a_'+ str(best_p_a) + '_p_d_' + str(best_p_d) + '_roc.png', bbox_inches='tight')
+    ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., shadow=True, fontsize=20)
+    fig1.savefig(results_dir + 'responder_' + 'p_a_'+ str(best_p_a) + '_p_d_' + str(best_p_d) + '_roc.png', bbox_inches='tight')
 
     return best_p_a, best_p_d
 
@@ -486,32 +516,31 @@ def predict_responders():
 
         activity_posteriors = [activity_posterior, euclidean_knn_posterior, linear_svm_posterior, chi2_svm_posterior, rbf_svm_posterior]
         classifier_names = ['Random Forest', '1-NN (Euclidean)', 'SVM (linear)', 'SVM ($\\chi^2$)', 'SVM (RBF)']
+        colours = ['darkred', 'indianred', 'lightsalmon', 'darkorange', 'goldenrod', 'tan']
 
         for treatment in treatments:
-            print('GT:', np.asarray(activity_truth[treatment][0]).shape, np.asarray(activity_truth[treatment][1]).shape)
-            print('Predictions:', np.asarray(activity_posterior[treatment][0]).shape, np.asarray(activity_posterior[treatment][1]).shape)
+            # print('GT:', np.asarray(activity_truth[treatment][0]).shape, np.asarray(activity_truth[treatment][1]).shape)
+            # print('Predictions:', np.asarray(activity_posterior[treatment][0]).shape, np.asarray(activity_posterior[treatment][1]).shape)
 
             plt.figure(figsize=(8,8))
             lw = 2
             plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
 
             y_true = np.concatenate(tuple(activity_truth[treatment]), axis=0)
-            print('GT size:', y_true.shape)
-            for p, probabilities in enumerate(activity_posteriors):
+            for p, (probabilities, colour) in enumerate(zip(activity_posteriors, colours)):
                 y_prob = np.concatenate(tuple(probabilities[treatment]), axis=0)
-                print('y_prob size:', y_prob.shape)
 
                 roc_auc = roc_auc_score(y_true, y_prob[:, 1], 'weighted')
                 fpr, tpr, _ = roc_curve(y_true, y_prob[:, 1])
-                plt.plot(fpr, tpr, color='darkorange', lw=lw, label=classifier_names[p] + ' ROC (area = %0.2f)' % roc_auc)
+                plt.plot(fpr, tpr, color=colour, lw=lw, label=classifier_names[p] + ' ROC (area = %0.2f)' % roc_auc)
 
             plt.xlim([0.0, 1.0])
             plt.ylim([0.0, 1.05])
             plt.xlabel('False Positive Rate', fontsize=20)
             plt.ylabel('True Positive Rate', fontsize=20)
             # plt.title('Receiver operating characteristic example', fontsize=24)
-            plt.legend(loc="lower right", shadow=True, fontsize=20)
-            plt.savefig(results_dir + 'rf_' + treatment + '_roc.png', bbox_inches='tight')
+            plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., shadow=True, fontsize=20)
+            plt.savefig(results_dir + 'activity_prediction_' + treatment + '_roc.png', bbox_inches='tight')
 
         # print("FAILED FOLDS:", failedFolds)
 
