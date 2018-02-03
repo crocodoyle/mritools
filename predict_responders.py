@@ -85,7 +85,7 @@ def responder_roc(activity_truth, activity_posterior, untreated_posterior, resul
                     auc_micro = roc_auc_score(a_true_inferred, a_prob, 'micro')
                     auc_samples = roc_auc_score(a_true_inferred, a_prob, 'samples')
 
-                    print('AUCs (weighted, macro, micro, smaples):', auc_weighted, auc_macro, auc_micro, auc_samples)
+                    # print('AUCs (weighted, macro, micro, smaples):', auc_weighted, auc_macro, auc_micro, auc_samples)
 
                     p_a_auc.append(auc_macro)
                 except:
@@ -105,7 +105,7 @@ def responder_roc(activity_truth, activity_posterior, untreated_posterior, resul
             ax2.legend(loc="upper center", ncol=2, shadow=True)
 
             fig2.tight_layout()
-            fig2.savefig(results_dir, treatment + '_calibration_curve.png', bbox_inches='tight')
+            fig2.savefig(results_dir, treatment + '_calibration_curve.png')
 
             best_p_a = a_range[np.argmin(p_a_brier)]
             a_true = np.ones(a_prob.shape)
