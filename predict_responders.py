@@ -105,7 +105,7 @@ def responder_roc(activity_truth, activity_posterior, untreated_posterior, resul
             ax2.legend(loc="upper center", ncol=2, shadow=True)
 
             fig2.tight_layout()
-            fig2.savefig(results_dir, treatment + '_calibration_curve.png')
+            plt.savefig(results_dir, treatment + '_calibration_curve.png')
 
             best_p_a = a_range[np.argmin(p_a_brier)]
             a_true = np.ones(a_prob.shape)
@@ -184,7 +184,7 @@ def responder_roc(activity_truth, activity_posterior, untreated_posterior, resul
     ax.set_ylim([0.0, 1.05])
 
     ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., shadow=True, fontsize=20)
-    fig1.savefig(results_dir + 'responder_' + 'p_a_'+ str(best_p_a) + '_p_d_' + str(best_p_d) + '_roc.png', bbox_inches='tight')
+    plt.savefig(results_dir + 'responder_' + 'p_a_'+ str(best_p_a) + '_p_d_' + str(best_p_d) + '_roc.png', bbox_inches='tight')
 
     return best_p_a, best_p_d
 
