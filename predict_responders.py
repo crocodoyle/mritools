@@ -104,8 +104,8 @@ def responder_roc(activity_truth, activity_posterior, untreated_posterior, resul
             ax2.set_ylabel("Count")
             ax2.legend(loc="upper center", ncol=2, shadow=True)
 
-            fig2.tight_layout()
-            plt.savefig(results_dir, treatment + '_calibration_curve.png')
+            plt.tight_layout()
+            plt.savefig(results_dir + treatment + '_calibration_curve.png')
 
             best_p_a = a_range[np.argmin(p_a_brier)]
             a_true = np.ones(a_prob.shape)
