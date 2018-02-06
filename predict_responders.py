@@ -367,8 +367,7 @@ def predict_responders():
                 all_test_patients[treatment].append(testingPatientsByTreatment[treatment])
 
                 if treatment == "Placebo":
-                    (bestFeatureScore, bestFeaturePredictions, placebo_rf), (probScore, probPredicted) = bol_classifiers.random_forest(bestTrainData, bestTestData, trainOutcomes,
-                                                                        testOutcomes, mri_test, mixture_models, results_dir)
+                    (bestFeatureScore, bestFeaturePredictions, placebo_rf), (probScore, probPredicted) = bol_classifiers.random_forest(bestTrainData, bestTestData, trainOutcomes, testOutcomes, mri_test, mixture_models, results_dir)
 
                     activity_truth[treatment].append(testOutcomes)
                     activity_posterior[treatment].append(probPredicted)

@@ -364,7 +364,7 @@ def random_forest(trainData, testData, trainOutcomes, testOutcomes, mri_test, mi
 
     onlyCertainScore = calculateScores(probPredicted, actual)
         
-    return (rfscore, predictions, rf), (onlyCertainScore, probabilities), (certainCorrect, certainTotal)
+    return (rfscore, predictions, rf), (onlyCertainScore, probabilities)
 
 
 def identify_responders(trainData, testData, trainOutcomes, testOutcomes, train_patients, test_patients, drug_rf, placebo_rf):
