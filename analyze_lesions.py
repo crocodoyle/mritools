@@ -237,7 +237,12 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
                 if len(lesionIndices[size][k]) > n:
                     plt.figure(figsize=(15, 5))
 
-                    for i, (brainIndex, lesionIndex) in enumerate(zip(brainIndices[size][k][0:n], lesionIndices[size][k][0:n])):
+
+                    examples_list = list(zip(brainIndices[size][k], lesionIndices[size][k]))
+                    random.shuffle(examples_list)
+                    brain_indices, lesion_indices = zip(*examples_list)
+
+                    for i, (brainIndex, lesionIndex) in enumerate(zip(brain_indices[0:n], lesion_indices[0:n])):
                         scan = mri_list[brainIndex]
                         img = nib.load(scan.images['t2w']).get_data()
                         lesionMaskImg = np.zeros((np.shape(img)))
