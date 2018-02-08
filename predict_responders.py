@@ -73,7 +73,7 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
 
                 ax1.plot(a_range, a_range, "k:", label="Perfectly calibrated")
 
-                for p_a in a_range:
+                for n_a, p_a in enumerate(a_range):
                     try:
                         a_true_inferred = np.zeros(a_prob.shape)
                         a_true_inferred[a_prob > p_a] = 1
@@ -84,7 +84,8 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                         score = brier_score_loss(a_true_inferred, a_prob)
                         p_a_brier.append(score)
 
-                        ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label="%s (%1.3f)" % (str(p_a), score))
+                        if n_a%10 == 0:
+                            ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label="%s (%1.3f)" % (str(p_a), score))
 
                         # tn, tp, _ = roc_curve(a_true_inferred, a_prob)
                         auc_weighted = roc_auc_score(a_true_inferred, a_prob, 'weighted')
@@ -100,7 +101,7 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                         p_a_auc.append(0)
                         p_a_brier.append(1)
 
-                ax2.hist(a_prob, range=(0, 1), bins=10, label='P(A|BoL, untr)', histtype="step", lw=2)
+                ax2.hist(a_prob, range=(0, 1), bins=20, label='P(A|BoL, untr)', histtype="step", lw=2)
 
                 ax1.set_ylabel("Fraction of positives")
                 ax1.set_ylim([-0.05, 1.05])
@@ -174,6 +175,7 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                 roc_auc = roc_auc_score(r_true, r_predicted, 'weighted')
                 fpr, tpr, _ = roc_curve(r_true, r_predicted)
 
+                plt.figure(0)
                 lw = 2
                 if 'Laquinimod' in treatment:
                     ax.plot(fpr, tpr, color='darkorange', lw=lw, label=treatment + ' ROC (AUC = %0.2f)' % roc_auc)
@@ -195,6 +197,7 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
 
                     responder_writer.writerow([scan.uid, treatment, t2_les, p_a_untr, p_a_tr, respond])
 
+        plt.figure(0)
         ax.set_xlabel('False Positive Rate', fontsize=20)
         ax.set_ylabel('True Positive Rate', fontsize=20)
         ax.set_xlim([0.0, 1.0])
