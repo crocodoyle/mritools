@@ -21,7 +21,7 @@ lesion_atlas = data_dir + 'quarantine/common/models/icbm_avg_3714_t2les.mnc.gz'
 
 
 threads = 8
-recompute = False
+recompute = True
 reconstruct = False
 
 doLBP = True
@@ -33,8 +33,8 @@ reload_list = False
 
 modalities = ['t1p', 't2w', 'pdw', 'flr']
 
-riftRadii = [1,2,3]
-lbpRadii = [1,2,3]
+riftRadii = [3, 6]
+lbpRadii = [1]
 
 lbpBinsTheta = 6
 lbpBinsPhi = 4
@@ -170,7 +170,7 @@ def uniformLBP(image, lesion, radius):
     r = radius
     
     if size == 'tiny' or size == 'small':
-        uniformPatterns = np.zeros((9))
+        uniformPatterns = np.zeros(9, dtype='float32')
         
         for i, [x,y,z] in enumerate(lesion):
             threshold = image[x,y,z]
@@ -200,10 +200,10 @@ def uniformLBP(image, lesion, radius):
                 uniformPatterns[8] += 1.0 / float(len(lesion))
                 
     elif size == 'medium' or size == 'large':
-        uniformPatterns = np.zeros((9))
-        garbage, skeleton = skeletons.hitOrMissThinning(lesion, thinners)
+        uniformPatterns = np.zeros(9, dtype='float32')
+        # garbage, skeleton = skeletons.hitOrMissThinning(lesion, thinners)
 
-        for i, [x,y,z] in enumerate(skeleton):
+        for i, [x,y,z] in enumerate(lesion):
             threshold = image[x,y,z]
 
             lbp.set(image[x-r, y, z] > threshold, 0)
@@ -253,19 +253,13 @@ def generateRIFTRegions2D(radii):
     return pointLists
     
 def getRIFTFeatures2D(scan, riftRegions, img):
-    numBinsTheta = 8
-    numQuadrants = 8
-    
+    numBinsTheta = 4
     sigma = np.sqrt(2)
     
     binsTheta = np.linspace(0, 2*np.pi, num=numBinsTheta+1, endpoint=True)
     
-    grad_x = {}
-    grad_y = {}
-    grad_z = {}
-
-    mag = {}
-    theta = {}
+    grad_x, grad_y, grad_z = {}, {}, {}
+    mag, theta = {}, {}
     
     for mod in modalities:
         grad_x[mod], grad_y[mod], grad_z[mod] = np.gradient(img[mod])
@@ -273,7 +267,6 @@ def getRIFTFeatures2D(scan, riftRegions, img):
         mag[mod] = np.sqrt(np.square(grad_x[mod]) + np.square(grad_y[mod]))
         theta[mod] = np.arctan2(grad_y[mod], grad_x[mod])
         
-    feature = np.zeros((1, len(riftRadii), numQuadrants, numBinsTheta))
     for l, lesion in enumerate(scan.lesionList):
         size = ""
         if (len(lesion) > 2) and (len(lesion) < 11):
@@ -295,53 +288,57 @@ def getRIFTFeatures2D(scan, riftRegions, img):
                 feature = np.zeros((len(riftRadii), numBinsTheta))
                 for pIndex, point in enumerate(lesion):
                     xc, yc, zc = point
-                        
                     for r, region in enumerate(riftRegions):
-                        gradientData = np.zeros((len(region), 2))
-    
+                        gradient_direction, gradient_strength = [], []
                         for p, evalPoint in enumerate(region):
                             x = xc + evalPoint[0]
                             y = yc + evalPoint[1]
                             z = zc
-                            
-                            relTheta = np.arctan2((y - yc), (x - xc))
-                            
-                            outwardTheta = (theta[mod][x,y,z] - relTheta + 2*np.pi)%(2*np.pi)
-    
-                            gaussianWindow = 1/(sigma * np.sqrt(2 * np.pi)) * np.exp( - (np.square(y-yc) + np.square(x-xc)) / (2 * sigma**2))
-                            gradientData[p,:] = [outwardTheta, mag[mod][x,y,z]*gaussianWindow]
 
-                        hist, bins = np.histogram(gradientData[:, 0], bins=binsTheta, range=(0, np.pi), weights=gradientData[:,1])
-                        hist = np.divide(hist, sum(hist))   
+                            relTheta = np.arctan2((y - yc), (x - xc))
+                            outwardTheta = (theta[mod][x,y,z] - relTheta + 2*np.pi)%(2*np.pi)
+                            gaussianWindow = 1/(sigma * np.sqrt(2 * np.pi)) * np.exp( - (np.square(y-yc) + np.square(x-xc)) / (2 * sigma**2))
+
+                            gradient_direction.append(outwardTheta)
+                            gradient_strength.append(mag[mod][x,y,z]*gaussianWindow)
+
+                        hist, bins = np.histogram(gradient_direction, bins=binsTheta, range=(0, np.pi), weights=gradient_strength)
+                        # hist = np.divide(hist, sum(hist))
                         if not np.isnan(np.min(hist)):
                             feature[r, :] += hist / float(len(lesion))
+                        else:
+                            print('NaNs in RIFT for', scan.uid, 'at radius', str(riftRadii[r]))
   
             elif size == 'medium' or size == 'large':
                 feature = np.zeros((len(riftRadii), numBinsTheta))
+                # garbage, skeleton = skeletons.hitOrMissThinning(lesion, thinners)
 
-                garbage, skeleton = skeletons.hitOrMissThinning(lesion, thinners)
+                for pIndex, point in enumerate(lesion):
+                    xc, yc, zc = point
+                    for r, region in enumerate(riftRegions):
+                        for p, evalPoint in enumerate(region):
+                            gradient_direction, gradient_strength = [], []
 
-                for pIndex, point in enumerate(skeleton):
-                        xc, yc, zc = point
-                            
-                        for r, region in enumerate(riftRegions):
-                            gradientData = np.zeros((len(region), 2))
-        
-                            for p, evalPoint in enumerate(region):
-                                x = xc + evalPoint[0]
-                                y = yc + evalPoint[1]
-                                z = zc
-                                
+                            x = xc + evalPoint[0]
+                            y = yc + evalPoint[1]
+                            z = zc
+
+                            if [x, y, z] in lesion:
                                 relTheta = np.arctan2((y - yc), (x - xc))
-                                
-                                outwardTheta = (theta[mod][x,y,z] - relTheta + 2*np.pi)%(2*np.pi)
-        
-                                gradientData[p,:] = [outwardTheta, mag[mod][x,y,z]]
-      
-                            hist, bins = np.histogram(gradientData[:, 0], bins=binsTheta, range=(0, np.pi), weights=gradientData[:,1])
-                            hist = np.divide(hist, sum(hist))
-                            if not np.isnan(np.min(hist)):
-                                feature[r, :] += hist / float(len(skeleton))
+                                outwardTheta = (theta[mod][x, y, z] - relTheta + 2 * np.pi) % (2 * np.pi)
+
+                                gradient_direction.append(outwardTheta)
+                                gradient_strength.append(mag[mod][x, y, z])
+
+                            gaussianWindow = 1 / (sigma * np.sqrt(2 * np.pi)) * np.exp(- (np.square(y - yc) + np.square(x - xc)) / (2 * sigma ** 2))
+
+                        hist, bins = np.histogram(gradient_direction, bins=binsTheta, range=(0, np.pi), weights=gradient_strength)
+                        # hist = np.divide(hist, sum(hist))
+
+                        if not np.isnan(np.min(hist)):
+                            feature[r, :] += hist / float(len(lesion))
+                        else:
+                            print('NaNs in RIFT for', scan.uid, 'at radius', str(riftRadii[r]))
 
             saveDocument[mod] = feature
 
@@ -358,7 +355,7 @@ def loadMRIList():
                 scan = mri(f)
                 
                 if os.path.isfile(scan.lesions):
-                    if os.path.isfile(scan.images['t1p']) and os.path.isfile(scan.images['t2w']) and  os.path.isfile(scan.images['pdw']) and os.path.isfile(scan.images['flr']):
+                    if os.path.isfile(scan.images['t1p']) and os.path.isfile(scan.images['t2w']) and os.path.isfile(scan.images['pdw']) and os.path.isfile(scan.images['flr']):
                         print('Parsing files for', f)
                         mri_list.append(scan)
                         complete_data_subjects += 1
@@ -381,37 +378,42 @@ def loadMRIList():
 
 
 def getICBMContext(scan, images):
-    contextMin = {"csf": -0.001, "wm": -0.001, "gm": -0.001, "pv": -0.001, "lesion": -0.001}
-    contextMax = {'csf': 1.001, 'wm': 1.001, 'gm': 1.001, 'pv': 1.001, 'lesion': 0.348}
-    
-    numBins = 4
-    
+    # contextMin = {"csf": -0.001, "wm": -0.001, "gm": -0.001, "pv": -0.001, "lesion": -0.001}
+    # contextMax = {'csf': 1.001, 'wm': 1.001, 'gm': 1.001, 'pv': 1.001, 'lesion': 0.348}
+    #
+    # numBins = 4
+
+    wm_tracts = ['Anterior_Segment', 'Arcuate', 'Cingulum', 'Cortico_Ponto_Cerebellum', 'Cortico_Spinal',
+                 'Inferior_Cerebellar_Pedunculus', 'Inferior_Longitudinal_Fasciculus',
+                 'Inferior_Occipito_Frontal_Fasciculus', 'Long_Segment', 'Optic_Radiations', 'Posterior_Segment',
+                 'Superior_Cerebelar_Pedunculus', 'Uncinate', 'Anterior_Commissure', 'Corpus_Callosum', 'Fornix', 'Internal_Capsule']
+
     for tissue in scan.tissues:
         filename = scan.priors[tissue]
-        try:
-            images[tissue] = nib.load(filename).get_data()
-        except Exception as e:
-            print('Error for tissue', tissue, ':', e)
+        images[tissue] = nib.load(filename).get_data()
+
+    for wm_tract in wm_tracts:
+        images[wm_tract] = nib.load('/data1/users/adoyle/atlases/Catani/MSLAQ/' + wm_tract + '.nii').get_data()
 
     for l, lesion in enumerate(scan.lesionList):
         saveDocument = {}
         saveDocument['_id'] = scan.uid + '_' + str(l)
             
-        for tissue in scan.tissues:
+        for tissue in scan.tissues + wm_tracts:
             context = []
 
             for p in lesion:
                 context.append(images[tissue][p[0], p[1], p[2]])
                 
-            contextHist = np.histogram(context, numBins, (contextMin[tissue], contextMax[tissue]))
-            contextHist = contextHist[0] / np.sum(contextHist[0], dtype='float')
-            
-            if np.isnan(contextHist).any():
-                contextHist = np.zeros(numBins)
-                contextHist[0] = 1
+            # contextHist = np.histogram(context, numBins, (contextMin[tissue], contextMax[tissue]))
+            # contextHist = contextHist[0] / np.sum(contextHist[0], dtype='float')
+            #
+            # if np.isnan(contextHist).any():
+            #     contextHist = np.zeros(numBins)
+            #     contextHist[0] = 1
 
             saveDocument[tissue] = [np.mean(context), np.var(context)]
-        
+
         pickle.dump(saveDocument, open(scan.features_dir + 'context_' + str(l) + '.pkl', "wb"))
 
 
@@ -449,8 +451,8 @@ def getLBPFeatures(scan, images):
 
 
 def getIntensityFeatures(scan, images):
-    intensityMin = {"t1p": 32.0, "t2w": 10.0, "flr": 33.0, "pdw": 49.0}
-    intensityMax = {'t1p': 1025.0, 't2w': 1000.0, 'flr': 1016.0, 'pdw': 1018.0}
+    # intensityMin = {"t1p": 32.0, "t2w": 10.0, "flr": 33.0, "pdw": 49.0}
+    # intensityMax = {'t1p': 1025.0, 't2w': 1000.0, 'flr': 1016.0, 'pdw': 1018.0}
 
     for l, lesion in enumerate(scan.lesionList):
         saveDocument = {}
@@ -463,12 +465,12 @@ def getIntensityFeatures(scan, images):
             for point in lesion:
                 intensities.append(images[m][point[0], point[1], point[2]])
             
-            intensityHist = np.histogram(intensities, histBins, (intensityMin[m], intensityMax[m]))
-            intensityHist = intensityHist[0] / np.sum(intensityHist[0], dtype='float')
-            
-            if np.isnan(intensityHist).any():
-                intensityHist = np.zeros((histBins))
-                intensityHist[0] = 1
+            # intensityHist = np.histogram(intensities, histBins, (intensityMin[m], intensityMax[m]))
+            # intensityHist = intensityHist[0] / np.sum(intensityHist[0], dtype='float')
+            #
+            # if np.isnan(intensityHist).any():
+            #     intensityHist = np.zeros((histBins))
+            #     intensityHist[0] = 1
 
             saveDocument[m] = [np.mean(intensities), np.var(intensities)]
         

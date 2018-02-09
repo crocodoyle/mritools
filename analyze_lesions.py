@@ -41,8 +41,13 @@ sizes = ["tiny", "small", "medium", "large"]
 
 scoringMetrics = ['TP', 'FP', 'TN', 'FN']
 
-lbpRadii = [1,2,3]
-riftRadii = [1,2,3]
+wm_tracts = ['Anterior_Segment', 'Arcuate', 'Cingulum', 'Cortico_Ponto_Cerebellum', 'Cortico_Spinal',
+             'Inferior_Cerebellar_Pedunculus', 'Inferior_Longitudinal_Fasciculus',
+             'Inferior_Occipito_Frontal_Fasciculus', 'Long_Segment', 'Optic_Radiations', 'Posterior_Segment',
+             'Superior_Cerebelar_Pedunculus', 'Uncinate', 'Anterior_Commissure', 'Corpus_Callosum', 'Fornix', 'Internal_Capsule']
+
+lbpRadii = [1]
+riftRadii = [3, 6]
 selectK = False
 visualizeAGroup = True
 

@@ -11,7 +11,7 @@ class mri(object):
         self.data_dir = '/data1/users/adoyle/MS-LAQ/MS-LAQ-302-STX/'
 
         self.folder = self.data_dir + tokens[1] + '/' + tokens[2] + '_' + tokens[3] + '/m0/'
-        self.features_dir = self.folder[:-3] + 'results'
+        self.features_dir = self.folder[:-3] + 'results/'
         os.makedirs(self.features_dir, exist_ok=True)
         
         self.uid = tokens[2] + tokens[3]
