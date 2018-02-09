@@ -29,7 +29,7 @@ doContext = True
 doRIFT = True
 doIntensity = True
 
-reload_list = False
+reload_list = True
 
 modalities = ['t1p', 't2w', 'pdw', 'flr']
 
@@ -247,8 +247,8 @@ def generateRIFTRegions2D(radii):
                 pointLists[0].append([x, y])
             elif distance > radii[0] and distance <= radii[1]:
                 pointLists[1].append([x, y])
-            if distance > radii[1] and distance <= radii[2]:
-                pointLists[2].append([x, y])
+            # if distance > radii[1] and distance <= radii[2]:
+            #     pointLists[2].append([x, y])
 
     return pointLists
     
