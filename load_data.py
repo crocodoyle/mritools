@@ -179,7 +179,7 @@ def loadIntensity(mri_list, numLesions):
     return data
     
 def loadRIFT(mri_list, numLesions):
-    numBinsTheta = 8
+    numBinsTheta = 4
     numBinsPhi = 1
        
 #    data = np.zeros((numLesions, len(modalities), len(riftRadii), 8, numBinsTheta*numBinsPhi))

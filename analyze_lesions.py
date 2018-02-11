@@ -645,7 +645,7 @@ def getOutcomes(mri_list):
             elif metric == 'newT1andT2':
                 outcomes[metric].append(scan.newT1andT2)
                 
-    return outcomes 
+    return outcomes
 
 
 def visualizePatientGroupHistograms(trainData, trainClusterAssignments):
