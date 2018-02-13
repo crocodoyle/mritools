@@ -208,6 +208,61 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
 
     return best_p_a, best_p_d
 
+def cluster_stability(bol_mixtures, results_dir):
+
+    n_folds = len(bol_mixtures)
+
+    n_components = defaultdict(list)
+    component_weights = {}
+    lesion_type_means = defaultdict()
+
+    for size in sizes:
+        lesion_type_means[size] = np.zeros(n_folds, bol_mixtures[0]['tiny'].means_.shape[1])
+
+    for fold, mixture_models in enumerate(bol_mixtures):
+        for s, size in enumerate(sizes):
+            n_components[size].append(len(mixture_models.weights_))
+
+    fig, axes = plt.figure(1, 2, figsize=(8, 3))
+
+    data = [n_components['tiny'], n_components['small'], n_components['medium'], n_components['large']]
+    axes[0].boxplot(data)
+    axes[0].set_xticks(['T', 'S', 'M', 'L'], fontsize=20)
+    axes[0].set_xlabel('Lesion size', fontsize=20)
+    axes[0].set_ylabel('Number of clusters', fontsize=20)
+
+    plt.tight_layout()
+
+    for size in sizes:
+        component_weights[size] = np.zeros((np.max(n_components[size])))
+
+    for fold, mixture_models in enumerate(bol_mixtures):
+        for s, size in enumerate(sizes):
+            sorted_indices = np.argsort(mixture_models.weights_)
+
+            for cluster_idx in sorted_indices:
+                lesion_type_means[size][fold, :] = mixture_models[size].means_[cluster_idx, :]
+
+    dim_mean, dim_var, diffs = {}, {}, {}
+    for size in sizes:
+        dim_mean[size] = np.mean(lesion_type_means[size], axis=0)
+        dim_var[size] = np.var(lesion_type_means[size], axis=0)
+
+        diffs[size] = []
+
+        for fold, lesion_type_centre in enumerate(lesion_type_means[size]):
+            diffs[size].append(np.divide(np.subtract(lesion_type_centre[fold, :], dim_mean[size]), dim_var[size]))
+
+    data2 = [diffs['tiny'], diffs['small'], diffs['medium'], diffs['large']]
+
+    axes[1].botplot(data2)
+    axes[1].set_xticks(['T', 'S', 'M', 'L'], fontsize=20)
+    axes[1].set_xlabel('Lesion size', fontsize=20)
+    axes[1].set_ylabel('Normalized diff. from mean', fontsize=20)
+
+    plt.savefig(results_dir + 'cluster_numbers_lesion_centres.png', bbox_inches='tight')
+
+
 def predict_responders():
     start = time.time()
 
@@ -241,6 +296,8 @@ def predict_responders():
     failedFolds = 0
 
     certainNumber, certainCorrect, certainNumberPre, certainCorrectPre = defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict)
+    bol_mixture_models = []
+    bol_fold_train_data = []
 
     scores = defaultdict(dict)
     all_test_patients, activity_posterior, activity_truth, untreated_posterior = defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list)
@@ -334,6 +391,9 @@ def predict_responders():
 
         startBol = time.time()
         allTrainData, mixture_models = learn_bol(train_patients, trainDataVectors, len(mri_train), results_dir, foldNum)
+
+        bol_mixture_models.append(mixture_models)
+
         elapsedBol = time.time() - startBol
         print(str(elapsedBol / 60), 'minutes to learn BoL.')
 
@@ -456,6 +516,8 @@ def predict_responders():
 
     end = time.time()
     elapsed = end - start
+
+    cluster_stability(bol_mixture_models, results_dir)
     print(str(elapsed / 60), 'minutes elapsed.')
 
     return experiment_number
