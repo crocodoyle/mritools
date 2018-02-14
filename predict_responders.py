@@ -217,7 +217,7 @@ def cluster_stability(bol_mixtures, results_dir):
     lesion_type_means = defaultdict()
 
     for size in sizes:
-        lesion_type_means[size] = np.zeros((n_folds, bol_mixtures[0]['tiny'].means_.shape[1]))
+        lesion_type_means[size] = np.zeros((n_folds, bol_mixtures[0][size].means_.shape[1]))
 
     for fold, mixture_models in enumerate(bol_mixtures):
         for s, size in enumerate(sizes):
