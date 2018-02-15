@@ -238,7 +238,7 @@ def cluster_stability(bol_mixtures, results_dir):
 
     for fold, mixture_models in enumerate(bol_mixtures):
         for s, size in enumerate(sizes):
-            sorted_indices = np.argsort(mixture_models.weights_)
+            sorted_indices = np.argsort(mixture_models[size].weights_)
 
             for cluster_idx in sorted_indices:
                 lesion_type_means[size][fold, :] = mixture_models[size].means_[cluster_idx, :]
