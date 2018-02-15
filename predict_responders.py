@@ -221,7 +221,7 @@ def cluster_stability(bol_mixtures, results_dir):
 
     for fold, mixture_models in enumerate(bol_mixtures):
         for s, size in enumerate(sizes):
-            n_components[size].append(len(mixture_models.weights_))
+            n_components[size].append(len(mixture_models[size].weights_))
 
     fig, axes = plt.figure(1, 2, figsize=(8, 3))
 
