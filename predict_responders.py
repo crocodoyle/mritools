@@ -223,7 +223,7 @@ def cluster_stability(bol_mixtures, results_dir):
         for s, size in enumerate(sizes):
             n_components[size].append(len(mixture_models[size].weights_))
 
-    fig, axes = plt.figure(1, 2, figsize=(8, 3))
+    fig, axes = plt.figure(1, 2)
 
     data = [n_components['tiny'], n_components['small'], n_components['medium'], n_components['large']]
     axes[0].boxplot(data)
