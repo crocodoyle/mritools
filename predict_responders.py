@@ -208,7 +208,7 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
 
     return best_p_a, best_p_d
 
-def cluster_stability(bol_mixtures, results_dir):
+def cluster_stability(bol_mixtures, random_forests, results_dir):
 
     n_folds = len(bol_mixtures)
 
@@ -238,6 +238,10 @@ def cluster_stability(bol_mixtures, results_dir):
     for fold, mixture_models in enumerate(bol_mixtures):
         for s, size in enumerate(sizes):
             sorted_indices = np.argsort(mixture_models[size].weights_)
+            for treatment in treatments:
+                rf = random_forests[treatment]
+                rf.feature_importances_
+                #TODO figure out what to do with the feature importances
 
             for cluster_idx in sorted_indices:
                 lesion_type_means[size][fold, :] = mixture_models[size].means_[cluster_idx, :]
@@ -305,6 +309,7 @@ def predict_responders():
 
     certainNumber, certainCorrect, certainNumberPre, certainCorrectPre = defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict)
     bol_mixture_models = []
+    random_forests = defaultdict(list)
     bol_fold_train_data = []
 
     scores = defaultdict(dict)
@@ -438,8 +443,9 @@ def predict_responders():
                 all_test_patients[treatment].append(testingPatientsByTreatment[treatment])
 
                 if treatment == "Placebo":
-                    (bestFeatureScore, bestFeaturePredictions, placebo_rf), (probScore, probPredicted) = bol_classifiers.random_forest(bestTrainData, bestTestData, trainOutcomes, testOutcomes, mri_test, mixture_models, results_dir)
+                    (bestFeaturePredictions, placebo_rf, probPredicted) = bol_classifiers.random_forest(bestTrainData, bestTestData, trainOutcomes, testOutcomes, mri_test, mixture_models, results_dir)
 
+                    random_forests[treatment].append(placebo_rf)
                     activity_truth[treatment].append(testOutcomes)
                     activity_posterior[treatment].append(probPredicted)
 
@@ -458,14 +464,14 @@ def predict_responders():
                 # drugged patients
                 else:
                     # project onto untreated MS model (don't train)
-                    (bestPreTrainedFeatureScore, bestPreTrainedFeaturePredictions, meh), (
-                    pretrainedProbScore, pretrainedProbPredicted) = bol_classifiers.random_forest(
+                    (bestPreTrainedFeaturePredictions, meh, pretrainedProbPredicted) = bol_classifiers.random_forest(
                         bestTrainData, bestTestData, trainOutcomes, testOutcomes, mri_test, mixture_models, results_dir, placebo_rf)
 
                     # new model on drugged patients
-                    (bestFeatureScore, bestFeaturePredictions, drug_rf), (probScore, probDrugPredicted) = bol_classifiers.random_forest(bestTrainData, bestTestData, trainOutcomes,
+                    (bestFeaturePredictions, drug_rf, probDrugPredicted) = bol_classifiers.random_forest(bestTrainData, bestTestData, trainOutcomes,
                                                                         testOutcomes, mri_test, mixture_models, results_dir)
 
+                    random_forests[treatment].append(drug_rf)
                     svm_linear_posterior, svm_rbf_posterior, chi2svm_posterior = bol_classifiers.svms(bestTrainData, bestTestData, trainOutcomes)
                     knn_euclid_posterior, knn_maha_posterior = bol_classifiers.knn(bestTrainData, trainOutcomes, bestTestData)
 
@@ -525,7 +531,7 @@ def predict_responders():
     end = time.time()
     elapsed = end - start
 
-    cluster_stability(bol_mixture_models, results_dir)
+    cluster_stability(bol_mixture_models, random_forests, results_dir)
     print(str(elapsed / 60), 'minutes elapsed.')
 
     return experiment_number

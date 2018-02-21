@@ -118,7 +118,7 @@ def random_forest(trainData, testData, trainOutcomes, testOutcomes, mri_test, mi
         print('Using previously trained model')
 
     predictions = rf.predict(testData)
-    rfscore = calculateScores(predictions, testOutcomes)
+    # rfscore = calculateScores(predictions, testOutcomes)
 
     # correlation = []
     # for featNum in range(np.shape(trainData)[1]):
@@ -168,203 +168,94 @@ def random_forest(trainData, testData, trainOutcomes, testOutcomes, mri_test, mi
         bestLesionsSize.append(0)
         bestLesions.append(goodLesion)
 
-    # visualizing lesion groups
-#        n = 10
-#        for lesionNumber, (m, bestLesion) in enumerate(zip(bestLesionsSize, bestLesions)):
-#            print lesionNumber, 'best lesion type:', sizes[m]
-#            print bestLesion, importance[['T','S','M','L'][m]][bestLesion]
-#            size = sizes[m]
-#            typeNumber = 0
-#            
-#            for f1 in range(subtypeShape[m][1]):
-#                for f2 in range(subtypeShape[m][2]):
-#                    for f3 in range(subtypeShape[m][3]):
-#                        for f4 in range(subtypeShape[m][4]):
-#                            
-#                            if typeNumber == bestLesion:
-#                                plt.figure(figsize=(16,4))
-#                                
-#                                print len(lesionIndices[size][typeNumber]), 'lesions in group'
-#                                print len(set(brainIndices[size][typeNumber])), 'brains in group'
-#                                
-#                                numActive = 0.0
-#                                total = 0.0
-#                                
-#                                
-#                                #TODO: FIX THIS
-#                                try:
-#                                    for index, b in enumerate(brainIndices[size][typeNumber]):
-#                                        if b < len(mri_train):
-#                                            if mri_train[b].treatment == "Placebo":
-#                                                if trainOutcomes[b] == 1:
-#                                                    numActive += 1.0
-#                                                total += 1.0
-#                                    
-#                                    lesionPosterior = numActive / total
-#                                    
-#                                    
-#                                    print 'P(A|T, LES' + str(lesionNumber) + ') =',  lesionPosterior
-#                                except:
-#                                    pass
-#                                
-##                                try:
-#                                forVisualization = zip(brainIndices[size][typeNumber], lesionIndices[size][typeNumber])
-#                                random.shuffle(forVisualization)
-#                                brainIndices[size][typeNumber], lesionIndices[size][typeNumber] = zip(*forVisualization)
-#                                i=0
-#                                for (brainIndex, lesionIndex) in zip(brainIndices[size][typeNumber], lesionIndices[size][typeNumber]):
-#                                    try:
-#                                        scan = mri_train[brainIndex]
-#                                        if scan.newT2 > 0:
-#                                            pass
-#            #                                    img = nib.load(scan.images['flr']).get_data()
-#                                        img = nib.load(scan.images['t2w']).get_data()
-#                                        lesionMaskImg = np.zeros((np.shape(img)))
-#                                        
-#            #                                for lesion in scan.lesionList:
-#            #                                    for point in lesion:
-#            #                                        lesionMaskImg[point[0], point[1], point[2]] = 1
-#                                        
-#                                        for point in scan.lesionList[lesionIndex]:
-#                                            lesionMaskImg[point[0], point[1], point[2]] = 1
-#                                        
-#                                        x, y, z = [int(np.mean(xxx)) for xxx in zip(*scan.lesionList[lesionIndex])]
-#                            
-#                                        maskImg = np.ma.masked_where(lesionMaskImg == 0, np.ones((np.shape(lesionMaskImg)))*5000)                      
-#                                        maskSquare = np.zeros((np.shape(img)))
-#                                        maskSquare[x-10:x+10, y+10, z] = 1
-#                                        maskSquare[x-10:x+10, y-10, z] = 1
-#                                        maskSquare[x-10, y-10:y+10, z] = 1
-#                                        maskSquare[x+10, y-10:y+10, z] = 1
-#                                                      
-#                                        square = np.ma.masked_where(maskSquare == 0, np.ones(np.shape(maskSquare))*5000)
-#                               
-#                                        lesionMaskPatch = maskImg[x-20:x+20, y-20:y+20, z]
-#                                        ax = plt.subplot(2, n, i+1)
-#                                        ax.set_xticks([])
-#                                        ax.set_yticks([])
-#                                        ax.imshow(img[20:200,20:200, z].T, cmap = plt.cm.gray, interpolation = 'nearest',origin='lower')
-#                                        ax.imshow(maskImg[20:200,20:200, z].T, cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
-#                                        ax.imshow(square[20:200, 20:200, z].T, cmap = plt.cm.autumn, interpolation = 'nearest', origin='lower')
-#                                        
-#                                        if scan.newT2 > 0:
-#                                            ax.set_xlabel("Active Patient")
-#                                        else:
-#                                            ax.set_xlabel("Inactive Patient")
-#                                        
-#                                        ax3 = plt.subplot(2, n, i+1+n)
-#                                        ax3.imshow(img[x-20:x+20, y-20:y+20, z].T, cmap = plt.cm.gray, interpolation = 'nearest', origin='lower')
-#                                        ax3.imshow(lesionMaskPatch.T, cmap = plt.cm.autumn, alpha = 0.4, interpolation = 'nearest', origin='lower')
-#                                        ax3.axes.get_yaxis().set_visible(False)
-#                                        ax3.set_xticks([])
-#                                        ax3.set_xlabel(letters[i])
-#                                        i += 1
-#                                        print scan.uid, '[', x, y, z, ']'
-#                                    except:
-##                                        print "problem with one of the images"
-#                                        i -= 1
-#                                    
-#                                    if i == n:
-#                                        break
-#                                   
-#        
-#                                plt.subplots_adjust(wspace=0.01,hspace=0.01)
-#                                plt.savefig('/usr/local/data/adoyle/images/lesions-'+ size + '-' + ''.join((str(f1),str(f2),str(f3),str(f4))) + '.png', dpi=500)
-#                                plt.show()
-##                                except:
-##                                    print 'something went wrong for this lesion-type'
-##                                    print brainIndices[size][typeNumber]
-#                                
-#                            typeNumber += 1
-
     # Predict only high-probability cases
     probabilities = rf.predict_proba(testData)
 
     probPredicted, actual = [], []
     certainCorrect, certainTotal = 0, 0
 
-    for prob, outcome, scan, bol_rep in zip(probabilities, testOutcomes, mri_test, testData):
-        # print(prob, outcome)
-        if prob[0] > 0.8 and outcome == 0:
-            probPredicted.append(0)
-            actual.append(0)
-
-            img = nib.load(scan.images['t2w']).get_data()
-            lesionMaskImg = np.zeros((np.shape(img)))
-
-            for lesion in scan.lesionList:
-                for point in lesion:
-                    lesionMaskImg[point[0], point[1], point[2]] = 1
-
-            maskImg = np.ma.masked_where(lesionMaskImg == 0, np.ones((np.shape(lesionMaskImg)))*5000)
-
-            fig = plt.figure(figsize=(3,6))
-            ax = fig.add_subplot(2, 1, 1)
-            ax.set_xticks([])
-            ax.set_yticks([])
-            ax.imshow(img[30, 20:225, 20:150], cmap = plt.cm.gray, interpolation = 'nearest', origin='lower')
-            ax.imshow(maskImg[30, 20:225, 20:150], cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
-            ax.set_xlabel('High probability inactive')
-
-            ax = fig.add_subplot(2, 1, 2)
-            x = np.linspace(1, len(bol_rep), num=len(bol_rep))
-            ax.bar(x, bol_rep)
-#                ax.set_ylabel('Number of Lesions')
-            ax.set_xlabel('Lesion-Types')
-
-            plt.savefig(results_dir + 'inactive-' + scan.uid, dpi=500)
-            plt.close()
-
-            certainCorrect += 1
-            certainTotal += 1
-
-        if prob[0] > 0.8 and outcome == 1:
-            probPredicted.append(0)
-            actual.append(1)
-
-            certainTotal += 1
-
-        if prob[1] > 0.8 and outcome == 1:
-            probPredicted.append(1)
-            actual.append(1)
-
-            img = nib.load(scan.images['t2w']).get_data()
-            lesionMaskImg = np.zeros((np.shape(img)))
-
-            for lesion in scan.lesionList:
-                for point in lesion:
-                    lesionMaskImg[point[0], point[1], point[2]] = 1
-
-            maskImg = np.ma.masked_where(lesionMaskImg == 0, np.ones((np.shape(lesionMaskImg)))*5000)
-
-            fig = plt.figure(figsize=(3.5,6))
-            ax = fig.add_subplot(2, 1, 1)
-            ax.set_xticks([])
-            ax.set_yticks([])
-            ax.imshow(img[30, 20:200, 20:175], cmap = plt.cm.gray, interpolation = 'nearest',origin='lower')
-            ax.imshow(maskImg[30, 20:200, 20:175], cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
-            ax.set_xlabel('High probability active')
-
-            ax = fig.add_subplot(2, 1, 2)
-            x = np.linspace(1, len(bol_rep), num=len(bol_rep))
-            ax.bar(x, bol_rep)
-            ax.set_xlabel('Lesion-Types')
-
-            plt.savefig(results_dir + 'active-' + scan.uid, dpi=500)
-            plt.close()
-
-            certainCorrect += 1
-            certainTotal += 1
-
-        if prob[1] > 0.8 and outcome == 0:
-            probPredicted.append(1)
-            actual.append(0)
-
-            certainTotal += 1
-
-    onlyCertainScore = calculateScores(probPredicted, actual)
+#     for prob, outcome, scan, bol_rep in zip(probabilities, testOutcomes, mri_test, testData):
+#         # print(prob, outcome)
+#         if prob[0] > 0.8 and outcome == 0:
+#             probPredicted.append(0)
+#             actual.append(0)
+#
+#             img = nib.load(scan.images['t2w']).get_data()
+#             lesionMaskImg = np.zeros((np.shape(img)))
+#
+#             for lesion in scan.lesionList:
+#                 for point in lesion:
+#                     lesionMaskImg[point[0], point[1], point[2]] = 1
+#
+#             maskImg = np.ma.masked_where(lesionMaskImg == 0, np.ones((np.shape(lesionMaskImg)))*5000)
+#
+#             fig = plt.figure(figsize=(3,6))
+#             ax = fig.add_subplot(2, 1, 1)
+#             ax.set_xticks([])
+#             ax.set_yticks([])
+#             ax.imshow(img[30, 20:225, 20:150], cmap = plt.cm.gray, interpolation = 'nearest', origin='lower')
+#             ax.imshow(maskImg[30, 20:225, 20:150], cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
+#             ax.set_xlabel('High probability inactive')
+#
+#             ax = fig.add_subplot(2, 1, 2)
+#             x = np.linspace(1, len(bol_rep), num=len(bol_rep))
+#             ax.bar(x, bol_rep)
+# #                ax.set_ylabel('Number of Lesions')
+#             ax.set_xlabel('Lesion-Types')
+#
+#             plt.savefig(results_dir + 'inactive-' + scan.uid, dpi=500)
+#             plt.close()
+#
+#             certainCorrect += 1
+#             certainTotal += 1
+#
+#         if prob[0] > 0.8 and outcome == 1:
+#             probPredicted.append(0)
+#             actual.append(1)
+#
+#             certainTotal += 1
+#
+#         if prob[1] > 0.8 and outcome == 1:
+#             probPredicted.append(1)
+#             actual.append(1)
+#
+#             img = nib.load(scan.images['t2w']).get_data()
+#             lesionMaskImg = np.zeros((np.shape(img)))
+#
+#             for lesion in scan.lesionList:
+#                 for point in lesion:
+#                     lesionMaskImg[point[0], point[1], point[2]] = 1
+#
+#             maskImg = np.ma.masked_where(lesionMaskImg == 0, np.ones((np.shape(lesionMaskImg)))*5000)
+#
+#             fig = plt.figure(figsize=(3.5,6))
+#             ax = fig.add_subplot(2, 1, 1)
+#             ax.set_xticks([])
+#             ax.set_yticks([])
+#             ax.imshow(img[30, 20:200, 20:175], cmap = plt.cm.gray, interpolation = 'nearest',origin='lower')
+#             ax.imshow(maskImg[30, 20:200, 20:175], cmap = plt.cm.autumn, interpolation = 'nearest', alpha = 0.4, origin='lower')
+#             ax.set_xlabel('High probability active')
+#
+#             ax = fig.add_subplot(2, 1, 2)
+#             x = np.linspace(1, len(bol_rep), num=len(bol_rep))
+#             ax.bar(x, bol_rep)
+#             ax.set_xlabel('Lesion-Types')
+#
+#             plt.savefig(results_dir + 'active-' + scan.uid, dpi=500)
+#             plt.close()
+#
+#             certainCorrect += 1
+#             certainTotal += 1
+#
+#         if prob[1] > 0.8 and outcome == 0:
+#             probPredicted.append(1)
+#             actual.append(0)
+#
+#             certainTotal += 1
+#
+#     onlyCertainScore = calculateScores(probPredicted, actual)
         
-    return (rfscore, predictions, rf), (onlyCertainScore, probabilities)
+    return predictions, rf, probabilities
 
 
 def identify_responders(trainData, testData, trainOutcomes, testOutcomes, train_patients, test_patients, drug_rf, placebo_rf):
