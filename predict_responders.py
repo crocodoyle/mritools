@@ -232,8 +232,6 @@ def cluster_stability(bol_mixtures, results_dir):
     axes[0].set_xlabel('Lesion size', fontsize=20)
     axes[0].set_ylabel('Number of clusters', fontsize=20)
 
-    plt.tight_layout()
-
     for size in sizes:
         component_weights[size] = np.zeros((np.max(n_components[size])))
 
@@ -246,13 +244,21 @@ def cluster_stability(bol_mixtures, results_dir):
 
     dim_mean, dim_var, diffs = {}, {}, {}
     for size in sizes:
-        dim_mean[size] = np.mean(lesion_type_means[size], axis=0)
-        dim_var[size] = np.var(lesion_type_means[size], axis=0)
+        dim_mean[size] = np.mean(lesion_type_means[size], axis=1)
+        dim_var[size] = np.var(lesion_type_means[size], axis=1)
+
+        print('cluster centre means:', dim_mean[size].shape)
+        print('cluster centre variances:', dim_var[size].shape)
 
         diffs[size] = []
 
         for fold, lesion_type_centre in enumerate(lesion_type_means[size]):
-            diffs[size].append(np.divide(np.subtract(lesion_type_centre[fold, :], dim_mean[size]), dim_var[size]))
+            print('lesion type centre:', lesion_type_centre.size)
+
+            diff = np.subtract(lesion_type_centre, dim_mean[size])
+            diff_normalized = np.divide(diff, dim_var[size])
+
+            diffs[size].append(diff_normalized)
 
     data2 = [diffs['tiny'], diffs['small'], diffs['medium'], diffs['large']]
     print(data2)
