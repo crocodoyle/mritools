@@ -248,8 +248,8 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
 
     dim_mean, dim_var, diffs = {}, {}, {}
     for size in sizes:
-        dim_mean[size] = np.mean(lesion_type_means[size], axis=1)
-        dim_var[size] = np.var(lesion_type_means[size], axis=1)
+        dim_mean[size] = np.mean(lesion_type_means[size], axis=0)
+        dim_var[size] = np.var(lesion_type_means[size], axis=0)
 
         print('cluster centre means:', dim_mean[size].shape)
         print('cluster centre variances:', dim_var[size].shape)
