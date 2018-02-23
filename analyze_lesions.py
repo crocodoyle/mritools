@@ -163,50 +163,42 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
 
     codebook_length = 0
 
-    for m, size in enumerate(sizes):
-        brainIndices[size], lesionIndices[size] = [], []
+    n_clusters, bics, clust_search = defaultdict(list), defaultdict(list), defaultdict(list)
+    n_lesion_types = {}
 
+    brainIndices, lesionIndices = defaultdict(list), defaultdict(list)
+
+    for m, size in enumerate(sizes):
         lesionFeatures = feature_data[size]
         print('lesion feature shape:', np.shape(lesionFeatures))
 
-        numClusters, bics, aics, scores, clustSearch = [], [], [], [], []
-        clustSearch.append("")
-        clustSearch.append("")
+        clust_search[size].append("")
+        clust_search[size].append("")
 
-        clusterData, validationData = train_test_split(lesionFeatures, test_size=0.1, random_state=5)
+        clusterData, validationData = train_test_split(lesionFeatures, test_size=0.2, random_state=5)
 
         if 'tiny' in size:
-            cluster_range = range(2, 12)
+            cluster_range = range(2, 15)
         else:
             cluster_range = range(2, 12)
 
         for k in cluster_range:
             # print('trying ' + str(k) + ' clusters...')
-            clustSearch.append(GaussianMixture(n_components=k, covariance_type='full'))
-            clustSearch[k].fit(clusterData)
+            clust_search[size].append(GaussianMixture(n_components=k, covariance_type='full'))
+            clust_search[size][k].fit(clusterData)
 
-            numClusters.append(k)
-            bics.append(clustSearch[k].bic(validationData))
-            aics.append(clustSearch[k].aic(validationData))
+            n_clusters[size].append(k)
+            bics[size].append(clust_search[size][k].bic(validationData))
+            # aics.append(clust_search[size][k].aic(validationData))
             # scores.append(np.mean(clustSearch[k].score(validationData)))
 
-        nClusters = numClusters[np.argmin(aics)]
-        codebook_length += nClusters
+        n_lesion_types[size] = n_clusters[np.argmin(bics[size])]
+        codebook_length += n_lesion_types[size]
 
-        if fold_num % 10 == 0:
-            plt.figure(0)
-            fig, (ax) = plt.subplots(1, 1, figsize=(6, 4))
+        # c = GaussianMixture(n_components=n_lesion_types[size], covariance_type='full')
+        # c.fit(lesionFeatures)
 
-            ax.plot(numClusters, bics, label=size)
-            # ax.plot(numClusters, bics, label="BIC")
-
-            # ax.plot(numClusters, scores, label='avg. log-likelihood')
-            ax.set_xlabel("# of " + sizes[m] + " lesion-types")
-            ax.set_ylabel("Bayesian Information Criterion")
-            ax.legend(shadow=True)
-
-        c = GaussianMixture(n_components=nClusters, covariance_type='full')
-        c.fit(lesionFeatures)
+        c = clust_search[size][n_lesion_types[size]]
         mixture_models[size] = c
 
         cluster_assignments = c.predict(lesionFeatures)
@@ -215,7 +207,8 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
         print('results shape:', cluster_probabilities.shape)
         bol_representation[size] = np.zeros(cluster_probabilities.shape)
 
-        for n_lesion_types in range(nClusters):
+        # maintain a list of indices for each cluster in each size
+        for n in range(n_lesion_types[size]):
             brainIndices[size].append([])
             lesionIndices[size].append([])
 
@@ -236,7 +229,7 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
 
         if visualizeAGroup:
             n = 6
-            for k in range(nClusters):
+            for k in range(n_lesion_types[size]):
                 if len(lesionIndices[size][k]) > n:
                     plt.figure(1, figsize=(15, 5))
 
@@ -283,14 +276,18 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
                     plt.clf()
 
     if fold_num % 10 == 0:
-        plt.figure(0)
-        plt.savefig(results_dir + 'choosing_clusters_fold_' + str(fold_num) + '.png', bbox_inches='tight')
+        fig, (ax) = plt.subplots(1, 1, figsize=(6, 4))
+
+        for size in sizes:
+            ax.plot(range(len(clust_search[size]))+2, bics, label=size)
+            # ax.plot(numClusters, bics, label="BIC")
+            # ax.plot(numClusters, scores, label='avg. log-likelihood')
+            ax.set_xlabel("# of " + sizes[m] + " lesion-types")
+            ax.set_ylabel("Bayesian Information Criterion")
+            ax.legend(shadow=True)
+            plt.savefig(results_dir + 'choosing_clusters_fold_' + str(fold_num) + '.png', bbox_inches='tight')
+
     plt.close()
-
-    for size in sizes:
-        for n in range(nClusters):
-            print(len(lesionIndices[size][n]), size, 'training lesions of type', str(n))
-
 
     bol = np.zeros((numWithClinical, codebook_length))
 
