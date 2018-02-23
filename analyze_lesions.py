@@ -279,13 +279,14 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
         fig, (ax) = plt.subplots(1, 1, figsize=(6, 4))
 
         for size in sizes:
-            ax.plot(range(len(clust_search[size]))+2, bics, label=size)
+            ax.plot(range(len(clust_search[size]))+2, bics[size], label=size)
             # ax.plot(numClusters, bics, label="BIC")
             # ax.plot(numClusters, scores, label='avg. log-likelihood')
-            ax.set_xlabel("# of " + sizes[m] + " lesion-types")
-            ax.set_ylabel("Bayesian Information Criterion")
-            ax.legend(shadow=True)
-            plt.savefig(results_dir + 'choosing_clusters_fold_' + str(fold_num) + '.png', bbox_inches='tight')
+        
+        ax.set_xlabel("Number of lesion-types in model")
+        ax.set_ylabel("BIC")
+        ax.legend(shadow=True)
+        plt.savefig(results_dir + 'choosing_clusters_fold_' + str(fold_num) + '.png', bbox_inches='tight')
 
     plt.close()
 
