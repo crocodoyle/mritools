@@ -192,7 +192,7 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
             # aics.append(clust_search[size][k].aic(validationData))
             # scores.append(np.mean(clustSearch[k].score(validationData)))
 
-        n_lesion_types[size] = n_clusters[np.argmin(bics[size])]
+        n_lesion_types[size] = n_clusters[size][np.argmin(bics[size])]
         codebook_length += n_lesion_types[size]
 
         # c = GaussianMixture(n_components=n_lesion_types[size], covariance_type='full')
@@ -279,7 +279,7 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
         fig, (ax) = plt.subplots(1, 1, figsize=(6, 4))
 
         for size in sizes:
-            ax.plot(range(len(clust_search[size]))+2, bics[size], label=size)
+            ax.plot(n_clusters[size], bics[size], label=size)
             # ax.plot(numClusters, bics, label="BIC")
             # ax.plot(numClusters, scores, label='avg. log-likelihood')
 
