@@ -282,7 +282,7 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
             ax.plot(range(len(clust_search[size]))+2, bics[size], label=size)
             # ax.plot(numClusters, bics, label="BIC")
             # ax.plot(numClusters, scores, label='avg. log-likelihood')
-        
+
         ax.set_xlabel("Number of lesion-types in model")
         ax.set_ylabel("BIC")
         ax.legend(shadow=True)
