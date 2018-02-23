@@ -212,7 +212,7 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
 
     n_folds = len(bol_mixtures)
 
-    n_components = defaultdict(list)
+    n_components, importance = defaultdict(list), defaultdict(list)
     component_weights = {}
     lesion_type_means = defaultdict()
 
@@ -223,7 +223,7 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
         for s, size in enumerate(sizes):
             n_components[size].append(len(mixture_models[size].weights_))
 
-    fig, axes = plt.subplots(1, 2)
+    fig, axes = plt.subplots(1, 3)
 
     data = [n_components['tiny'], n_components['small'], n_components['medium'], n_components['large']]
     print('lesion-types:', data)
@@ -236,12 +236,18 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
         component_weights[size] = np.zeros((np.max(n_components[size])))
 
     for fold, mixture_models in enumerate(bol_mixtures):
+        importance_start_index = 0
+
+        rfs = random_forests['Placebo']
+        lesion_importance = rfs[fold].feature_importances_
+
         for s, size in enumerate(sizes):
             sorted_indices = np.argsort(mixture_models[size].weights_)
-            for treatment in treatments:
-                rf = random_forests[treatment]
-                rf.feature_importances_
-                #TODO figure out what to do with the feature importances
+
+            importance[size].append(lesion_importance[importance_start_index:importance_start_index+len(sorted_indices)])
+            importance_start_index += len(sorted_indices)
+
+            importance[size][-1] = importance[size][-1][sorted_indices] # sort the lesion importance for this fold by component weight
 
             for cluster_idx in sorted_indices:
                 lesion_type_means[size][fold, :] = mixture_models[size].means_[cluster_idx, :]
@@ -267,10 +273,17 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
     data2 = [diffs['tiny'], diffs['small'], diffs['medium'], diffs['large']]
     print(data2)
 
-    axes[1].botplot(data2)
+    axes[1].boxplot(data2)
     # axes[1].set_xticks(['T', 'S', 'M', 'L'], fontsize=20)
     axes[1].set_xlabel('Lesion size', fontsize=20)
     axes[1].set_ylabel('Normalized diff. from mean', fontsize=20)
+
+    axes[2].plot(importance['tiny'], lw=1, color='y')
+    axes[2].plot(importance['small'], lw=1, color='b')
+    axes[2].plot(importance['medium'], lw=1, color='r')
+    axes[2].plot(importance['large'], lw=1, color='k')
+    axes[2].set_xlabel('Lesion size', fontsize=20)
+    axes[2].set_ylabel('P(A|BoL) Importance', fontsize=20)
 
     plt.savefig(results_dir + 'cluster_numbers_lesion_centres.png', bbox_inches='tight')
 
