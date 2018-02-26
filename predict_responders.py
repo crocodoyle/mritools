@@ -233,10 +233,11 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
     axes[0].set_ylabel('Number of clusters', fontsize=20)
 
     for size in sizes:
-        component_weights[size] = np.zeros((np.max(n_components[size])))
+        component_weights[size] = np.zeros((n_folds, np.max(n_components[size])))
+        importance[size] = np.zeros((n_folds, np.max(n_components[size])))
 
     for fold, mixture_models in enumerate(bol_mixtures):
-        importance_start_index = 0
+        importance_start_idx = 0
 
         rfs = random_forests['Placebo']
         lesion_importance = rfs[fold].feature_importances_
@@ -244,13 +245,11 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
         for s, size in enumerate(sizes):
             sorted_indices = np.argsort(mixture_models[size].weights_)
 
-            importance[size].append(lesion_importance[importance_start_index:importance_start_index+len(sorted_indices)])
-            importance_start_index += len(sorted_indices)
-
-            importance[size][-1] = importance[size][-1][sorted_indices] # sort the lesion importance for this fold by component weight
-
-            for cluster_idx in sorted_indices:
+            for c, cluster_idx in enumerate(sorted_indices):
                 lesion_type_means[size][fold, :] = mixture_models[size].means_[cluster_idx, :]
+                importance[size][fold, c] = lesion_importance[importance_start_idx+c]
+
+            importance_start_idx += len(sorted_indices)
 
     dim_mean, dim_var, diffs = {}, {}, {}
     for size in sizes:
@@ -278,10 +277,10 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
     axes[1].set_xlabel('Lesion size', fontsize=20)
     axes[1].set_ylabel('Normalized diff. from mean', fontsize=20)
 
-    axes[2].plot(importance['tiny'], lw=1, color='y')
-    axes[2].plot(importance['small'], lw=1, color='b')
-    axes[2].plot(importance['medium'], lw=1, color='r')
-    axes[2].plot(importance['large'], lw=1, color='k')
+
+    data3 = [importance['tiny'][:, 0], importance['small'][:, 0], importance['medium'][:, 2], importance['large'][:, 0]]
+    axes[2].boxplot(data3)
+
     axes[2].set_xlabel('Lesion size', fontsize=20)
     axes[2].set_ylabel('P(A|BoL) Importance', fontsize=20)
 
