@@ -228,7 +228,7 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
     data = [n_components['tiny'], n_components['small'], n_components['medium'], n_components['large']]
     print('lesion-types:', data)
     axes[0].boxplot(data)
-    # axes[0].set_xticks(['T', 'S', 'M', 'L'], fontsize=20)
+    axes[0].set_xticks(['T', 'S', 'M', 'L'], fontsize=20)
     axes[0].set_xlabel('Lesion size', fontsize=20)
     axes[0].set_ylabel('Number of clusters', fontsize=20)
 
@@ -273,17 +273,18 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
     print(data2)
 
     axes[1].boxplot(data2)
-    # axes[1].set_xticks(['T', 'S', 'M', 'L'], fontsize=20)
+    axes[1].set_xticks(['T', 'S', 'M', 'L'], fontsize=20)
     axes[1].set_xlabel('Lesion size', fontsize=20)
-    axes[1].set_ylabel('Normalized diff. from mean', fontsize=20)
+    axes[1].set_ylabel('Diff. from mean', fontsize=20)
 
 
     data3 = [importance['tiny'][:, 0], importance['small'][:, 0], importance['medium'][:, 2], importance['large'][:, 0]]
     axes[2].boxplot(data3)
-
+    axes[2].set_xticks(['T', 'S', 'M', 'L'], fontsize=20)
     axes[2].set_xlabel('Lesion size', fontsize=20)
     axes[2].set_ylabel('P(A|BoL) Importance', fontsize=20)
 
+    plt.tight_layout()
     plt.savefig(results_dir + 'cluster_numbers_lesion_centres.png', bbox_inches='tight')
 
 
