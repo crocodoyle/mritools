@@ -90,7 +90,7 @@ def getNClosestMahalanobis(candidate, n, allLesionFeatures):
 
 
 def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
-    brainIndices, lesionIndices, bol_representation = [], [], [], []
+    brainIndices, lesionIndices = [], []
     n_clusters, bics, aics, clust_search = [], [], [], []
 
     print('lesion feature shape:', np.shape(feature_data))
@@ -139,8 +139,7 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
 
             lesionIndex += 1
 
-
-    if visualizeAGroup:
+    if fold_num%10 == 0:
         n = 6
         for k in range(n_lesion_types):
             if len(lesionIndices[k]) > n:
@@ -188,7 +187,6 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
                     ax3 = plt.subplot(4, n, i + 1 + 2*n)
                     ax3.bar(x, feature_data[lesionIndex, :], color='darkred')
 
-
                     y = np.linspace(1, cluster_probabilities.shape[1], num=cluster_probabilities.shape[1])
                     ax4 = plt.subplot(4, n, i + 1 + 3*n)
                     ax4.bar(y, cluster_probabilities[lesionIndex, :], color='darkorange')
@@ -206,18 +204,15 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
     if fold_num % 10 == 0:
         fig, (ax) = plt.subplots(1, 1, figsize=(6, 4))
 
-        for size in sizes:
-            ax.plot(n_clusters, bics, label='BIC')
-            ax.plot(n_clusters, aics, label='AIC')
-            # ax.plot(numClusters, scores, label='avg. log-likelihood')
+        ax.plot(n_clusters, bics, label='BIC')
+        ax.plot(n_clusters, aics, label='AIC')
 
         ax.set_xlabel("Lesion-types in Model", fontsize=20)
         ax.set_ylabel("A/BIC", fontsize=20)
         ax.legend(shadow=True, loc='center left', bbox_to_anchor=(1, 0.5), fancybox=True, fontsize=16)
         plt.tight_layout()
         plt.savefig(results_dir + 'choosing_clusters_fold_' + str(fold_num) + '.png', bbox_inches='tight')
-
-    plt.close()
+        plt.close()
 
     return bol_representation[0:numWithClinical, :], c
 

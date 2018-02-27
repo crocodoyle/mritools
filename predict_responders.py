@@ -208,32 +208,23 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
     return best_p_a, best_p_d
 
 def cluster_stability(bol_mixtures, random_forests, results_dir):
-
     n_folds = len(bol_mixtures)
 
-    n_components, importance = defaultdict(list), defaultdict(list)
-    component_weights = {}
-    lesion_type_means = defaultdict()
+    n_components, importance = [], []
 
-    for size in sizes:
-        lesion_type_means[size] = np.zeros((n_folds, bol_mixtures[0][size].means_.shape[1]))
+    lesion_type_means = np.zeros((n_folds, bol_mixtures[0].means_.shape[1]))
 
     for fold, mixture_models in enumerate(bol_mixtures):
-        for s, size in enumerate(sizes):
-            n_components[size].append(len(mixture_models[size].weights_))
+        n_components.append(len(mixture_models.weights_))
 
     fig, axes = plt.subplots(1, 3)
 
-    data = [n_components['tiny'], n_components['small'], n_components['medium'], n_components['large']]
+    data = [n_components]
     print('lesion-types:', data)
     axes[0].boxplot(data)
-    axes[0].set_xticks(['T', 'S', 'M', 'L'], fontsize=20)
-    axes[0].set_xlabel('Lesion size', fontsize=20)
-    axes[0].set_ylabel('Number of clusters', fontsize=20)
+    axes[0].set_ylabel('Number of lesion-types', fontsize=20)
 
-    for size in sizes:
-        component_weights[size] = np.zeros((n_folds, np.max(n_components[size])))
-        importance[size] = np.zeros((n_folds, np.max(n_components[size])))
+    importance = np.zeros((n_folds, np.max(n_components)))
 
     for fold, mixture_models in enumerate(bol_mixtures):
         importance_start_idx = 0
@@ -241,45 +232,41 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
         rfs = random_forests['Placebo']
         lesion_importance = rfs[fold].feature_importances_
 
-        for s, size in enumerate(sizes):
-            sorted_indices = np.argsort(mixture_models[size].weights_)
+        sorted_indices = np.argsort(mixture_models.weights_)
 
-            for c, cluster_idx in enumerate(sorted_indices):
-                lesion_type_means[size][fold, :] = mixture_models[size].means_[cluster_idx, :]
-                importance[size][fold, c] = lesion_importance[importance_start_idx+c]
+        for c, cluster_idx in enumerate(sorted_indices):
+            lesion_type_means[fold, :] = mixture_models.means_[cluster_idx, :]
+            importance[fold, c] = lesion_importance[importance_start_idx+c]
 
-            importance_start_idx += len(sorted_indices)
+        importance_start_idx += len(sorted_indices)
 
-    dim_mean, dim_var, diffs = {}, {}, {}
-    for size in sizes:
-        dim_mean[size] = np.mean(lesion_type_means[size], axis=0)
-        dim_var[size] = np.var(lesion_type_means[size], axis=0)
 
-        print('cluster centre means:', dim_mean[size].shape)
-        print('cluster centre variances:', dim_var[size].shape)
+    dim_mean = np.mean(lesion_type_means, axis=0)
+    dim_var = np.var(lesion_type_means, axis=0)
 
-        diffs[size] = []
+    print('cluster centre means:', dim_mean.shape)
+    print('cluster centre variances:', dim_var.shape)
 
-        for fold, lesion_type_centre in enumerate(lesion_type_means[size]):
-            print('lesion type centre:', lesion_type_centre.size)
+    diffs = []
 
-            diff = np.subtract(lesion_type_centre, dim_mean[size])
-            diff_normalized = np.divide(diff, dim_var[size])
+    for fold, lesion_type_centre in enumerate(lesion_type_means):
+        print('lesion type centre:', lesion_type_centre.size)
 
-            diffs[size].append(diff_normalized)
+        diff = np.subtract(lesion_type_centre, dim_mean)
+        diff_normalized = np.divide(diff, dim_var)
 
-    data2 = [diffs['tiny'], diffs['small'], diffs['medium'], diffs['large']]
+        diffs.append(diff_normalized)
+
+    data2 = [diffs]
     print(data2)
 
     axes[1].boxplot(data2)
-    axes[1].set_xticks(['T', 'S', 'M', 'L'], fontsize=20)
     axes[1].set_xlabel('Lesion size', fontsize=20)
     axes[1].set_ylabel('Diff. from mean', fontsize=20)
 
 
     data3 = [importance['tiny'][:, 0], importance['small'][:, 0], importance['medium'][:, 2], importance['large'][:, 0]]
     axes[2].boxplot(data3)
-    axes[2].set_xticks(['T', 'S', 'M', 'L'], fontsize=20)
     axes[2].set_xlabel('Lesion size', fontsize=20)
     axes[2].set_ylabel('P(A|BoL) Importance', fontsize=20)
 
@@ -369,7 +356,7 @@ def predict_responders():
             all_test_patients[treatment].append(testingPatientsByTreatment[treatment])
 
             if treatment == "Placebo":
-                (bestFeaturePredictions, placebo_rf, probPredicted) = bol_classifiers.random_forest(train_data, test_data, train_outcomes, test_outcomes, mri_test, mixture_models, results_dir)
+                (bestFeaturePredictions, placebo_rf, probPredicted) = bol_classifiers.random_forest(train_data, test_data, train_outcomes)
 
                 random_forests[treatment].append(placebo_rf)
                 activity_truth[treatment].append(test_outcomes)
@@ -391,11 +378,10 @@ def predict_responders():
             else:
                 # project onto untreated MS model (don't train)
                 (bestPreTrainedFeaturePredictions, meh, pretrainedProbPredicted) = bol_classifiers.random_forest(
-                    train_data, test_data, train_outcomes, test_outcomes, mri_test, mixture_model, results_dir, placebo_rf)
+                    train_data, test_data, train_outcomes, placebo_rf)
 
                 # new model on drugged patients
-                (bestFeaturePredictions, drug_rf, probDrugPredicted) = bol_classifiers.random_forest(train_data, test_data, train_outcomes,
-                                                                    test_outcomes, mri_test, mixture_model, results_dir)
+                (bestFeaturePredictions, drug_rf, probDrugPredicted) = bol_classifiers.random_forest(train_data, test_data, train_outcomes)
 
                 random_forests[treatment].append(drug_rf)
                 svm_linear_posterior, svm_rbf_posterior, chi2svm_posterior = bol_classifiers.svms(train_data, test_data, train_outcomes)
@@ -415,10 +401,10 @@ def predict_responders():
                 #     pretrainedProbPredicted, probDrugPredicted, train_data, test_data, train_outcomes,
                 #     test_outcomes, trainingPatientsByTreatment[treatment],
                 #     testingPatientsByTreatment[treatment], results_dir)
-
-                (responderScore, responderProbs), responderHighProbScore = bol_classifiers.identify_responders(
-                    train_data, test_data, train_outcomes, test_outcomes, trainCounts[treatment],
-                    testCounts[treatment], drug_rf, placebo_rf)
+                #
+                # (responderScore, responderProbs), responderHighProbScore = bol_classifiers.identify_responders(
+                #     train_data, test_data, train_outcomes, test_outcomes, trainCounts[treatment],
+                #     testCounts[treatment], drug_rf, placebo_rf)
 
 
     best_p_a, best_p_d = responder_roc(all_test_patients, activity_truth, activity_posterior, untreated_posterior, results_dir)
