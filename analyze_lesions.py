@@ -189,7 +189,7 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
 
             n_clusters[size].append(k)
             bics[size].append(clust_search[size][k].bic(lesionFeatures))
-            aics.append(clust_search[size][k].aic(lesionFeatures))
+            aics[size].append(clust_search[size][k].aic(lesionFeatures))
             # scores.append(np.mean(clustSearch[k].score(validationData)))
 
         n_lesion_types[size] = n_clusters[size][np.argmin(bics[size])]
