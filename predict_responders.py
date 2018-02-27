@@ -26,7 +26,6 @@ modalities = ['t1p', 't2w', 'pdw', 'flr']
 tissues = ['csf', 'wm', 'gm', 'pv', 'lesion']
 
 feats = ["Context", "RIFT", "LBP", "Intensity"]
-sizes = ["tiny", "small", "medium", "large"]
 
 scoringMetrics = ['TP', 'FP', 'TN', 'FN']
 
@@ -317,70 +316,16 @@ def predict_responders():
 
     kf = StratifiedKFold(50, shuffle=True, random_state=42)
 
-    respondersRight, respondersWrong = {}, {}
-    failedFolds = 0
-
-    certainNumber, certainCorrect, certainNumberPre, certainCorrectPre = defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict)
     bol_mixture_models = []
     random_forests = defaultdict(list)
-    bol_fold_train_data = []
 
-    scores = defaultdict(dict)
     all_test_patients, activity_posterior, activity_truth, untreated_posterior = defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list)
     euclidean_knn_posterior, mahalanobis_knn_posterior, chi2_svm_posterior, rbf_svm_posterior, linear_svm_posterior, naive_bayes_posterior =  defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list)
-
-    knnEuclideanScores, knnMahalanobisScores, chi2Scores, chi2svmScores, featureScores, svmLinScores, svmRadScores, preTrainedFeatureScores, preTrainedSvmLinScores, preTrainedSvmRadScores = defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict)
-    countingScores = defaultdict(dict)
-
-    bestScores, bestKnnEuclideanScores, bestKnnMahalanobisScores, bestChi2Scores, bestChi2svmScores, bestFeatureScores, bestSvmLinScores, bestSvmRadScores, bestPreTrainedKnnEuclideanScores, bestPreTrainedFeatureScores, bestPreTrainedSvmLinScores, bestPreTrainedSvmRadScores = defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict)
-    probScores, allProbScores = defaultdict(dict), defaultdict(dict)
-
-    responderScores, responderHighProbScores, countScores = defaultdict(dict), defaultdict(dict), defaultdict(dict)
-
-    r1, r2, r3, r4 = defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict)
-
-    for treatment in treatments:
-        scores[treatment] = defaultdict(list)
-        knnEuclideanScores[treatment] = defaultdict(list)
-        knnMahalanobisScores[treatment] = defaultdict(list)
-        chi2Scores[treatment] = defaultdict(list)
-        chi2svmScores[treatment] = defaultdict(list)
-        featureScores[treatment] = defaultdict(list)
-        svmLinScores[treatment] = defaultdict(list)
-        svmRadScores[treatment] = defaultdict(list)
-        preTrainedFeatureScores[treatment] = defaultdict(list)
-        bestPreTrainedSvmLinScores[treatment] = defaultdict(list)
-        bestPreTrainedSvmRadScores[treatment] = defaultdict(list)
-        countingScores[treatment] = defaultdict(list)
-        bestScores[treatment] = defaultdict(list)
-        bestKnnEuclideanScores[treatment] = defaultdict(list)
-        bestKnnMahalanobisScores[treatment] = defaultdict(list)
-        bestChi2Scores[treatment] = defaultdict(list)
-        bestChi2svmScores[treatment] = defaultdict(list)
-        bestFeatureScores[treatment] = defaultdict(list)
-        bestSvmLinScores[treatment] = defaultdict(list)
-        bestSvmRadScores[treatment] = defaultdict(list)
-        bestPreTrainedKnnEuclideanScores[treatment] = defaultdict(list)
-        bestPreTrainedFeatureScores[treatment] = defaultdict(list)
-        preTrainedSvmLinScores[treatment] = defaultdict(list)
-        preTrainedSvmRadScores[treatment] = defaultdict(list)
-        probScores[treatment], allProbScores[treatment] = defaultdict(list), defaultdict(list)
-
-        responderScores[treatment], responderHighProbScores[treatment], countScores[treatment] = defaultdict(
-            list), defaultdict(list), defaultdict(list)
-
-        certainNumber[treatment], certainCorrect[treatment], certainNumberPre[treatment], certainCorrectPre[
-            treatment] = 0, 0, 0, 0
-        respondersRight[treatment], respondersWrong[treatment] = 0, 0
-
-        r1[treatment], r2[treatment], r3[treatment], r4[treatment] = defaultdict(list), defaultdict(list), defaultdict(
-            list), defaultdict(list)
 
     # initialization of result structures complete
     # start learning BoL, predicting activity
     for foldNum, (train_index, test_index) in enumerate(kf.split(range(len(mri_list)), outcomes)):
         print(foldNum+1, '/', kf.get_n_splits())
-        scoreThisFold = True
 
         mri_train, mri_test = np.asarray(mri_list)[train_index], np.asarray(mri_list)[test_index]
         trainCounts, testCounts = load_data.loadLesionNumbers(mri_train), load_data.loadLesionNumbers(mri_test)
@@ -394,121 +339,86 @@ def predict_responders():
 
         # print('loading feature data...')
         # startLoad = time.time()
-        numLesionsTrain, lesionSizesTrain, lesionCentroids, brainUids = load_data.getLesionSizes(train_patients)
-        trainDataVectors, lbpPCA = load_data.loadAllData(train_patients, numLesionsTrain)
+        raw_train_data = load_data.loadAllData(train_patients)
+        raw_test_data = load_data.loadAllData(mri_test)
 
-        numLesionsTest, lesionSizesTest, lesionCentroids, brainUids = load_data.getLesionSizes(mri_test)
-        dataVectorsTest, lbpPCA = load_data.loadAllData(mri_test, numLesionsTest, lbpPCA=lbpPCA)
-
-        # print('loading data took', (time.time() - startLoad) / 60.0, 'minutes')
-
-        # print('removing infrequent features...')
-        # startPruneTime = time.time()
-        # prunedDataTrain = []
-        # prunedDataTest = []
-        #
-        # for dTrain, dTest in zip(trainDataVectors, dataVectorsTest):
-        #     dTrainPruned, dTestPruned = load_data.prune_features(dTrain, dTest)
-        #     prunedDataTrain.append(dTrainPruned)
-        #     prunedDataTest.append(dTestPruned)
-        #
-        # print("it took", (time.time() - startPruneTime) / 60.0, "minutes")
         print('learning bag of lesions...')
 
         startBol = time.time()
-        allTrainData, mixture_models = learn_bol(train_patients, trainDataVectors, len(mri_train), results_dir, foldNum)
+        bol_train_data, mixture_model = learn_bol(train_patients, raw_train_data, len(mri_train), results_dir, foldNum)
 
-        bol_mixture_models.append(mixture_models)
+        bol_mixture_models.append(mixture_model)
 
         elapsedBol = time.time() - startBol
         print(str(elapsedBol / 60), 'minutes to learn BoL.')
 
         print('transforming test data to bag of lesions representation...')
-        allTestData = project_to_bol(mri_test, dataVectorsTest, mixture_models)
+        bol_test_data = project_to_bol(mri_test, raw_test_data, mixture_model)
 
-        print('train BoL shape:', allTrainData.shape)
-        print('test BoL shape:', allTestData.shape)
+        print('train BoL shape:', bol_train_data.shape)
+        print('test BoL shape:', bol_test_data.shape)
 
-        trainingPatientsByTreatment, testingPatientsByTreatment, trainingData, testingData, trainCounts, testCounts = separatePatientsByTreatment(mri_train, mri_test, allTrainData, allTestData, trainCounts, testCounts)
+        trainingPatientsByTreatment, testingPatientsByTreatment, trainingData, testingData = separatePatientsByTreatment(mri_train, mri_test, bol_train_data, bol_test_data)
 
         # feature selection
-        featuresToRemove, c = None, None
         for treatment in treatments:
-            if True:
-            # try:
-                trainData, testData = trainingData[treatment], testingData[treatment]
-                trainDataCopy, testDataCopy = trainData, testData
-                trainOutcomes, testOutcomes = load_data.get_outcomes(trainingPatientsByTreatment[treatment]), load_data.get_outcomes(
-                    testingPatientsByTreatment[treatment])
+            train_data, test_data = trainingData[treatment], testingData[treatment]
+            train_outcomes, test_outcomes = load_data.get_outcomes(trainingPatientsByTreatment[treatment]), load_data.get_outcomes(
+                testingPatientsByTreatment[treatment])
 
-                remove_worst_features = False
-                if remove_worst_features:
-                    if treatment == "Placebo":
-                        print('selecting features...')
-                        bestTrainData, bestTestData, featuresToRemove = bol_classifiers.randomForestFeatureSelection(
-                            trainDataCopy, testDataCopy, trainOutcomes, testOutcomes, 12)
-                    else:
-                        bestTrainData, bestTestData = removeWorstFeatures(trainDataCopy, testDataCopy, featuresToRemove)
-                else:
-                    bestTrainData = trainDataCopy
-                    bestTestData = testDataCopy
+            all_test_patients[treatment].append(testingPatientsByTreatment[treatment])
 
-                all_test_patients[treatment].append(testingPatientsByTreatment[treatment])
+            if treatment == "Placebo":
+                (bestFeaturePredictions, placebo_rf, probPredicted) = bol_classifiers.random_forest(train_data, test_data, train_outcomes, test_outcomes, mri_test, mixture_models, results_dir)
 
-                if treatment == "Placebo":
-                    (bestFeaturePredictions, placebo_rf, probPredicted) = bol_classifiers.random_forest(bestTrainData, bestTestData, trainOutcomes, testOutcomes, mri_test, mixture_models, results_dir)
+                random_forests[treatment].append(placebo_rf)
+                activity_truth[treatment].append(test_outcomes)
+                activity_posterior[treatment].append(probPredicted)
 
-                    random_forests[treatment].append(placebo_rf)
-                    activity_truth[treatment].append(testOutcomes)
-                    activity_posterior[treatment].append(probPredicted)
+                svm_linear_posterior, svm_rbf_posterior, chi2svm_posterior = bol_classifiers.svms(train_data, test_data, train_outcomes)
+                knn_euclid_posterior, knn_maha_posterior = bol_classifiers.knn(train_data, train_outcomes, test_data)
 
-                    svm_linear_posterior, svm_rbf_posterior, chi2svm_posterior = bol_classifiers.svms(bestTrainData, bestTestData, trainOutcomes)
-                    knn_euclid_posterior, knn_maha_posterior = bol_classifiers.knn(bestTrainData, trainOutcomes, bestTestData)
+                chi2_svm_posterior[treatment].append(chi2svm_posterior)
+                rbf_svm_posterior[treatment].append(svm_rbf_posterior)
+                linear_svm_posterior[treatment].append(svm_linear_posterior)
 
-                    chi2_svm_posterior[treatment].append(chi2svm_posterior)
-                    rbf_svm_posterior[treatment].append(svm_rbf_posterior)
-                    linear_svm_posterior[treatment].append(svm_linear_posterior)
+                euclidean_knn_posterior[treatment].append(knn_euclid_posterior)
+                mahalanobis_knn_posterior[treatment].append(knn_maha_posterior)
 
-                    euclidean_knn_posterior[treatment].append(knn_euclid_posterior)
-                    mahalanobis_knn_posterior[treatment].append(knn_maha_posterior)
+                naive_bayes_posterior[treatment].append([])   # FIX IT
 
-                    naive_bayes_posterior[treatment].append([])   # FIX IT
+            # drugged patients
+            else:
+                # project onto untreated MS model (don't train)
+                (bestPreTrainedFeaturePredictions, meh, pretrainedProbPredicted) = bol_classifiers.random_forest(
+                    train_data, test_data, train_outcomes, test_outcomes, mri_test, mixture_model, results_dir, placebo_rf)
 
-                # drugged patients
-                else:
-                    # project onto untreated MS model (don't train)
-                    (bestPreTrainedFeaturePredictions, meh, pretrainedProbPredicted) = bol_classifiers.random_forest(
-                        bestTrainData, bestTestData, trainOutcomes, testOutcomes, mri_test, mixture_models, results_dir, placebo_rf)
+                # new model on drugged patients
+                (bestFeaturePredictions, drug_rf, probDrugPredicted) = bol_classifiers.random_forest(train_data, test_data, train_outcomes,
+                                                                    test_outcomes, mri_test, mixture_model, results_dir)
 
-                    # new model on drugged patients
-                    (bestFeaturePredictions, drug_rf, probDrugPredicted) = bol_classifiers.random_forest(bestTrainData, bestTestData, trainOutcomes,
-                                                                        testOutcomes, mri_test, mixture_models, results_dir)
+                random_forests[treatment].append(drug_rf)
+                svm_linear_posterior, svm_rbf_posterior, chi2svm_posterior = bol_classifiers.svms(train_data, test_data, train_outcomes)
+                knn_euclid_posterior, knn_maha_posterior = bol_classifiers.knn(train_data, train_outcomes, test_data)
 
-                    random_forests[treatment].append(drug_rf)
-                    svm_linear_posterior, svm_rbf_posterior, chi2svm_posterior = bol_classifiers.svms(bestTrainData, bestTestData, trainOutcomes)
-                    knn_euclid_posterior, knn_maha_posterior = bol_classifiers.knn(bestTrainData, trainOutcomes, bestTestData)
+                activity_truth[treatment].append(test_outcomes)
+                activity_posterior[treatment].append(np.asarray(probDrugPredicted))
+                untreated_posterior[treatment].append(np.asarray(pretrainedProbPredicted))
 
-                    activity_truth[treatment].append(testOutcomes)
-                    activity_posterior[treatment].append(np.asarray(probDrugPredicted))
-                    untreated_posterior[treatment].append(np.asarray(pretrainedProbPredicted))
+                chi2_svm_posterior[treatment].append(chi2svm_posterior)
+                rbf_svm_posterior[treatment].append(svm_rbf_posterior)
+                linear_svm_posterior[treatment].append(svm_linear_posterior)
+                euclidean_knn_posterior[treatment].append(knn_euclid_posterior)
+                mahalanobis_knn_posterior[treatment].append(knn_maha_posterior)
 
-                    chi2_svm_posterior[treatment].append(chi2svm_posterior)
-                    rbf_svm_posterior[treatment].append(svm_rbf_posterior)
-                    linear_svm_posterior[treatment].append(svm_linear_posterior)
-                    euclidean_knn_posterior[treatment].append(knn_euclid_posterior)
-                    mahalanobis_knn_posterior[treatment].append(knn_maha_posterior)
+                # right, wrong, r1_score, r2_score, r3_score, r4_score, responders_this_fold = showWhereTreatmentHelped(
+                #     pretrainedProbPredicted, probDrugPredicted, train_data, test_data, train_outcomes,
+                #     test_outcomes, trainingPatientsByTreatment[treatment],
+                #     testingPatientsByTreatment[treatment], results_dir)
 
-                    right, wrong, r1_score, r2_score, r3_score, r4_score, responders_this_fold = showWhereTreatmentHelped(
-                        pretrainedProbPredicted, probDrugPredicted, bestTrainData, bestTestData, trainOutcomes,
-                        testOutcomes, trainingPatientsByTreatment[treatment],
-                        testingPatientsByTreatment[treatment], results_dir)
-
-                    # for responder in responders_this_fold:
-                    #     responder_writer.writerow([responder['uid'], responder['treatment'], responder['t2_lesions'], responder['P(A=1|BoL, untr)'], responder['P(A=0|BoL, tr)']])
-
-                    (responderScore, responderProbs), responderHighProbScore = bol_classifiers.identify_responders(
-                        bestTrainData, bestTestData, trainOutcomes, testOutcomes, trainCounts[treatment],
-                        testCounts[treatment], drug_rf, placebo_rf)
+                (responderScore, responderProbs), responderHighProbScore = bol_classifiers.identify_responders(
+                    train_data, test_data, train_outcomes, test_outcomes, trainCounts[treatment],
+                    testCounts[treatment], drug_rf, placebo_rf)
 
 
     best_p_a, best_p_d = responder_roc(all_test_patients, activity_truth, activity_posterior, untreated_posterior, results_dir)

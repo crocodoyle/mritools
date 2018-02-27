@@ -62,75 +62,6 @@ usePCA = False
 
 data_dir = '/data1/users/adoyle/MS-LAQ/MS-LAQ-302-STX/'
     
-def cluster(data, numClusters):    
-    startTime = time.time()
-    kmeans = KMeans(n_clusters=numClusters, n_jobs=threads, copy_x=False)
-    kmeans.fit_predict(data)
-    endTime = time.time()
-    
-    elapsed = endTime - startTime
-    print("Total time elapsed:", elapsed/60, 'minutes')
-
-    return kmeans
-
-def countLesionTypes(mri_list, clusters, flattenedData, numLesions):
-    lesionTypes = np.zeros((len(mri_list), len(clusters)))
-    
-    for i, scan in enumerate(mri_list):
-        for j, lesion in enumerate(scan.lesionList):
-           clusterDistances = np.sum(np.square( clusters - lesion ) )
-           lesionTypes[i, np.argmin(clusterDistances)] += 1.0 / float(len(scan.lesionList))
-
-    return lesionTypes
-    
-
-def ics(data, k, n):
-    nCluster = np.shape(data)[0]
-    variance = np.var(data)
-    dims = np.shape(data)[1]
-    
-    logLikelihood = -(nCluster/2)*np.log(2*np.pi) - ((nCluster*dims)/2)*np.log(variance) - (nCluster - k)/2 + nCluster*np.log(nCluster) - nCluster*np.log(n)
-    
-    bic = logLikelihood - k*dims*np.log(n)
-    aic = logLikelihood - 2*dims
-
-    return bic, aic
-
-
-def normalizeDataVectors(dataVectors):    
-    dimensions = 0
-    
-    for i in range(len(dataVectors)):
-        oneDataSourceDims = 1
-        for dim in np.shape(dataVectors[i]):
-            oneDataSourceDims *= dim
-        oneDataSourceDims /= np.shape(dataVectors[i])[0]
-        
-        dimensions += oneDataSourceDims
-        dataVectors[i] = np.reshape(dataVectors[i], (np.shape(dataVectors[i])[0], oneDataSourceDims))
-
-        print('feature dimensions:', dimensions)
-
-    for i in range(len(dataVectors)):
-        otherDims = dimensions - np.shape(dataVectors[i])[1]
-        
-        if not otherDims == 0:
-            dataVectors[i] = np.multiply(dataVectors[i], float(otherDims)/float(dimensions))
-    
-    if len(dataVectors) == 1:
-        data = dataVectors[0]
-    if len(dataVectors) == 2:
-        data = np.hstack((dataVectors[0], dataVectors[1]))
-    if len(dataVectors) == 3:
-        data = np.hstack((dataVectors[0], dataVectors[1], dataVectors[2]))
-    if len(dataVectors) == 4:
-        data = np.hstack((dataVectors[0], dataVectors[1], dataVectors[2], dataVectors[3]))
-    if len(dataVectors) == 5:
-        data = np.hstack((dataVectors[0], dataVectors[1], dataVectors[2], dataVectors[3], dataVectors[4]))
-    if len(dataVectors) == 6:
-        data = np.hstack((dataVectors[0], dataVectors[1], dataVectors[2], dataVectors[3], dataVectors[4], dataVectors[5]))
-    
-    return data
 
 
 def getNClosest(candidate, n, allLesionFeatures):
@@ -159,146 +90,128 @@ def getNClosestMahalanobis(candidate, n, allLesionFeatures):
 
 
 def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
-    brainIndices, lesionIndices, bol_representation, mixture_models = {}, {}, {}, {}
+    brainIndices, lesionIndices, bol_representation = [], [], [], []
+    n_clusters, bics, aics, clust_search = [], [], [], []
 
-    codebook_length = 0
+    print('lesion feature shape:', np.shape(feature_data))
 
-    n_clusters, bics, aics, clust_search = defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list)
-    n_lesion_types = {}
+    clust_search.append("")
+    clust_search.append("")
 
-    brainIndices, lesionIndices = defaultdict(list), defaultdict(list)
+    # clusterData, validationData = train_test_split(lesionFeatures, test_size=0.2, random_state=5)
 
-    for m, size in enumerate(sizes):
-        lesionFeatures = feature_data[size]
-        print('lesion feature shape:', np.shape(lesionFeatures))
+    cluster_range = range(2, 20)
 
-        clust_search[size].append("")
-        clust_search[size].append("")
+    for k in cluster_range:
+        # print('trying ' + str(k) + ' clusters...')
+        clust_search.append(GaussianMixture(n_components=k, covariance_type='full'))
+        clust_search[k].fit(feature_data)
 
-        # clusterData, validationData = train_test_split(lesionFeatures, test_size=0.2, random_state=5)
+        n_clusters.append(k)
+        bics.append(clust_search[k].bic(feature_data))
+        aics.append(clust_search[k].aic(feature_data))
 
-        if 'tiny' in size:
-            cluster_range = range(2, 15)
-        else:
-            cluster_range = range(2, 12)
+    n_lesion_types = n_clusters[np.argmin(bics)]
 
-        for k in cluster_range:
-            # print('trying ' + str(k) + ' clusters...')
-            clust_search[size].append(GaussianMixture(n_components=k, covariance_type='full'))
-            clust_search[size][k].fit(lesionFeatures)
+    # c = GaussianMixture(n_components=n_lesion_types[size], covariance_type='full')
+    # c.fit(lesionFeatures)
 
-            n_clusters[size].append(k)
-            bics[size].append(clust_search[size][k].bic(lesionFeatures))
-            aics[size].append(clust_search[size][k].aic(lesionFeatures))
-            # scores.append(np.mean(clustSearch[k].score(validationData)))
+    c = clust_search[n_lesion_types]
 
-        n_lesion_types[size] = n_clusters[size][np.argmin(bics[size])]
-        codebook_length += n_lesion_types[size]
+    cluster_assignments = c.predict(feature_data)
+    cluster_probabilities = c.predict_proba(feature_data)
 
-        # c = GaussianMixture(n_components=n_lesion_types[size], covariance_type='full')
-        # c.fit(lesionFeatures)
+    print('results shape:', cluster_probabilities.shape)
+    bol_representation = np.zeros(cluster_probabilities.shape)
 
-        c = clust_search[size][n_lesion_types[size]]
-        mixture_models[size] = c
+    # maintain a list of indices for each cluster in each size
+    for n in range(n_lesion_types):
+        brainIndices.append([])
+        lesionIndices.append([])
 
-        cluster_assignments = c.predict(lesionFeatures)
-        cluster_probabilities = c.predict_proba(lesionFeatures)
+    lesionIndex = 0
+    for i, scan in enumerate(mri_list):
+        for j, lesion in enumerate(scan.lesionList):
+            bol_representation[i, ...] += cluster_probabilities[lesionIndex, ...]
 
-        print('results shape:', cluster_probabilities.shape)
-        bol_representation[size] = np.zeros(cluster_probabilities.shape)
+            brainIndices[cluster_assignments[lesionIndex]].append(i)
+            lesionIndices[cluster_assignments[lesionIndex]].append(j)
 
-        # maintain a list of indices for each cluster in each size
-        for n in range(n_lesion_types[size]):
-            brainIndices[size].append([])
-            lesionIndices[size].append([])
-
-        lesionIndex = 0
-        for i, scan in enumerate(mri_list):
-            for j, lesion in enumerate(scan.lesionList):
-                if (len(lesion) > 2 and len(lesion) < 11 and m == 0) or (
-                            len(lesion) > 10 and len(lesion) < 26 and m == 1) or (
-                            len(lesion) > 25 and len(lesion) < 101 and m == 2) or (len(lesion) > 100 and m == 3):
-
-                    bol_representation[size][i, ...] += cluster_probabilities[lesionIndex, ...]
-
-                    brainIndices[size][cluster_assignments[lesionIndex]].append(i)
-                    lesionIndices[size][cluster_assignments[lesionIndex]].append(j)
-
-                    lesionIndex += 1
+            lesionIndex += 1
 
 
-        if visualizeAGroup:
-            n = 6
-            for k in range(n_lesion_types[size]):
-                if len(lesionIndices[size][k]) > n:
-                    plt.figure(1, figsize=(15, 15))
+    if visualizeAGroup:
+        n = 6
+        for k in range(n_lesion_types):
+            if len(lesionIndices[k]) > n:
+                plt.figure(1, figsize=(15, 15))
 
-                    examples_list = list(zip(brainIndices[size][k], lesionIndices[size][k]))
-                    random.shuffle(examples_list)
-                    brain_indices, lesion_indices = zip(*examples_list)
+                examples_list = list(zip(brainIndices[k], lesionIndices[k]))
+                random.shuffle(examples_list)
+                brain_indices, lesion_indices = zip(*examples_list)
 
-                    for i, (brainIndex, lesionIndex) in enumerate(zip(brain_indices[0:n], lesion_indices[0:n])):
-                        scan = mri_list[brainIndex]
-                        img = nib.load(scan.images['t2w']).get_data()
-                        lesionMaskImg = np.zeros((np.shape(img)))
+                for i, (brainIndex, lesionIndex) in enumerate(zip(brain_indices[0:n], lesion_indices[0:n])):
+                    scan = mri_list[brainIndex]
+                    img = nib.load(scan.images['t2w']).get_data()
+                    lesionMaskImg = np.zeros((np.shape(img)))
 
-                        for point in scan.lesionList[lesionIndex]:
-                            lesionMaskImg[point[0], point[1], point[2]] = 1
+                    for point in scan.lesionList[lesionIndex]:
+                        lesionMaskImg[point[0], point[1], point[2]] = 1
 
-                        x, y, z = [int(np.mean(xxx)) for xxx in zip(*scan.lesionList[lesionIndex])]
+                    x, y, z = [int(np.mean(xxx)) for xxx in zip(*scan.lesionList[lesionIndex])]
 
-                        maskImg = np.ma.masked_where(lesionMaskImg == 0,
-                                                     np.ones((np.shape(lesionMaskImg))) * 5000)
-                        maskSquare = np.zeros((np.shape(img)))
-                        maskSquare[x, y-20:y+20, z-20] = 1
-                        maskSquare[x, y-20:y+20, z+20] = 1
-                        maskSquare[x, y-20, z-20:z+20] = 1
-                        maskSquare[x, y+20, z-20:z+20] = 1
+                    maskImg = np.ma.masked_where(lesionMaskImg == 0,
+                                                 np.ones((np.shape(lesionMaskImg))) * 5000)
+                    maskSquare = np.zeros((np.shape(img)))
+                    maskSquare[x, y-20:y+20, z-20] = 1
+                    maskSquare[x, y-20:y+20, z+20] = 1
+                    maskSquare[x, y-20, z-20:z+20] = 1
+                    maskSquare[x, y+20, z-20:z+20] = 1
 
-                        square = np.ma.masked_where(maskSquare == 0, np.ones(np.shape(maskSquare)) * 5000)
+                    square = np.ma.masked_where(maskSquare == 0, np.ones(np.shape(maskSquare)) * 5000)
 
-                        lesionMaskPatch = maskImg[x, y-20:y+20, z-20:z+20]
-                        ax = plt.subplot(4, n, i + 1)
-                        ax.axis('off')
-                        ax.imshow(img[x, 20:200, 20:175], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
-                        ax.imshow(maskImg[x, 20:200, 20:175], cmap=plt.cm.autumn, interpolation='nearest', alpha=0.25, origin='lower')
-                        ax.imshow(square[x, 20:200, 20:175], cmap=plt.cm.autumn, interpolation='nearest', origin='lower')
+                    lesionMaskPatch = maskImg[x, y-20:y+20, z-20:z+20]
+                    ax = plt.subplot(4, n, i + 1)
+                    ax.axis('off')
+                    ax.imshow(img[x, 20:200, 20:175], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
+                    ax.imshow(maskImg[x, 20:200, 20:175], cmap=plt.cm.autumn, interpolation='nearest', alpha=0.25, origin='lower')
+                    ax.imshow(square[x, 20:200, 20:175], cmap=plt.cm.autumn, interpolation='nearest', origin='lower')
 
-                        ax2 = plt.subplot(4, n, i + 1 + n)
-                        ax2.imshow(img[x, y-20:y+20, z-20:z+20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
-                        ax2.imshow(lesionMaskPatch, cmap=plt.cm.autumn, alpha=0.25, interpolation='nearest', origin='lower')
-                        ax2.axes.get_yaxis().set_visible(False)
-                        ax2.set_xticks([])
-                        ax2.set_xlabel(letters[i])
+                    ax2 = plt.subplot(4, n, i + 1 + n)
+                    ax2.imshow(img[x, y-20:y+20, z-20:z+20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
+                    ax2.imshow(lesionMaskPatch, cmap=plt.cm.autumn, alpha=0.25, interpolation='nearest', origin='lower')
+                    ax2.axes.get_yaxis().set_visible(False)
+                    ax2.set_xticks([])
+                    ax2.set_xlabel(letters[i])
 
-                        x = np.linspace(1, lesionFeatures.shape[1], num=lesionFeatures.shape[1])
-                        ax3 = plt.subplot(4, n, i + 1 + 2*n)
-                        ax3.bar(x, lesionFeatures[lesionIndex, :], color='darkred')
+                    x = np.linspace(1, feature_data.shape[1], num=feature_data.shape[1])
+                    ax3 = plt.subplot(4, n, i + 1 + 2*n)
+                    ax3.bar(x, feature_data[lesionIndex, :], color='darkred')
 
 
-                        y = np.linspace(1, cluster_probabilities.shape[1], num=cluster_probabilities.shape[1])
-                        ax4 = plt.subplot(4, n, i + 1 + 3*n)
-                        ax4.bar(y, cluster_probabilities[lesionIndex, :], color='darkorange')
+                    y = np.linspace(1, cluster_probabilities.shape[1], num=cluster_probabilities.shape[1])
+                    ax4 = plt.subplot(4, n, i + 1 + 3*n)
+                    ax4.bar(y, cluster_probabilities[lesionIndex, :], color='darkorange')
 
-                        if i == 0:
-                            ax.set_ylabel('Lesion', fontsize=20)
-                            ax2.set_ylabel('Close-up', fontsize=20)
-                            ax3.set_ylabel('Feature values', fontsize=20)
-                            ax4.set_ylabel('Lesion-type prob.', fontsize=20)
+                    if i == 0:
+                        ax.set_ylabel('Lesion', fontsize=20)
+                        ax2.set_ylabel('Close-up', fontsize=20)
+                        ax3.set_ylabel('Feature values', fontsize=20)
+                        ax4.set_ylabel('Lesion-type prob.', fontsize=20)
 
-                    plt.subplots_adjust(wspace=0.01)
-                    plt.savefig(results_dir + size + '_lesion_type_' + str(k) + '_fold_' + str(fold_num) + '.png', dpi=600, bbox_inches='tight')
-                    plt.clf()
+                plt.subplots_adjust(wspace=0.01)
+                plt.savefig(results_dir +  '_lesion_type_' + str(k) + '_fold_' + str(fold_num) + '.png', dpi=600, bbox_inches='tight')
+                plt.clf()
 
     if fold_num % 10 == 0:
         fig, (ax) = plt.subplots(1, 1, figsize=(6, 4))
 
         for size in sizes:
-            ax.plot(n_clusters[size], bics[size], label=size + ' BIC')
-            ax.plot(n_clusters[size], aics[size], label=size + ' AIC')
+            ax.plot(n_clusters, bics, label='BIC')
+            ax.plot(n_clusters, aics, label='AIC')
             # ax.plot(numClusters, scores, label='avg. log-likelihood')
 
-        ax.set_xlabel("Number of lesion-types in model", fontsize=20)
+        ax.set_xlabel("Lesion-types in Model", fontsize=20)
         ax.set_ylabel("A/BIC", fontsize=20)
         ax.legend(shadow=True, loc='center left', bbox_to_anchor=(1, 0.5), fancybox=True, fontsize=16)
         plt.tight_layout()
@@ -306,46 +219,21 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
 
     plt.close()
 
-    bol = np.zeros((numWithClinical, codebook_length))
-
-    offset = 0
-    for size in sizes:
-        bol[:, offset:offset+bol_representation[size].shape[-1]] += bol_representation[size][0:numWithClinical, :]
-
-    return bol, mixture_models
+    return bol_representation[0:numWithClinical, :], c
 
 
-def project_to_bol(mri_list, feature_data, mixture_models):
-    bol_representation = {}
-    codebook_length = 0
+def project_to_bol(mri_list, feature_data, c):
+    lesion_types = c.predict_proba(feature_data)
 
-    for m, size in enumerate(sizes):
-        model = mixture_models[size]
-        lesion_types = model.predict_proba(feature_data[size])
-        codebook_length += lesion_types.shape[-1]
+    bol_representation = np.zeros((len(mri_list), lesion_types.shape[-1]))
 
-        bol_representation[size] = np.zeros((len(mri_list), lesion_types.shape[-1]))
+    lesionIndex = 0
+    for i, scan in enumerate(mri_list):
+        for j, lesion in enumerate(scan.lesionList):
+            bol_representation[i, :] += lesion_types[lesionIndex, :]
+            lesionIndex += 1
 
-        lesionIndex = 0
-        for i, scan in enumerate(mri_list):
-            for j, lesion in enumerate(scan.lesionList):
-                if (len(lesion) > 2 and len(lesion) < 11 and m == 0) or (
-                    len(lesion) > 10 and len(lesion) < 26 and m == 1) or (
-                    len(lesion) > 25 and len(lesion) < 101 and m == 2) or (len(lesion) > 100 and m == 3):
-
-                    bol_representation[size][i, :] += lesion_types[lesionIndex, :]
-
-                    lesionIndex += 1
-
-    bol = np.zeros((len(mri_list), codebook_length))
-
-    offset = 0
-    for size in sizes:
-        num_lesion_types = bol_representation[size].shape[-1]
-        bol[:, offset:offset+num_lesion_types] = bol_representation[size]
-        offset += num_lesion_types
-
-    return bol
+    return bol_representation
 
 
 def createRepresentationSpace(mri_list, dataVectors, lesionSizes, numWithClinical, lesionCentroids, examineClusters=False):
@@ -982,19 +870,14 @@ def beforeAndAfter():
         plt.close()
 
 
-def separatePatientsByTreatment(mri_train, mri_test, trainData, testData, trainCounts, testCounts):
-    trainingPatientsByTreatment = defaultdict(list)
-    testingPatientsByTreatment = defaultdict(list)
+def separatePatientsByTreatment(mri_train, mri_test, trainData, testData):
+    trainingPatientsByTreatment, testingPatientsByTreatment = defaultdict(list), defaultdict(list)
     
-    trainingData = {}
-    testingData = {}
-    trainLesionCounts = {}
-    testLesionCounts = {}
+    trainingData, testingData = {}, {}
 
-    treatmentCountTrains = {}
-    treatmentCountTest = {}
-    treatmentIndexTrains = {}
-    treatmentIndexTest = {}
+    treatmentCountTrains, treatmentCountTest = {}, {}
+    treatmentIndexTrains, treatmentIndexTest = {}, {}
+
     for treatment in treatments:
         treatmentCountTrains[treatment] = 0
         treatmentCountTest[treatment] = 0
@@ -1007,28 +890,28 @@ def separatePatientsByTreatment(mri_train, mri_test, trainData, testData, trainC
         treatmentCountTest[scan.treatment] += 1
         
     for treatment in treatments:
-        trainingData[treatment] = np.zeros((treatmentCountTrains[treatment], np.shape(trainData)[1]))
-        testingData[treatment] = np.zeros((treatmentCountTest[treatment], np.shape(testData)[1]))
-        trainLesionCounts[treatment] = np.zeros((treatmentCountTrains[treatment], np.shape(trainCounts)[1]))
-        testLesionCounts[treatment] = np.zeros((treatmentCountTest[treatment], np.shape(testCounts)[1]))
+        trainingData[treatment] = np.zeros((treatmentCountTrains[treatment], np.shape(trainData)[-1]))
+        testingData[treatment] = np.zeros((treatmentCountTest[treatment], np.shape(testData)[-1]))
+        # trainLesionCounts[treatment] = np.zeros((treatmentCountTrains[treatment], np.shape(trainCounts)[1]))
+        # testLesionCounts[treatment] = np.zeros((treatmentCountTest[treatment], np.shape(testCounts)[1]))
 
     for i, scan in enumerate(mri_train):
         trainingPatientsByTreatment[scan.treatment].append(scan)
         trainingData[scan.treatment][treatmentIndexTrains[scan.treatment],:] = trainData[i,:]
-        trainLesionCounts[scan.treatment][treatmentIndexTrains[scan.treatment],:] = trainCounts[i,:]
+        # trainLesionCounts[scan.treatment][treatmentIndexTrains[scan.treatment],:] = trainCounts[i,:]
         treatmentIndexTrains[scan.treatment] += 1
     
     for i, scan in enumerate(mri_test):
         testingPatientsByTreatment[scan.treatment].append(scan)
         testingData[scan.treatment][treatmentIndexTest[scan.treatment],:] = testData[i,:]
-        testLesionCounts[scan.treatment][treatmentIndexTest[scan.treatment],:] = testCounts[i,:]
+        # testLesionCounts[scan.treatment][treatmentIndexTest[scan.treatment],:] = testCounts[i,:]
         treatmentIndexTest[scan.treatment] += 1
     
     for treatment in treatments:
         print('training shape:', treatment, np.shape(trainingData[treatment]))
         print('testing shape:', treatment, np.shape(testingData[treatment]))
     
-    return trainingPatientsByTreatment, testingPatientsByTreatment, trainingData, testingData, trainLesionCounts, testLesionCounts
+    return trainingPatientsByTreatment, testingPatientsByTreatment, trainingData, testingData
 
 # we want to show here where the placebo-trained model failed to predict a patient showing activity
 # this means that the drug had an effect, because it messed up our pre-trained prediction

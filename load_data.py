@@ -65,310 +65,89 @@ def get_outcomes(mri_list):
     return outcomes
 
 
-# removes extremely rare lesion-types
-def prune_features(trainData, testData):
-    featureCounts = {}
-    for s, size in enumerate(sizes):
-        featureCounts[size] = np.zeros((np.shape(trainData[size])[1]))
-
-    for s, size in enumerate(sizes):
-        testData[size] = testData[size][:, (trainData[size] != 0).sum(axis=0) >= 10]
-        trainData[size] = trainData[size][:, (trainData[size] != 0).sum(axis=0) >= 10]
-
-    return trainData, testData
-
-
-def loadLesionNumbers(mri_list):
-    featureVector = np.zeros((len(mri_list), 4))
-    for i, scan in enumerate(mri_list):
-        for j, lesion in enumerate(scan.lesionList):
-            if len(lesion) > 100:
-                featureVector[0] += 1
-            elif len(lesion) > 25:
-                featureVector[1] += 1
-            elif len(lesion) > 10:
-                featureVector[2] += 1
-            elif len(lesion) > 2:
-                featureVector[3] += 1
-            
-    return featureVector
-
-
-def loadShape(mri_list, numLesions):
-    data = defaultdict(list)
-    
-    for i, scan in enumerate(mri_list):
-        for j in range(len(scan.lesionList)):
-            if len(scan.lesionList[j]) > 2:
-                lesion_feature = pickle.load(open(scan.features_dir + 'shape_' + str(j) + '.pkl', 'rb'))
-
-            if len(scan.lesionList[j]) > 100:
-                data['large'].append(lesion_feature)
-            elif len(scan.lesionList[j]) > 25:
-                data['medium'].append(lesion_feature)
-            elif len(scan.lesionList[j]) > 10:
-                data['small'].append(lesion_feature)
-            elif len(scan.lesionList[j]) > 2:
-                data['tiny'].append(lesion_feature)
-    
-    if plotFeats:
-        fig, ax = plt.subplots(1,4, figsize=(10,4))
-        for s, size in enumerate(sizes):
-            for d in data[size]:
-                ax[s].plot(np.ndarray.flatten(d))
-            
-            ax[s].set_title('shape - ' + size)
-        
-        plt.tight_layout()
-        plt.show()
-            
-    return data
-
-
-def loadIntensity(mri_list, numLesions):
+def loadIntensity(mri_list):
     numBins = 2
     
-    data = defaultdict(list)
+    data = []
 
     for i, scan in enumerate(mri_list):
         for j in range(len(scan.lesionList)):
-            if len(scan.lesionList[j]) > 2:
-                lesion_feature = pickle.load(open(scan.features_dir + 'intensity_' + str(j) + '.pkl', 'rb'))
-            else:
-                continue
-                
-            if len(scan.lesionList[j]) > 100:
-                feature = np.zeros((len(modalities), numBins))
+            lesion_feature = pickle.load(open(scan.features_dir + 'intensity_' + str(j) + '.pkl', 'rb'))
 
-                for m, mod in enumerate(modalities):
-                    feature[m, :] = lesion_feature[mod]
-                data['large'].append(feature)
-                
-            elif len(scan.lesionList[j]) > 25:
-                feature = np.zeros((len(modalities), numBins))
+            feature = np.zeros((len(modalities), numBins))
+            for m, mod in enumerate(modalities):
+                feature[m, :] = lesion_feature[mod]
 
-                for m, mod in enumerate(modalities):
-                    feature[m, :] = lesion_feature[mod]
-                data['medium'].append(feature)
-            
-            elif len(scan.lesionList[j]) > 10:
-                feature = np.zeros((len(modalities), numBins))
-
-                for m, mod in enumerate(modalities):
-                    feature[m, :] = lesion_feature[mod]
-                data['small'].append(feature)
-            
-            elif len(scan.lesionList[j]) > 2:
-                feature = np.zeros((len(modalities), numBins))
-
-                for m, mod in enumerate(modalities):
-                    feature[m, :] = lesion_feature[mod]
-                data['tiny'].append(feature)
-
-    if plotFeats:
-        fig, ax = plt.subplots(1,4, figsize=(10,4))
-        for s, size in enumerate(sizes):
-            for d in data[size]:
-                ax[s].plot(np.ndarray.flatten(d))
-            
-            ax[s].set_title('intensity - ' + size)
-        
-        plt.tight_layout()
-        plt.show()
+            data.append(np.ndarray.flatten(feature))
         
     return data
     
-def loadRIFT(mri_list, numLesions):
+def loadRIFT(mri_list):
     numBinsTheta = 4
-    numBinsPhi = 1
-       
-#    data = np.zeros((numLesions, len(modalities), len(riftRadii), 8, numBinsTheta*numBinsPhi))
-    data = defaultdict(list)
+    data = []
     
     for i, scan in enumerate(mri_list):
         for j in range(len(scan.lesionList)):
-            if len(scan.lesionList[j]) > 2:
-                lesion_feature = pickle.load(open(scan.features_dir + 'rift_' + str(j) + '.pkl', 'rb'))
-            else:
-                continue
-                
-            if len(scan.lesionList[j]) > 100:
-                feature = np.zeros((len(modalities), len(riftRadii), numBinsTheta*numBinsPhi))
+            lesion_feature = pickle.load(open(scan.features_dir + 'rift_' + str(j) + '.pkl', 'rb'))
 
-                for m, mod in enumerate(modalities):
-                    feature[m, ...] = lesion_feature[mod]
-                data['large'].append(feature)
+            feature = np.zeros((len(modalities), len(riftRadii), numBinsTheta))
+            for m, mod in enumerate(modalities):
+                feature[m, ...] = lesion_feature[mod]
 
-            elif len(scan.lesionList[j]) > 25:
-                feature = np.zeros((len(modalities), len(riftRadii), numBinsTheta*numBinsPhi))
-
-                for m, mod in enumerate(modalities):
-                    feature[m, ...] = lesion_feature[mod]
-                data['medium'].append(feature)
-
-            elif len(scan.lesionList[j]) > 10:
-                feature = np.zeros((len(modalities), len(riftRadii), numBinsTheta*numBinsPhi))
-
-                for m, mod in enumerate(modalities):
-                    feature[m, ...] = lesion_feature[mod]
-                data['small'].append(feature)
-                
-            elif len(scan.lesionList[j]) > 2:
-                feature = np.zeros((len(modalities), len(riftRadii), numBinsTheta*numBinsPhi))
-
-                for m, mod in enumerate(modalities):
-                    feature[m, ...] = lesion_feature[mod]
-                data['tiny'].append(feature)
-
-    if plotFeats:
-        fig, ax = plt.subplots(1,4, figsize=(10,4))
-        for s, size in enumerate(sizes):
-            for d in data[size]:
-                ax[s].plot(np.ndarray.flatten(d))
-            
-            ax[s].set_title('RIFT - ' + size)
-        
-        plt.tight_layout()
-        plt.show()
+            data.append(np.ndarray.flatten(feature))
         
     return data
 
 
-def loadContext(mri_list, numLesions):
+def loadContext(mri_list):
     numBins = 2
     
     data = defaultdict(list)
         
     for i, scan in enumerate(mri_list):
         for j, lesion in enumerate(scan.lesionList):
-            if len(scan.lesionList[j]) > 2:
-                lesion_feature = pickle.load(open(scan.features_dir + 'context_' + str(j) + '.pkl', 'rb'))
-            else:
-                continue
-                    
-            if len(scan.lesionList[j]) > 100:
-                feature = np.zeros((len(tissues) + len(wm_tracts), numBins))
+            lesion_feature = pickle.load(open(scan.features_dir + 'context_' + str(j) + '.pkl', 'rb'))
 
-                for k, tissue in enumerate(scan.tissues + wm_tracts):
-                    feature[k, ...] = lesion_feature[tissue]
-                data['large'].append(feature)
+            feature = np.zeros((len(tissues) + len(wm_tracts), numBins))
 
-            elif len(scan.lesionList[j]) > 25:
-                feature = np.zeros((len(tissues) + len(wm_tracts), numBins))
-
-                for k, tissue in enumerate(scan.tissues + wm_tracts):
-                    feature[k, ...] = lesion_feature[tissue]
-                data['medium'].append(feature)
-            
-            elif len(scan.lesionList[j]) > 10:
-                feature = np.zeros((len(tissues) + len(wm_tracts), numBins))
-
-                for k, tissue in enumerate(scan.tissues + wm_tracts):
-                    feature[k, ...] = lesion_feature[tissue]
-                data['small'].append(feature)
-                
-            elif len(scan.lesionList[j]) > 2:
-                feature = np.zeros((len(tissues) + len(wm_tracts), numBins))
-
-                for k, tissue in enumerate(scan.tissues + wm_tracts):
-                    feature[k, ...] = lesion_feature[tissue]
-                data['tiny'].append(feature)
-
-    if plotFeats:
-        fig, ax = plt.subplots(1,4, figsize=(10,4))
-        for s, size in enumerate(sizes):
-            for d in data[size]:
-                ax[s].plot(np.ndarray.flatten(d))
-            
-            ax[s].set_title('context - ' + size)
-        
-        plt.tight_layout()
-        plt.show()
+            for k, tissue in enumerate(scan.tissues + wm_tracts):
+                feature[k, ...] = lesion_feature[tissue]
+            data.append(np.ndarray.flatten(feature))
             
     return data
 
-def loadLBP(mri_list, numLesions, lbpPCA=None):
+def loadLBP(mri_list):
     #786 is 256*3
 #    data = np.zeros((numLesions, len(modalities), len(lbpRadii), 8, 2**8), dtype='float')
-    data = defaultdict(list)
+    data = []
             
     for i, scan in enumerate(mri_list):
         for j in range(len(scan.lesionList)):
-            if len(scan.lesionList[j]) > 2:
-                lesion_feature = pickle.load(open(scan.features_dir + 'lbp_' + str(j) + '.pkl', 'rb'))
-            else:
-                continue
+            lesion_feature = pickle.load(open(scan.features_dir + 'lbp_' + str(j) + '.pkl', 'rb'))
 
-            if len(scan.lesionList[j]) > 100:
-                feature = np.zeros((len(modalities), len(lbpRadii), 9))
+            feature = np.zeros((len(modalities), len(lbpRadii), 9))
+            for m, mod in enumerate(modalities):
+                feature[m, ...] = lesion_feature[mod]
+            data.append(feature)
 
-                for m, mod in enumerate(modalities):
-                    feature[m, ...] = lesion_feature[mod]
-                data['large'].append(feature)
-
-            elif len(scan.lesionList[j]) > 25:
-                feature = np.zeros((len(modalities), len(lbpRadii), 9))
-
-                for m, mod in enumerate(modalities):
-                    feature[m,...] = lesion_feature[mod]
-                data['medium'].append(feature)
-
-            elif len(scan.lesionList[j]) > 10:
-                feature = np.zeros((len(modalities), len(lbpRadii), 9))
-
-                for m, mod in enumerate(modalities):
-                    feature[m,...] = lesion_feature[mod]
-                data['small'].append(feature)
-                
-            elif len(scan.lesionList[j]) > 2:
-                feature = np.zeros((len(modalities), len(lbpRadii), 9))
-
-                for m, mod in enumerate(modalities):
-                    feature[m,...] = lesion_feature[mod]
-                data['tiny'].append(feature)
-    
-    if plotFeats:
-        fig, ax = plt.subplots(1,4, figsize=(14,4))
-        for s, size in enumerate(sizes):
-            for d in data[size]:
-                ax[s].plot(np.ndarray.flatten(d))
-            
-            ax[s].set_title('LBP - ' + size)
-        
-        plt.tight_layout()
-        plt.show()
-            
-    return data, lbpPCA
+    return data
 
 
-def loadAllData(mri_list, numLesions, lbpPCA=None):
+def loadAllData(mri_list):
 
-    context = loadContext(mri_list, numLesions)
-    rift = loadRIFT(mri_list, numLesions)
-    lbp = loadLBP(mri_list, numLesions, lbpPCA=lbpPCA)[0]
-    intensity = loadIntensity(mri_list, numLesions)
+    context = loadContext(mri_list)
+    rift = loadRIFT(mri_list)
+    lbp = loadLBP(mri_list)
+    intensity = loadIntensity(mri_list)
 
-    feature_data = [context, rift, lbp, intensity]
+    size_feature = []
+    for scan in mri_list:
+        for lesion in scan.lesionList:
+            size_feature.append(len(lesion))
 
-    combined_data, flat_data = {}, {}
+    feature_data = [context, rift, lbp, intensity, size_feature]
 
-    # first, flatten each feature
-    for j, feature in enumerate(feature_data):
-        flat_data[j] = {}
-        for size in sizes:
-            flat_dims = 1
-            for dim in feature[size][0].shape:
-                flat_dims *= dim
-
-            n_lesions = len(feature[size])
-            flat_data[j][size] = np.reshape(np.asarray(feature[size]), (n_lesions, flat_dims))
-
-    # concatenate features
-    for size in sizes:
-        combined_data[size] = np.hstack((flat_data[0][size], flat_data[1][size], flat_data[2][size], flat_data[3][size]))
-        print(size, 'feature data shape:', combined_data[size].shape)
-
-    return combined_data, lbpPCA
+    return feature_data
     
     
 def loadClinical(mri_list):
