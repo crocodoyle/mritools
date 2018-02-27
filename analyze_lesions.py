@@ -163,7 +163,7 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
 
     codebook_length = 0
 
-    n_clusters, bics, clust_search = defaultdict(list), defaultdict(list), defaultdict(list)
+    n_clusters, bics, aics, clust_search = defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list)
     n_lesion_types = {}
 
     brainIndices, lesionIndices = defaultdict(list), defaultdict(list)
@@ -175,7 +175,7 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
         clust_search[size].append("")
         clust_search[size].append("")
 
-        clusterData, validationData = train_test_split(lesionFeatures, test_size=0.2, random_state=5)
+        # clusterData, validationData = train_test_split(lesionFeatures, test_size=0.2, random_state=5)
 
         if 'tiny' in size:
             cluster_range = range(2, 15)
@@ -185,11 +185,11 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
         for k in cluster_range:
             # print('trying ' + str(k) + ' clusters...')
             clust_search[size].append(GaussianMixture(n_components=k, covariance_type='full'))
-            clust_search[size][k].fit(clusterData)
+            clust_search[size][k].fit(lesionFeatures)
 
             n_clusters[size].append(k)
-            bics[size].append(clust_search[size][k].bic(validationData))
-            # aics.append(clust_search[size][k].aic(validationData))
+            bics[size].append(clust_search[size][k].bic(lesionFeatures))
+            aics.append(clust_search[size][k].aic(lesionFeatures))
             # scores.append(np.mean(clustSearch[k].score(validationData)))
 
         n_lesion_types[size] = n_clusters[size][np.argmin(bics[size])]
@@ -231,7 +231,7 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
             n = 6
             for k in range(n_lesion_types[size]):
                 if len(lesionIndices[size][k]) > n:
-                    plt.figure(1, figsize=(15, 5))
+                    plt.figure(1, figsize=(15, 15))
 
                     examples_list = list(zip(brainIndices[size][k], lesionIndices[size][k]))
                     random.shuffle(examples_list)
@@ -258,20 +258,35 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
                         square = np.ma.masked_where(maskSquare == 0, np.ones(np.shape(maskSquare)) * 5000)
 
                         lesionMaskPatch = maskImg[x, y-20:y+20, z-20:z+20]
-                        ax2 = plt.subplot(2, n, i + 1)
-                        ax2.axis('off')
-                        ax2.imshow(img[x, 20:200, 20:175], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
-                        ax2.imshow(maskImg[x, 20:200, 20:175], cmap=plt.cm.autumn, interpolation='nearest', alpha=0.25, origin='lower')
-                        ax2.imshow(square[x, 20:200, 20:175], cmap=plt.cm.autumn, interpolation='nearest', origin='lower')
+                        ax = plt.subplot(4, n, i + 1)
+                        ax.axis('off')
+                        ax.imshow(img[x, 20:200, 20:175], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
+                        ax.imshow(maskImg[x, 20:200, 20:175], cmap=plt.cm.autumn, interpolation='nearest', alpha=0.25, origin='lower')
+                        ax.imshow(square[x, 20:200, 20:175], cmap=plt.cm.autumn, interpolation='nearest', origin='lower')
 
-                        ax3 = plt.subplot(2, n, i + 1 + n)
-                        ax3.imshow(img[x, y-20:y+20, z-20:z+20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
-                        ax3.imshow(lesionMaskPatch, cmap=plt.cm.autumn, alpha=0.25, interpolation='nearest', origin='lower')
-                        ax3.axes.get_yaxis().set_visible(False)
-                        ax3.set_xticks([])
-                        ax3.set_xlabel(letters[i])
+                        ax2 = plt.subplot(4, n, i + 1 + n)
+                        ax2.imshow(img[x, y-20:y+20, z-20:z+20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
+                        ax2.imshow(lesionMaskPatch, cmap=plt.cm.autumn, alpha=0.25, interpolation='nearest', origin='lower')
+                        ax2.axes.get_yaxis().set_visible(False)
+                        ax2.set_xticks([])
+                        ax2.set_xlabel(letters[i])
 
-                    # plt.subplots_adjust(wspace=0.01, hspace=0.01)
+                        x = np.linspace(1, lesionFeatures.shape[1], num=lesionFeatures.shape[1])
+                        ax3 = plt.subplot(4, n, i + 1 + 2*n)
+                        ax3.bar(x, lesionFeatures[lesionIndex, :], color='darkred')
+
+
+                        y = np.linspace(1, cluster_probabilities.shape[1], num=cluster_probabilities.shape[1])
+                        ax4 = plt.subplot(4, n, i + 1 + 3*n)
+                        ax4.bar(y, cluster_probabilities[lesionIndex, :], color='darkorange')
+
+                        if i == 0:
+                            ax.set_ylabel('Lesion', fontsize=20)
+                            ax2.set_ylabel('Close-up', fontsize=20)
+                            ax3.set_ylabel('Feature values', fontsize=20)
+                            ax4.set_ylabel('Lesion-type prob.', fontsize=20)
+
+                    plt.subplots_adjust(wspace=0.01)
                     plt.savefig(results_dir + size + '_lesion_type_' + str(k) + '_fold_' + str(fold_num) + '.png', dpi=600, bbox_inches='tight')
                     plt.clf()
 
@@ -279,13 +294,14 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
         fig, (ax) = plt.subplots(1, 1, figsize=(6, 4))
 
         for size in sizes:
-            ax.plot(n_clusters[size], bics[size], label=size)
-            # ax.plot(numClusters, bics, label="BIC")
+            ax.plot(n_clusters[size], bics[size], label=size + ' BIC')
+            ax.plot(n_clusters[size], aics[size], label=size + ' AIC')
             # ax.plot(numClusters, scores, label='avg. log-likelihood')
 
-        ax.set_xlabel("Number of lesion-types in model")
-        ax.set_ylabel("BIC")
-        ax.legend(shadow=True)
+        ax.set_xlabel("Number of lesion-types in model", fontsize=20)
+        ax.set_ylabel("A/BIC", fontsize=20)
+        ax.legend(shadow=True, loc='center left', bbox_to_anchor=(1, 0.5), fancybox=True, fontsize=16)
+        plt.tight_layout()
         plt.savefig(results_dir + 'choosing_clusters_fold_' + str(fold_num) + '.png', bbox_inches='tight')
 
     plt.close()
