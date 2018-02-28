@@ -144,7 +144,9 @@ def loadAllData(mri_list):
         for lesion in scan.lesionList:
             size_feature.append(len(lesion))
 
-    feature_data = [context, rift, lbp, intensity, size_feature]
+    size_feature = size_feature / np.max(size_feature)
+
+    feature_data = np.hstack((context, rift, lbp, intensity, size_feature))
 
     return feature_data
     
