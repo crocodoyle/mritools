@@ -129,7 +129,7 @@ def loadLBP(mri_list):
                 feature[m, ...] = lesion_feature[mod]
             data.append(feature)
 
-    return np.asarray(data)
+    return np.asarray(np.ndarray.flatten(data))
 
 
 def loadAllData(mri_list):
@@ -144,7 +144,7 @@ def loadAllData(mri_list):
         for lesion in scan.lesionList:
             size_feature.append(len(lesion))
 
-    size_feature = size_feature / np.max(size_feature)
+    size_feature = np.reshape(size_feature, ((len(size_feature, 1)))) / np.max(size_feature)
 
     print('Feature vector sizes:')
     print('Context:', context.shape)
