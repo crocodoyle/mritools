@@ -127,9 +127,9 @@ def loadLBP(mri_list):
             feature = np.zeros((len(modalities), len(lbpRadii), 9))
             for m, mod in enumerate(modalities):
                 feature[m, ...] = lesion_feature[mod]
-            data.append(feature)
+            data.append(np.ndarray.flatten(feature))
 
-    return np.asarray(np.ndarray.flatten(np.asarray(data)))
+    return np.asarray(np.asarray(data))
 
 
 def loadAllData(mri_list):
