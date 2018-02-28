@@ -315,7 +315,6 @@ def predict_responders():
         print(foldNum+1, '/', kf.get_n_splits())
 
         mri_train, mri_test = np.asarray(mri_list)[train_index], np.asarray(mri_list)[test_index]
-        trainCounts, testCounts = load_data.loadLesionNumbers(mri_train), load_data.loadLesionNumbers(mri_test)
 
         # incorporate patients with no clinical data
         train_patients = []
