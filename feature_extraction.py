@@ -176,18 +176,17 @@ def get_rift(scan, riftRegions, img):
             for point in lesion_points:
                 print(point)
 
-            z_min, z_max = np.min(lesion_points, axis=-1)[2], np.max(lesion_points, axis=-1)[2]
+            z_min, z_max = np.min(lesion_points[:, 2]), np.max(lesion_points[:, 2])
             print(z_min, z_max)
 
             for zc in range(z_min, z_max+1):
                 in_plane = lesion_points[lesion_points[:, 2] == zc]
-                xc = np.mean(in_plane, axis=-1)[0]
-                yc = np.mean(in_plane, axis=-1)[1]
+                xc = np.mean(in_plane[:, 0])
+                yc = np.mean(in_plane[:, 1])
 
                 for r, region in enumerate(riftRegions):
+                    gradient_direction, gradient_strength = [], []
                     for p, evalPoint in enumerate(region):
-                        gradient_direction, gradient_strength = [], []
-
                         x = xc + evalPoint[0]
                         y = yc + evalPoint[1]
                         z = zc
