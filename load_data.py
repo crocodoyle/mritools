@@ -129,7 +129,7 @@ def loadLBP(mri_list):
                 feature[m, ...] = lesion_feature[mod]
             data.append(feature)
 
-    return np.asarray(np.ndarray.flatten(data))
+    return np.asarray(np.ndarray.flatten(np.asarray(data)))
 
 
 def loadAllData(mri_list):
