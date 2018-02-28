@@ -67,7 +67,6 @@ def get_outcomes(mri_list):
 
 def loadIntensity(mri_list):
     numBins = 2
-    
     data = []
 
     for i, scan in enumerate(mri_list):
@@ -102,7 +101,7 @@ def loadRIFT(mri_list):
 def loadContext(mri_list):
     numBins = 2
     
-    data = defaultdict(list)
+    data = []
         
     for i, scan in enumerate(mri_list):
         for j, lesion in enumerate(scan.lesionList):
