@@ -146,6 +146,13 @@ def loadAllData(mri_list):
 
     size_feature = size_feature / np.max(size_feature)
 
+    print('Feature vector sizes:')
+    print('Context:', context.shape)
+    print('RIFT:', rift.shape)
+    print('LBP:', lbp.shape)
+    print('Intensity:', intensity.shape)
+    print('Size:', size_feature.shape)
+
     feature_data = np.hstack((context, rift, lbp, intensity, size_feature))
 
     return feature_data
