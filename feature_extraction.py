@@ -180,9 +180,9 @@ def get_rift(scan, riftRegions, img):
             print(z_min, z_max)
 
             for zc in range(z_min, z_max+1):
-                in_plane = lesion_points[lesion_points[:, :, 2] == zc]
-                xc = np.mean(in_plane, axis=0)
-                yc = np.mean(in_plane, axis=1)
+                in_plane = lesion_points[lesion_points[:, 2] == zc]
+                xc = np.mean(in_plane, axis=-1)[0]
+                yc = np.mean(in_plane, axis=-1)[1]
 
                 for r, region in enumerate(riftRegions):
                     for p, evalPoint in enumerate(region):
