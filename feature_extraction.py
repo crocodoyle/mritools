@@ -15,7 +15,7 @@ data_dir = '/data1/users/adoyle/MS-LAQ/MS-LAQ-302-STX/'
 icbmRoot = data_dir + 'quarantine/common/models/icbm_avg_152_'
 lesion_atlas = data_dir + 'quarantine/common/models/icbm_avg_3714_t2les.mnc.gz'
 
-reload_list = True
+reload_list = False
 
 modalities = ['t1p', 't2w', 'pdw', 'flr']
 
@@ -172,6 +172,10 @@ def get_rift(scan, riftRegions, img):
             feature = np.zeros((len(riftRadii), numBinsTheta))
 
             lesion_points = np.asarray(lesion)
+            print('lesion points:', lesion_points.shape)
+            for point in lesion_points:
+                print(point)
+
             z_min, z_max = np.min(lesion_points, axis=2), np.max(lesion_points, axis=2)
 
             for zc in range(z_min, z_max+1):
@@ -199,7 +203,6 @@ def get_rift(scan, riftRegions, img):
 
                     hist, bins = np.histogram(gradient_direction, bins=binsTheta, range=(0, np.pi),
                                               weights=gradient_strength)
-                    # hist = np.divide(hist, sum(hist))
 
                     if not np.isnan(np.min(hist)):
                         feature[r, :] += hist / float(len(in_plane))
@@ -273,13 +276,6 @@ def get_context(scan, images):
 
             for p in lesion:
                 context.append(images[tissue][p[0], p[1], p[2]])
-
-            # contextHist = np.histogram(context, numBins, (contextMin[tissue], contextMax[tissue]))
-            # contextHist = contextHist[0] / np.sum(contextHist[0], dtype='float')
-            #
-            # if np.isnan(contextHist).any():
-            #     contextHist = np.zeros(numBins)
-            #     contextHist[0] = 1
 
             saveDocument[tissue] = [np.mean(context), np.var(context)]
 
