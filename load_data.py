@@ -79,7 +79,7 @@ def loadIntensity(mri_list):
 
             data.append(np.ndarray.flatten(feature))
         
-    return data
+    return np.asarray(data)
     
 def loadRIFT(mri_list):
     numBinsTheta = 4
@@ -95,7 +95,7 @@ def loadRIFT(mri_list):
 
             data.append(np.ndarray.flatten(feature))
         
-    return data
+    return np.asarray(data)
 
 
 def loadContext(mri_list):
@@ -113,7 +113,7 @@ def loadContext(mri_list):
                 feature[k, ...] = lesion_feature[tissue]
             data.append(np.ndarray.flatten(feature))
             
-    return data
+    return np.asarray(data)
 
 def loadLBP(mri_list):
     #786 is 256*3
@@ -129,7 +129,7 @@ def loadLBP(mri_list):
                 feature[m, ...] = lesion_feature[mod]
             data.append(feature)
 
-    return data
+    return np.asarray(data)
 
 
 def loadAllData(mri_list):
