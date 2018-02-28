@@ -102,14 +102,14 @@ def uniformLBP(image, lesion, radius):
     for i, [x, y, z] in enumerate(lesion):
         threshold = image[x, y, z]
 
-        lbp.set(image[x - r, y, z] > threshold, 0)
-        lbp.set(image[x - r, y + r, z] > threshold, 1)
-        lbp.set(image[x, y + r, z] > threshold, 2)
-        lbp.set(image[x + r, y + r, z] > threshold, 3)
-        lbp.set(image[x + r, y, z] > threshold, 4)
-        lbp.set(image[x + r, y - r, z] > threshold, 5)
-        lbp.set(image[x, y - r, z] > threshold, 6)
-        lbp.set(image[x - r, y - r, z] > threshold, 7)
+        lbp.set(image[x, y - r, z] > threshold, 0)
+        lbp.set(image[x, y - r, z + r] > threshold, 1)
+        lbp.set(image[x, y, z + r] > threshold, 2)
+        lbp.set(image[x, y + r, z + r] > threshold, 3)
+        lbp.set(image[x, y + r, z] > threshold, 4)
+        lbp.set(image[x, y + r, z - r] > threshold, 5)
+        lbp.set(image[x, y, z - r] > threshold, 6)
+        lbp.set(image[x, y - r, z - r] > threshold, 7)
 
         transitions = 0
         for bit in range(len(lbp) - 1):
@@ -176,30 +176,30 @@ def get_rift(scan, riftRegions, img):
             for point in lesion_points:
                 print(point)
 
-            z_min, z_max = np.min(lesion_points[:, 2]), np.max(lesion_points[:, 2])
-            print(z_min, z_max)
+            x_min, x_max = np.min(lesion_points[:, 0]), np.max(lesion_points[:, 0])
+            print(x_min, x_max)
 
-            for zc in range(z_min, z_max+1):
-                in_plane = lesion_points[lesion_points[:, 2] == zc]
-                xc = int(np.mean(in_plane[:, 0]))
+            for xc in range(x_min, x_max+1):
+                in_plane = lesion_points[lesion_points[:, 0] == xc]
                 yc = int(np.mean(in_plane[:, 1]))
+                zc = int(np.mean(in_plane[:, 2]))
 
                 for r, region in enumerate(riftRegions):
                     gradient_direction, gradient_strength = [], []
                     for p, evalPoint in enumerate(region):
-                        x = xc + evalPoint[0]
-                        y = yc + evalPoint[1]
-                        z = zc
+                        x = xc
+                        y = yc + evalPoint[0]
+                        z = zc + evalPoint[1]
 
                         if [x, y, z] in lesion:
-                            relTheta = np.arctan2((y - yc), (x - xc))
+                            relTheta = np.arctan2((y - yc), (z - zc))
                             outwardTheta = (theta[mod][x, y, z] - relTheta + 2 * np.pi) % (2 * np.pi)
 
                             gradient_direction.append(outwardTheta)
                             gradient_strength.append(mag[mod][x, y, z])
 
-                        gaussian = 1 / (sigma * np.sqrt(2 * np.pi)) * np.exp(
-                            - (np.square(y - yc) + np.square(x - xc)) / (2 * sigma ** 2))
+                        # gaussian = 1 / (sigma * np.sqrt(2 * np.pi)) * np.exp(
+                        #     - (np.square(y - yc) + np.square(z - zc)) / (2 * sigma ** 2))
 
                     hist, bins = np.histogram(gradient_direction, bins=binsTheta, range=(0, np.pi),
                                               weights=gradient_strength)
