@@ -172,12 +172,12 @@ def get_rift(scan, riftRegions, img):
             feature = np.zeros((len(riftRadii), numBinsTheta))
 
             lesion_points = np.asarray(lesion)
-            print('lesion points:', lesion_points.shape)
-            for point in lesion_points:
-                print(point)
+            # print('lesion points:', lesion_points.shape)
+            # for point in lesion_points:
+            #     print(point)
 
             x_min, x_max = np.min(lesion_points[:, 0]), np.max(lesion_points[:, 0])
-            print(x_min, x_max)
+            # print(x_min, x_max)
 
             for xc in range(x_min, x_max+1):
                 in_plane = lesion_points[lesion_points[:, 0] == xc]
