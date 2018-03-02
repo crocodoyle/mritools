@@ -265,7 +265,7 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
     axes[1].set_ylabel('Diff. from mean', fontsize=20)
 
 
-    data3 = [importance['tiny'][:, 0], importance['small'][:, 0], importance['medium'][:, 2], importance['large'][:, 0]]
+    data3 = [importance[:, 0], importance[:, 1], importance[:, 2], importance[:,3]]
     axes[2].boxplot(data3)
     axes[2].set_xlabel('Lesion size', fontsize=20)
     axes[2].set_ylabel('P(A|BoL) Importance', fontsize=20)

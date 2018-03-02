@@ -100,7 +100,7 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
 
     # clusterData, validationData = train_test_split(lesionFeatures, test_size=0.2, random_state=5)
 
-    cluster_range = range(2, 20)
+    cluster_range = range(2, 10)
 
     for k in cluster_range:
         # print('trying ' + str(k) + ' clusters...')
