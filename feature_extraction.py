@@ -19,10 +19,9 @@ reload_list = False
 
 modalities = ['t1p', 't2w', 'pdw', 'flr']
 
-riftRadii = [3, 6]
-lbpRadii = [1]
-
 thinners = skeletons.thinningElements()
+
+lbpRadii = [1]
 
 def write_clinical_outputs(mri_list):
     # csvwriter = csv.writer(open(data_dir + 'extraOnes.csv', 'w'))
@@ -129,27 +128,7 @@ def uniformLBP(image, lesion, radius):
     return uniformPatterns
 
 
-def generateRIFTRegions2D(radii):
-    pointLists = []
-
-    for r in range(len(radii)):
-        pointLists.append([])
-
-    for x in range(-np.max(radii), np.max(radii)):
-        for y in range(-np.max(radii), np.max(radii)):
-            distance = np.sqrt(x ** 2 + y ** 2)
-
-            if distance <= radii[0]:
-                pointLists[0].append([x, y])
-            elif distance > radii[0] and distance <= radii[1]:
-                pointLists[1].append([x, y])
-                # if distance > radii[1] and distance <= radii[2]:
-                #     pointLists[2].append([x, y])
-
-    return pointLists
-
-
-def get_rift(scan, riftRegions, img):
+def get_rift(scan, img):
     numBinsTheta = 4
     sigma = np.sqrt(2)
 
@@ -169,7 +148,7 @@ def get_rift(scan, riftRegions, img):
         saveDocument['_id'] = scan.uid + '_' + str(l)
 
         for mod in modalities:
-            feature = np.zeros((len(riftRadii), numBinsTheta))
+            feature = np.zeros((numBinsTheta))
 
             lesion_points = np.asarray(lesion)
             # print('lesion points:', lesion_points.shape)
@@ -184,30 +163,29 @@ def get_rift(scan, riftRegions, img):
                 yc = int(np.mean(in_plane[:, 1]))
                 zc = int(np.mean(in_plane[:, 2]))
 
-                for r, region in enumerate(riftRegions):
-                    gradient_direction, gradient_strength = [], []
-                    for p, evalPoint in enumerate(region):
-                        x = xc
-                        y = yc + evalPoint[0]
-                        z = zc + evalPoint[1]
+                gradient_direction, gradient_strength = [], []
+                for p, evalPoint in enumerate(in_plane):
+                    x = xc
+                    y = yc + evalPoint[0]
+                    z = zc + evalPoint[1]
 
-                        if [x, y, z] in lesion:
-                            relTheta = np.arctan2((y - yc), (z - zc))
-                            outwardTheta = (theta[mod][x, y, z] - relTheta + 2 * np.pi) % (2 * np.pi)
+                    if [x, y, z] in lesion:
+                        relTheta = np.arctan2((y - yc), (z - zc))
+                        outwardTheta = (theta[mod][x, y, z] - relTheta + 2 * np.pi) % (2 * np.pi)
 
-                            gradient_direction.append(outwardTheta)
-                            gradient_strength.append(mag[mod][x, y, z])
+                        gradient_direction.append(outwardTheta)
+                        gradient_strength.append(mag[mod][x, y, z] / 1000)
 
-                        # gaussian = 1 / (sigma * np.sqrt(2 * np.pi)) * np.exp(
-                        #     - (np.square(y - yc) + np.square(z - zc)) / (2 * sigma ** 2))
+                    # gaussian = 1 / (sigma * np.sqrt(2 * np.pi)) * np.exp(
+                    #     - (np.square(y - yc) + np.square(z - zc)) / (2 * sigma ** 2))
 
-                    hist, bins = np.histogram(gradient_direction, bins=binsTheta, range=(0, np.pi),
-                                              weights=gradient_strength)
+                hist, bins = np.histogram(gradient_direction, bins=binsTheta, range=(0, np.pi),
+                                          weights=gradient_strength)
 
-                    if not np.isnan(np.min(hist)):
-                        feature[r, :] += hist / float(len(in_plane))
-                    else:
-                        print('NaNs in RIFT for', scan.uid, 'at radius', str(riftRadii[r]))
+                if not np.isnan(np.min(hist)):
+                    feature += hist / float(len(in_plane))
+                else:
+                    print('NaNs in RIFT!')
 
             saveDocument[mod] = feature
 
@@ -324,7 +302,7 @@ def get_intensity(scan, images):
         pickle.dump(saveDocument, open(scan.features_dir + 'intensity_' + str(l) + '.pkl', "wb"))
 
 
-def getFeaturesOfList(mri_list, riftRegions):
+def getFeaturesOfList(mri_list):
     for i, scan in enumerate(mri_list):
         images = {}
         for j, m in enumerate(modalities):
@@ -335,7 +313,7 @@ def getFeaturesOfList(mri_list, riftRegions):
 
         get_context(scan, images)
         get_lbp(scan, images)
-        get_rift(scan, riftRegions, images)
+        get_rift(scan, images)
         get_intensity(scan, images)
 
         elapsed = time.time() - startTime
@@ -366,9 +344,8 @@ def main():
 
     print('MRI list loaded')
 
-    riftRegions = generateRIFTRegions2D(riftRadii)
     print('extracting imaging ')
-    getFeaturesOfList(mri_list, riftRegions)
+    getFeaturesOfList(mri_list)
 
     print('writing clinical outputs...')
     write_clinical_outputs(mri_list)
