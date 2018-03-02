@@ -20,9 +20,7 @@ wm_tracts = ['Anterior_Segment', 'Arcuate', 'Cingulum', 'Cortico_Ponto_Cerebellu
 
 
 lbpRadii = [1]
-riftRadii = [3, 6]
-selectK = False
-visualizeAGroup = False
+
 
 letters = ['(a)', '(b)', '(c)', '(d)', '(e)', '(f)', '(g)', '(h)', '(i)', '(j)', '(k)', '(l)', '(m)', '(n)', '(o)']
 
@@ -89,7 +87,7 @@ def loadRIFT(mri_list):
         for j in range(len(scan.lesionList)):
             lesion_feature = pickle.load(open(scan.features_dir + 'rift_' + str(j) + '.pkl', 'rb'))
 
-            feature = np.zeros((len(modalities), len(riftRadii), numBinsTheta))
+            feature = np.zeros((len(modalities), numBinsTheta))
             for m, mod in enumerate(modalities):
                 feature[m, ...] = lesion_feature[mod]
 
