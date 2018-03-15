@@ -112,6 +112,7 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
         aics.append(clust_search[k].aic(feature_data))
 
     n_lesion_types = n_clusters[np.argmin(bics)]
+    print('Optimal number of lesion-types:', n_lesion_types)
 
     # c = GaussianMixture(n_components=n_lesion_types[size], covariance_type='full')
     # c.fit(lesionFeatures)
@@ -138,10 +139,8 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
 
             lesion_idx += 1
 
-    print('Optimal number of lesion-types:', n_lesion_types)
     for lesion_type_idx in range(n_lesion_types):
-        print('Number of lesions in type', lesion_type_idx, ':', lesionIndices[lesion_type_idx])
-
+        print('Number of lesions in type', lesion_type_idx, ':', len(lesionIndices[lesion_type_idx]))
 
     print('results shape:', cluster_probabilities.shape)
 
@@ -152,8 +151,12 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
             if len(lesionIndices[k]) > n:
                 plt.figure(1, figsize=(15, 15))
 
-                examples_list = list(zip(brainIndices[k], lesionIndices[k]))
+                unshuffled_brain_indices = brainIndices[k]
+                unshuffled_lesion_indices = lesionIndices[k]
+                examples_list = list(zip(unshuffled_brain_indices, unshuffled_lesion_indices))
+
                 random.shuffle(examples_list)
+
                 brain_indices, lesion_indices = zip(*examples_list)
 
                 for i, (brainIndex, lesionIndex) in enumerate(zip(brain_indices[0:n], lesion_indices[0:n])):
@@ -227,17 +230,19 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
         try:
             fig, (ax) = plt.subplots(1, 1, figsize=(6, 4))
 
-            bins = np.linspace(0, n_lesion_types, end=True)
+            bins = np.linspace(0, n_lesion_types + 1)
             histo = np.histogram(cluster_assignments, bins=bins)
 
-            ax.bar(bins, histo[0])
+            print('bins', bins)
+            print('histo', histo[0])
+
+            ax.bar(bins[:-1], histo[0])
 
             plt.tight_layout()
             plt.savefig(results_dir + 'lesion-types-hist_fold_' + str(fold_num) + '.png', bbox_inches='tight')
-        except:
+        except Exception as e:
+            print(e)
             print('Error generating lesion-type histogram for this fold')
-
-
 
     return bol_representation[0:numWithClinical, :], c
 

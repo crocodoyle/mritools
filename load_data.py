@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import pickle
 
 from collections import defaultdict
+import csv
+
 
 modalities = ['t1p', 't2w', 'pdw', 'flr']
 tissues = ['csf', 'wm', 'gm', 'pv', 'lesion']
@@ -183,3 +185,34 @@ def loadClinical(mri_list):
             without_clinical.append(scan)
 
     return new_mri_list, without_clinical
+
+
+def load_responders(responder_filename, mri_list):
+    found = 0
+    with open(responder_filename) as responder_file:
+        responder_mri_list = []
+        responder_reader = csv.reader(responder_file)
+
+        lines = list(responder_reader)
+
+        for scan in mri_list:
+
+            responder_info_found = False
+
+            for line in lines:
+                if line[0] in scan.uid:
+                    print('Found responder info!')
+                    responder = int(line[2])
+                    scan.responder = responder
+                    responder_info_found = True
+                    found += 1
+
+            if not responder_info_found:
+                print('Couldnt find info for', scan.uid, 'on', scan.treatment)
+                scan.responder = 0
+
+            responder_mri_list.append(scan)
+
+    print('Started with', len(mri_list), 'subjects, have responder info for', found)
+
+    return responder_mri_list

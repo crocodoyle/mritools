@@ -32,6 +32,7 @@ scoringMetrics = ['TP', 'FP', 'TN', 'FN']
 metrics = ['newT2']
 
 datadir = '/data1/users/adoyle/MS-LAQ/MS-LAQ-302-STX/'
+responder_filename = 'Bravo_responders.csv'
 
 mri_list_location = datadir + 'mri_list.pkl'
 
@@ -296,6 +297,8 @@ def predict_responders():
 
     print('We have ' + str(len(mri_list)) + ' patients who finished the study and ' + str(len(without_clinical)) + ' who did not')
     outcomes = load_data.get_outcomes(mri_list)
+
+    mri_list = load_data.load_responders(datadir + responder_filename, mri_list)
 
     patient_results = {}
     for scan in mri_list:
