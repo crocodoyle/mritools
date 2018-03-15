@@ -121,23 +121,30 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
     cluster_assignments = c.predict(feature_data)
     cluster_probabilities = c.predict_proba(feature_data)
 
-    print('results shape:', cluster_probabilities.shape)
-    bol_representation = np.zeros(cluster_probabilities.shape)
+    bol_representation = np.zeros((len(mri_list), n_lesion_types), dtype='float32')
 
     # maintain a list of indices for each cluster in each size
     for n in range(n_lesion_types):
         brainIndices.append([])
         lesionIndices.append([])
 
-    lesionIndex = 0
+    lesion_idx = 0
     for i, scan in enumerate(mri_list):
         for j, lesion in enumerate(scan.lesionList):
-            bol_representation[i, ...] += cluster_probabilities[lesionIndex, ...]
+            bol_representation[i, :] += cluster_probabilities[lesion_idx, ...]
 
-            brainIndices[cluster_assignments[lesionIndex]].append(i)
-            lesionIndices[cluster_assignments[lesionIndex]].append(j)
+            brainIndices[cluster_assignments[lesion_idx]].append(i)
+            lesionIndices[cluster_assignments[lesion_idx]].append(j)
 
-            lesionIndex += 1
+            lesion_idx += 1
+
+    print('Optimal number of lesion-types:', n_lesion_types)
+    for lesion_type_idx in range(n_lesion_types):
+        print('Number of lesions in type', lesion_type_idx, ':', lesionIndices[lesion_type_idx])
+
+
+    print('results shape:', cluster_probabilities.shape)
+
 
     if fold_num%10 == 0:
         n = 6
@@ -186,16 +193,18 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
                     x = np.linspace(1, feature_data.shape[1], num=feature_data.shape[1])
                     ax3 = plt.subplot(4, n, i + 1 + 2*n)
                     ax3.bar(x, feature_data[lesionIndex, :], color='darkred')
+                    ax3.set_ylim([0, 1])
 
                     y = np.linspace(1, cluster_probabilities.shape[1], num=cluster_probabilities.shape[1])
                     ax4 = plt.subplot(4, n, i + 1 + 3*n)
                     ax4.bar(y, cluster_probabilities[lesionIndex, :], color='darkorange')
+                    ax4.set_ylim([0, 1])
 
                     if i == 0:
-                        ax.set_ylabel('Lesion', fontsize=20)
-                        ax2.set_ylabel('Close-up', fontsize=20)
-                        ax3.set_ylabel('Feature values', fontsize=20)
-                        ax4.set_ylabel('Lesion-type prob.', fontsize=20)
+                        ax.set_ylabel('Lesion', fontsize=24)
+                        ax2.set_ylabel('Close-up', fontsize=24)
+                        ax3.set_ylabel('Feature values', fontsize=24)
+                        ax4.set_ylabel('Lesion-type prob.', fontsize=24)
 
                 plt.subplots_adjust(wspace=0.01)
                 plt.savefig(results_dir +  '_lesion_type_' + str(k) + '_fold_' + str(fold_num) + '.png', dpi=600, bbox_inches='tight')
@@ -207,12 +216,28 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
         ax.plot(n_clusters, bics, label='BIC')
         ax.plot(n_clusters, aics, label='AIC')
 
-        ax.set_xlabel("Lesion-types in Model", fontsize=20)
-        ax.set_ylabel("A/BIC", fontsize=20)
+        ax.set_xlabel("Lesion-types in model", fontsize=24)
+        ax.set_ylabel("A/BIC", fontsize=24)
         ax.legend(shadow=True, loc='center left', bbox_to_anchor=(1, 0.5), fancybox=True, fontsize=16)
         plt.tight_layout()
         plt.savefig(results_dir + 'choosing_clusters_fold_' + str(fold_num) + '.png', bbox_inches='tight')
         plt.close()
+
+    if fold_num % 10 == 0:
+        try:
+            fig, (ax) = plt.subplots(1, 1, figsize=(6, 4))
+
+            bins = np.linspace(0, n_lesion_types, end=True)
+            histo = np.histogram(cluster_assignments, bins=bins)
+
+            ax.bar(bins, histo[0])
+
+            plt.tight_layout()
+            plt.savefig(results_dir + 'lesion-types-hist_fold_' + str(fold_num) + '.png', bbox_inches='tight')
+        except:
+            print('Error generating lesion-type histogram for this fold')
+
+
 
     return bol_representation[0:numWithClinical, :], c
 
@@ -222,11 +247,11 @@ def project_to_bol(mri_list, feature_data, c):
 
     bol_representation = np.zeros((len(mri_list), lesion_types.shape[-1]))
 
-    lesionIndex = 0
+    lesion_idx = 0
     for i, scan in enumerate(mri_list):
         for j, lesion in enumerate(scan.lesionList):
-            bol_representation[i, :] += lesion_types[lesionIndex, :]
-            lesionIndex += 1
+            bol_representation[i, :] += lesion_types[lesion_idx, :]
+            lesion_idx += 1
 
     return bol_representation
 
