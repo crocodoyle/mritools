@@ -572,6 +572,8 @@ def label_group_bar(ax, data):
     xticks = range(1, ly + 1)
 
     print(groups)
+    print(xticks)
+    print(y)
 
     ax.bar(xticks, y, align='center')
     ax.set_xticks([])
