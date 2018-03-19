@@ -224,7 +224,7 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
                     data['intensity']['FLR'] = feature_val[102:104]
 
                     data['size'] = {}
-                    data['size']['.'] = feature_val[104]
+                    data['size']['vox'] = feature_val[104]
 
                     label_group_bar(ax3, data)
                     ax3.set_ylim([0, 1])
