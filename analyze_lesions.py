@@ -93,6 +93,8 @@ def choose_clusters(feature_data, results_dir):
     n_clusters, bics, aics, clust_search = [], [], [], []
 
     cluster_range = range(2, 30)
+    clust_search.append('')
+    clust_search.append('')
 
     for k in cluster_range:
         print('trying ' + str(k) + ' clusters...')
