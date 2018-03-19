@@ -205,7 +205,7 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
                     x_intensity = np.arange(96, 104)
                     x_size = 104
 
-                    ticks = [np.max(x_context) / 2, (np.max(x_rift) - np.min(x_rift)) / 2, (np.max(x_lbp) - np.min(x_lbp)) / 2, (np.max(x_intensity) - np.min(x_intensity)) / 2, x_size]
+                    ticks = [x_context[-1] / 2, (x_rift[0] - x_rift[-1]) / 2, (x_lbp[-1] - x_lbp[0]) / 2, (x_intensity[-1] - x_intensity[0]) / 2, x_size]
                     tick_labels = ['Context', 'RIFT', 'LBP', 'Intensity', 'Size']
 
                     ax3.bar(x_context, feature_val[x_context], color='r')
