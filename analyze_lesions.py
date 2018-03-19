@@ -199,34 +199,52 @@ def learn_bol(mri_list, feature_data, numWithClinical, results_dir, fold_num):
                     ax3 = plt.subplot(4, n, i + 1 + 2*n)
                     # ax3.bar(x, feature_val, color='darkred')
 
-                    data = {}
-                    data['context'] = {}
-                    data['context']['ICBM Prior'] = feature_val[0:4]
-                    data['context']['Lesion Prior'] = feature_val[4]
-                    data['context']['Catani Prior'] = feature_val[5:44]
+                    x_context = np.arange(44)
+                    x_rift = np.arange(44, 60)
+                    x_lbp = np.arange(60, 96)
+                    x_intensity = np.arange(96, 104)
+                    x_size = 104
 
-                    data['RIFT'] = {}
-                    data['RIFT']['T1w'] = feature_val[44:48]
-                    data['RIFT']['T2w'] = feature_val[48:52]
-                    data['RIFT']['PDw'] = feature_val[52:56]
-                    data['RIFT']['FLR'] = feature_val[56:60]
+                    ticks = [np.max(x_context) / 2, (np.max(x_rift) - np.min(x_rift)) / 2, (np.max(x_lbp) - np.min(x_lbp)) / 2, (np.max(x_intensity) - np.min(x_intensity)) / 2, x_size]
+                    tick_labels = ['Context', 'RIFT', 'LBP', 'Intensity', 'Size']
 
-                    data['LBP'] = {}
-                    data['LBP']['T1w'] = feature_val[60:69]
-                    data['LBP']['T2w'] = feature_val[69:78]
-                    data['LBP']['PDw'] = feature_val[78:87]
-                    data['LBP']['FLR'] = feature_val[87:96]
+                    ax3.bar(x_context, feature_val[x_context], color='r')
+                    ax3.bar(x_rift, feature_val[x_rift], color='g')
+                    ax3.bar(x_lbp, feature_val[x_lbp], color='b')
+                    ax3.bar(x_intensity, feature_val[x_intensity], color='orange')
+                    ax3.bar(x_size, feature_val[x_size], color='pink')
 
-                    data['intensity'] = {}
-                    data['intensity']['T1w'] = feature_val[96:98]
-                    data['intensity']['T2w'] = feature_val[98:100]
-                    data['intensity']['PDw'] = feature_val[100:102]
-                    data['intensity']['FLR'] = feature_val[102:104]
+                    ax3.set_xticks(ticks)
+                    ax3.set_xticklabels(tick_labels)
 
-                    data['size'] = {}
-                    data['size']['vox'] = feature_val[104]
-
-                    label_group_bar(ax3, data)
+                    # data = {}
+                    # data['context'] = {}
+                    # data['context']['ICBM Prior'] = feature_val[0:4]
+                    # data['context']['Lesion Prior'] = feature_val[4]
+                    # data['context']['Catani Prior'] = feature_val[5:44]
+                    #
+                    # data['RIFT'] = {}
+                    # data['RIFT']['T1w'] = feature_val[44:48]
+                    # data['RIFT']['T2w'] = feature_val[48:52]
+                    # data['RIFT']['PDw'] = feature_val[52:56]
+                    # data['RIFT']['FLR'] = feature_val[56:60]
+                    #
+                    # data['LBP'] = {}
+                    # data['LBP']['T1w'] = feature_val[60:69]
+                    # data['LBP']['T2w'] = feature_val[69:78]
+                    # data['LBP']['PDw'] = feature_val[78:87]
+                    # data['LBP']['FLR'] = feature_val[87:96]
+                    #
+                    # data['intensity'] = {}
+                    # data['intensity']['T1w'] = feature_val[96:98]
+                    # data['intensity']['T2w'] = feature_val[98:100]
+                    # data['intensity']['PDw'] = feature_val[100:102]
+                    # data['intensity']['FLR'] = feature_val[102:104]
+                    #
+                    # data['size'] = {}
+                    # data['size']['vox'] = feature_val[104]
+                    #
+                    # label_group_bar(ax3, data)
                     ax3.set_ylim([0, 1])
 
                     y = np.linspace(1, cluster_probabilities.shape[1], num=cluster_probabilities.shape[1])
