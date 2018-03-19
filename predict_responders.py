@@ -13,7 +13,7 @@ from sklearn.calibration import calibration_curve
 
 import load_data
 import bol_classifiers
-from analyze_lesions import learn_bol, project_to_bol, separatePatientsByTreatment, removeWorstFeatures, showWhereTreatmentHelped, plotScores
+from analyze_lesions import learn_bol, project_to_bol, separatePatientsByTreatment, choose_clusters
 
 from mri import mri
 
@@ -293,6 +293,10 @@ def predict_responders():
     pickle.dump(experiment_number, open(datadir + 'experiment_number.pkl', 'wb'))
 
     mri_list = pickle.load(open(mri_list_location, 'rb'))
+
+    features = load_data.loadAllData(mri_list)
+    n_lesion_types = choose_clusters(features, results_dir)
+
     mri_list, without_clinical = load_data.loadClinical(mri_list)
 
     print('We have ' + str(len(mri_list)) + ' patients who finished the study and ' + str(len(without_clinical)) + ' who did not')
@@ -334,7 +338,7 @@ def predict_responders():
         print('learning bag of lesions...')
 
         startBol = time.time()
-        bol_train_data, mixture_model = learn_bol(train_patients, raw_train_data, len(mri_train), results_dir, foldNum)
+        bol_train_data, mixture_model = learn_bol(train_patients, raw_train_data, n_lesion_types, len(mri_train), results_dir, foldNum)
 
         bol_mixture_models.append(mixture_model)
 
