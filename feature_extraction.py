@@ -149,7 +149,7 @@ def get_rift(scan, img):
                         outwardTheta = (theta[mod][x, y, z] - relTheta + 2 * np.pi) % (2 * np.pi)
 
                         gradient_direction.append(outwardTheta)
-                        gradient_strength.append(mag[mod][x, y, z] / 1000)
+                        gradient_strength.append(mag[mod][x, y, z])
 
                     # gaussian = 1 / (sigma * np.sqrt(2 * np.pi)) * np.exp(
                     #     - (np.square(y - yc) + np.square(z - zc)) / (2 * sigma ** 2))
@@ -157,10 +157,7 @@ def get_rift(scan, img):
                 hist, bins = np.histogram(gradient_direction, bins=binsTheta, range=(0, np.pi),
                                           weights=gradient_strength)
 
-                if not np.isnan(np.min(hist)):
-                    feature += hist / float(len(in_plane))
-                else:
-                    print('NaNs in RIFT!')
+                feature += hist / float(len(in_plane))
 
             saveDocument[mod] = feature
 
