@@ -92,7 +92,7 @@ def choose_clusters(feature_data, results_dir):
 
     n_clusters, bics, aics, clust_search = [], [], [], []
 
-    cluster_range = range(2, 30)
+    cluster_range = range(2, 50)
     clust_search.append('')
     clust_search.append('')
 
