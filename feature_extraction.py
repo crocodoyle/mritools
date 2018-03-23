@@ -36,12 +36,29 @@ def write_clinical_outputs(mri_list):
                 newT2 = row[43]
                 relapse = row[33]
 
+                gad12 = row[44]
+                gad24 = row[45]
+
+                if not 'NULL' in gad12 and not 'NULL' in gad24:
+                    gad = int(gad12) + int(gad24)
+                    saveDocument['gad'] = str(gad)
+
+                country = row[4]
+                race = row[8]
+                sex = row[9]
+                age = row[11]
+
                 saveDocument['newT2'] = newT2
                 saveDocument['relapse'] = relapse
                 saveDocument['treatment'] = treatment
+
+                saveDocument['country'] = country
+                saveDocument['race'] = race
+                saveDocument['sex'] = sex
+                saveDocument['age'] = age
+
                 print(scan.uid, saveDocument)
 
-                continue
 
         pickle.dump(saveDocument, open(scan.features_dir + 'clinical.pkl', 'wb'))
 

@@ -11,6 +11,9 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import roc_curve, roc_auc_score, brier_score_loss, confusion_matrix
 from sklearn.calibration import calibration_curve
 
+from sklearn.manifold import TSNE
+from sklearn.neighbors import KNeighborsClassifier
+
 import load_data
 import bol_classifiers
 from analyze_lesions import learn_bol, project_to_bol, separatePatientsByTreatment, choose_clusters
@@ -211,12 +214,56 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
 def cluster_stability(bol_mixtures, random_forests, results_dir):
     n_folds = len(bol_mixtures)
 
+    n_lesion_types_all_folds = 0
+
+    lesion_type_dims = bol_mixtures[0].means_.shape[1]
+
+    for k in range(n_folds):
+        n_lesion_types_all_folds += len(bol_mixtures.weights_)
+
+    all_lesion_types = np.zeros((n_lesion_types_all_folds, lesion_type_dims))
+    all_type_weights = np.zeros((n_lesion_types_all_folds))
+
     n_components, importance = [], []
 
-    lesion_type_means = np.zeros((n_folds, bol_mixtures[0].means_.shape[1]))
+    lesion_type_means = np.zeros((n_folds, lesion_type_dims))
 
-    for fold, mixture_models in enumerate(bol_mixtures):
-        n_components.append(len(mixture_models.weights_))
+    idx = 0
+    for fold, mixture_model in enumerate(bol_mixtures):
+        n_components.append(len(mixture_model.weights_))
+
+        for lesion_type_centre, type_weight in zip(mixture_model.means_, mixture_model.weights_):
+            all_lesion_types[idx, :] = lesion_type_centre
+            all_type_weights[idx, :] = type_weight
+
+            idx += 1
+
+    lesion_type_labels = np.arange(lesion_type_dims)
+
+    knn = KNeighborsClassifier(n_neighbors=1, metric='seuclidean')
+    knn.fit(all_lesion_types[idx, 0], lesion_type_labels)
+
+    corresponding_lesion_types = knn.predict(all_lesion_types)
+    print('corresponding lesion types:', corresponding_lesion_types.shape)
+
+    embedded = TSNE.fit_transform(all_lesion_types)
+    print(embedded.shape)
+
+    fig = plt.figure()
+
+    cmap = mpl.cm.get_cmap('Rainbow')
+
+    for label in lesion_type_labels:
+        for predicted_label, (x, y), weight in zip(corresponding_lesion_types, embedded, all_type_weights):
+            if label == predicted_label:
+                plt.scatter(x, y, s=weight, color=cmap((label+1)/len(lesion_type_labels)))
+
+    plt.xticks([])
+    plt.yticks([])
+
+    plt.tight_layout()
+    plt.savefig(results_dir + 'tsne_embedding_of_lesion_types.png', dpi=600)
+
 
     fig, axes = plt.subplots(1, 3)
 

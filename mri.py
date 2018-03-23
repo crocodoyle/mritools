@@ -41,11 +41,15 @@ class mri(object):
         for tissue in self.tissues:
             self.priors[tissue] = self.folder[0:-3] + 'stx152lsq6/MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_patient_avg_ANAT-' + tissue + '-cerebrum_ISPC-stx152lsq6.mnc.gz'
 
-        self.newT1 = 0
         self.newT2 = 0
-        self.newT1and2 = 0
-        self.atrophy = 0.0
+        self.newGad = 0
+        self.relapse = 0
         self.treatment = ''
+
+        self.age = 0.
+        self.country = ''
+        self.race = ''
+        self.sex = 'F'
         
         self.futureLabels = self.folder[0:-3] + '/m24/MS-LAQ-302-STX_' + tokens[1] + '_' + tokens[2] + '_' + tokens[3] + '_m24_ct2f_ISPC-stx152lsq6.mnc.gz'
         self.newLesions = 0
