@@ -25,19 +25,20 @@ lbpRadii = [1]
 
 def write_clinical_outputs(mri_list):
     csvreader = csv.reader(open(data_dir + '2018-01_BRAVO_IPMSA.csv'))
+    lines = list(csvreader)
 
     for scan in mri_list:
         saveDocument = {}
         patient_id = scan.uid[4:]
 
-        for row in csvreader:
+        for row in lines:
             if patient_id in row[2]:
                 treatment = row[5].split(' ')[0]
-                newT2 = row[43]
-                relapse = row[33]
+                newT2 = row[42]
+                relapse = row[32]
 
-                gad12 = row[44]
-                gad24 = row[45]
+                gad12 = row[43]
+                gad24 = row[44]
 
                 if not 'NULL' in gad12 and not 'NULL' in gad24:
                     gad = int(gad12) + int(gad24)
