@@ -108,15 +108,22 @@ def choose_clusters(feature_data, results_dir):
         aics.append(clust_search[k].aic(feature_data))
 
     n_lesion_types = n_clusters[np.argmin(bics)]
+    print(n_lesion_types, 'is the optimal number of lesion-types!')
 
     fig, (ax) = plt.subplots(1, 1, figsize=(6, 4))
 
-    ax.plot(n_clusters, bics, label='BIC')
-    ax.plot(n_clusters, aics, label='AIC')
+    ax.plot(n_clusters, bics, lw=2, label='Bayesian')
+    ax.plot(n_clusters, aics, lw=2, label='Akaike')
 
     ax.set_xlabel("Lesion-types in model", fontsize=24)
-    ax.set_ylabel("A/BIC", fontsize=24)
-    ax.legend(shadow=True, loc='center left', bbox_to_anchor=(1, 0.5), fancybox=True, fontsize=16)
+    ax.set_ylabel("Information Criterion", fontsize=24)
+
+    radius = np.var(bics[(len(bics)/2):])*2
+
+    circle = plt.Circle((n_lesion_types, bics[n_lesion_types]), radius, color='b', lw=4, fill=False)
+    ax.add_artist(circle)
+
+    ax.legend(shadow=True, fancybox=True, fontsize=16)
     plt.tight_layout()
     plt.savefig(results_dir + 'choosing_clusters.png', bbox_inches='tight')
     plt.close()

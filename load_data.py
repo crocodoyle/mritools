@@ -163,6 +163,7 @@ def loadClinical(mri_list):
     for i, scan in enumerate(mri_list):
         try:
             clinicalData = pickle.load(open(scan.features_dir + 'clinical.pkl', 'rb'))
+            print(scan.uid, clinicalData)
 
             scan.newT2 = int(clinicalData['newT2'])
             scan.newGad = int(clinicalData['gad'])
@@ -178,9 +179,8 @@ def loadClinical(mri_list):
             scan.race = clinicalData['race']
 
             scan.relapse = clinicalData['relapse']
-
-            scan.atrophy = float(clinicalData['atrophy'])
             scan.treatment = clinicalData['treatment']
+
             new_mri_list.append(scan)
         except:
             without_clinical.append(scan)
