@@ -90,7 +90,7 @@ def getNClosestMahalanobis(candidate, n, allLesionFeatures):
 
 def choose_clusters(feature_data, results_dir):
 
-    n_clusters, bics, aics, clust_search = [], [], [], []
+    n_clusters, bics, aics, clust_search, time_taken = [], [], [], [], []
 
     cluster_range = range(2, 50)
     clust_search.append('')
@@ -100,15 +100,22 @@ def choose_clusters(feature_data, results_dir):
         print('trying ' + str(k) + ' clusters...')
 
         clust_search.append(GaussianMixture(n_components=k, covariance_type='full'))
-        clust_search[k].fit(feature_data)
 
+        start_cluster_time = time.time()
+        clust_search[k].fit(feature_data)
+        end_cluster_time = time.time()
+
+        time_taken.append((end_cluster_time - start_cluster_time) / 60)
         n_clusters.append(k)
 
         bics.append(clust_search[k].bic(feature_data))
         aics.append(clust_search[k].aic(feature_data))
 
+        print('it took' + str(time_taken[-1]) + ' minutes')
+
     n_lesion_types = n_clusters[np.argmin(bics)]
     print(n_lesion_types, 'is the optimal number of lesion-types!')
+    print('total time taken for clustering:', str(np.sum(time_taken)))
 
     fig, (ax) = plt.subplots(1, 1, figsize=(6, 4))
 
