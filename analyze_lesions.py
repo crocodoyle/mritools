@@ -118,7 +118,7 @@ def choose_clusters(feature_data, results_dir):
     ax.set_xlabel("Lesion-types in model", fontsize=24)
     ax.set_ylabel("Information Criterion", fontsize=24)
 
-    radius = np.var(bics[(len(bics)/2):])*2
+    radius = np.var(np.asarray(bics, dtype='float32')[(len(bics)/2):])*2
 
     circle = plt.Circle((n_lesion_types, bics[n_lesion_types]), radius, color='b', lw=4, fill=False)
     ax.add_artist(circle)
