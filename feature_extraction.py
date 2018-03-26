@@ -160,12 +160,10 @@ def get_rift(scan, img):
                 print('Lesion has', len(in_plane), 'voxels in slice', xc, 'centered at', yc, zc)
 
                 gradient_direction, gradient_strength = [], []
-                for p, evalPoint in enumerate(in_plane):
-                    x = xc
-                    y = yc + evalPoint[0]
-                    z = zc + evalPoint[1]
+                for (x, y, z) in in_plane:
+                    print('Point:', x, y, z)
 
-                    if [x, y, z] in lesion and not y == yc and not z == zc:
+                    if not y == yc and not z == zc:
                         relTheta = np.arctan2((y - yc), (z - zc))
                         outwardTheta = (theta[mod][x, y, z] - relTheta + 2 * np.pi) % (2 * np.pi)
 
