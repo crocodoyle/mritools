@@ -111,7 +111,7 @@ def choose_clusters(feature_data, results_dir):
         bics.append(clust_search[k].bic(feature_data))
         aics.append(clust_search[k].aic(feature_data))
 
-        print('it took' + str(time_taken[-1]) + ' minutes')
+        print('it took ' + str(time_taken[-1]) + ' minutes')
 
     n_lesion_types = n_clusters[np.argmin(bics)]
     print(n_lesion_types, 'is the optimal number of lesion-types!')
@@ -125,9 +125,9 @@ def choose_clusters(feature_data, results_dir):
     ax.set_xlabel("Lesion-types in model", fontsize=24)
     ax.set_ylabel("Information Criterion", fontsize=24)
 
-    radius = np.var(np.asarray(bics, dtype='float32')[(len(bics)//2):])*2
+    radius = np.var(np.asarray(bics, dtype='float32'))*4
 
-    circle = plt.Circle((n_lesion_types, bics[n_lesion_types]), radius, color='b', lw=4, fill=False)
+    circle = plt.Circle((n_lesion_types, bics[n_lesion_types]), radius, color='k', lw=4, fill=False)
     ax.add_artist(circle)
 
     ax.legend(shadow=True, fancybox=True, fontsize=16)

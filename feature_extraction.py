@@ -141,7 +141,7 @@ def get_rift(scan, img):
         saveDocument['_id'] = scan.uid + '_' + str(l)
 
         for mod in modalities:
-            feature = np.zeros((numBinsTheta))
+            feature = np.zeros(numBinsTheta, dtype='float32')
 
             lesion_points = np.asarray(lesion)
             # print('lesion points:', lesion_points.shape)
@@ -149,12 +149,15 @@ def get_rift(scan, img):
             #     print(point)
 
             x_min, x_max = np.min(lesion_points[:, 0]), np.max(lesion_points[:, 0])
-            # print(x_min, x_max)
+            print('Lesion connected across', x_max - x_min, 'slices')
 
             for xc in range(x_min, x_max+1):
                 in_plane = lesion_points[lesion_points[:, 0] == xc]
-                yc = int(np.mean(in_plane[:, 1]))
-                zc = int(np.mean(in_plane[:, 2]))
+
+                yc = np.mean(in_plane[:, 1])
+                zc = np.mean(in_plane[:, 2])
+
+                print('Lesion has', len(in_plane), 'voxels in slice', xc, 'centered at', yc, zc)
 
                 gradient_direction, gradient_strength = [], []
                 for p, evalPoint in enumerate(in_plane):
@@ -162,9 +165,12 @@ def get_rift(scan, img):
                     y = yc + evalPoint[0]
                     z = zc + evalPoint[1]
 
-                    if [x, y, z] in lesion:
+                    if [x, y, z] in lesion and not y == yc and not z == zc:
                         relTheta = np.arctan2((y - yc), (z - zc))
                         outwardTheta = (theta[mod][x, y, z] - relTheta + 2 * np.pi) % (2 * np.pi)
+
+                        print('Relative angle:', relTheta)
+                        print('Angle from radius:', outwardTheta)
 
                         gradient_direction.append(outwardTheta)
                         gradient_strength.append(mag[mod][x, y, z])
@@ -175,10 +181,12 @@ def get_rift(scan, img):
                 hist, bins = np.histogram(gradient_direction, bins=binsTheta, range=(0, np.pi),
                                           weights=gradient_strength)
 
-                feature += hist / float(len(in_plane))
+                print('Histogram values, bins:', hist, bins)
+                feature += hist
 
             saveDocument[mod] = feature
 
+        print('Final RIFT descriptor:', saveDocument)
         pickle.dump(saveDocument, open(scan.features_dir + 'rift_' + str(l) + '.pkl', "wb"))
 
 
