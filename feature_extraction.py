@@ -182,9 +182,9 @@ def get_rift(scan, img):
                 # print('Histogram values, bins:', hist, bins)
                 feature += hist / (x_max - x_min + 1)
 
-            saveDocument[mod] = feature
+            saveDocument[mod] = feature / 1000
 
-        print('Final RIFT descriptor:', saveDocument)
+        # print('Final RIFT descriptor:', saveDocument)
         pickle.dump(saveDocument, open(scan.features_dir + 'rift_' + str(l) + '.pkl', "wb"))
 
 
