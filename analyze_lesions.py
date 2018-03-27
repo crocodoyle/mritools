@@ -228,13 +228,13 @@ def learn_bol(mri_list, feature_data, n_lesion_types, numWithClinical, results_d
                     x_size = 104
 
                     ticks = [x_context[-1] / 2, ((x_rift[-1] - x_rift[0]) / 2) + x_rift[0], ((x_lbp[-1] - x_lbp[0]) / 2) + x_lbp[0], ((x_intensity[-1] - x_intensity[0]) / 2) + x_intensity[0], x_size]
-                    tick_labels = ['Context', 'RIFT', 'LBP', 'Intensity', 'Size']
+                    tick_labels = ['C', 'RIFT', 'LBP', 'I', 'S']
 
                     ax3.bar(x_context, feature_val[x_context], color='r')
                     ax3.bar(x_rift, feature_val[x_rift], color='g')
                     ax3.bar(x_lbp, feature_val[x_lbp], color='b')
                     ax3.bar(x_intensity, feature_val[x_intensity], color='orange')
-                    ax3.bar(x_size, feature_val[x_size], color='pink')
+                    ax3.bar(x_size, feature_val[x_size], color='m')
 
                     ax3.set_xticks(ticks)
                     ax3.set_xticklabels(tick_labels)
@@ -268,22 +268,23 @@ def learn_bol(mri_list, feature_data, n_lesion_types, numWithClinical, results_d
                     #
                     # label_group_bar(ax3, data)
                     ax3.set_ylim([0, 1])
+                    ax3.set_yticks([])
 
-                    for tick in ax3.get_xticklabels():
-                        tick.set_rotation(45)
+                    # for tick in ax3.get_xticklabels():
+                    #     tick.set_rotation(45)
 
                     y = np.linspace(1, cluster_probabilities.shape[1], num=cluster_probabilities.shape[1])
                     ax4 = plt.subplot(4, n, i + 1 + 3*n)
                     ax4.bar(y, cluster_probs, color='darkorange')
                     ax4.set_ylim([0, 1])
+                    ax4.set_yticks([])
+
 
                     if i == 0:
                         ax.set_ylabel('Lesion', fontsize=24)
                         ax2.set_ylabel('Close-up', fontsize=24)
                         ax3.set_ylabel('Feature values', fontsize=24)
                         ax4.set_ylabel('Lesion-type prob.', fontsize=24)
-
-
 
                 plt.subplots_adjust(wspace=0.01)
                 plt.savefig(results_dir +  'lesion_type_' + str(k) + '_fold_' + str(fold_num) + '.png', dpi=600, bbox_inches='tight')

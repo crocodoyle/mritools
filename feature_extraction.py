@@ -149,7 +149,7 @@ def get_rift(scan, img):
             #     print(point)
 
             x_min, x_max = np.min(lesion_points[:, 0]), np.max(lesion_points[:, 0])
-            print('Lesion connected across', x_max - x_min, 'slices')
+            # print('Lesion connected across', x_max - x_min, 'slices')
 
             for xc in range(x_min, x_max+1):
                 in_plane = lesion_points[lesion_points[:, 0] == xc]
@@ -157,18 +157,18 @@ def get_rift(scan, img):
                 yc = np.mean(in_plane[:, 1])
                 zc = np.mean(in_plane[:, 2])
 
-                print('Lesion has', len(in_plane), 'voxels in slice', xc, 'centered at', yc, zc)
+                # print('Lesion has', len(in_plane), 'voxels in slice', xc, 'centered at', yc, zc)
 
                 gradient_direction, gradient_strength = [], []
                 for (x, y, z) in in_plane:
-                    print('Point:', x, y, z)
+                    # print('Point:', x, y, z)
 
                     if not y == yc and not z == zc:
                         relTheta = np.arctan2((y - yc), (z - zc))
                         outwardTheta = (theta[mod][x, y, z] - relTheta + 2 * np.pi) % (2 * np.pi)
 
-                        print('Relative angle:', relTheta)
-                        print('Angle from radius:', outwardTheta)
+                        # print('Relative angle:', relTheta)
+                        # print('Angle from radius:', outwardTheta)
 
                         gradient_direction.append(outwardTheta)
                         gradient_strength.append(mag[mod][x, y, z])
@@ -179,8 +179,8 @@ def get_rift(scan, img):
                 hist, bins = np.histogram(gradient_direction, bins=binsTheta, range=(0, np.pi),
                                           weights=gradient_strength)
 
-                print('Histogram values, bins:', hist, bins)
-                feature += hist
+                # print('Histogram values, bins:', hist, bins)
+                feature += hist / (x_max - x_min + 1)
 
             saveDocument[mod] = feature
 
