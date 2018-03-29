@@ -264,8 +264,6 @@ def get_lbp(scan, images):
         feature = np.zeros((len(lbpRadii), 9))
 
         for j, mod in enumerate(modalities):
-            saveDocument[mod] = {}
-
             for r, radius in enumerate(lbpRadii):
                 feature[r, ...] = uniformLBP(images[mod], lesion, radius)
             saveDocument[mod] = feature
@@ -293,7 +291,7 @@ def get_intensity(scan, images):
             #     intensityHist = np.zeros((histBins))
             #     intensityHist[0] = 1
 
-            saveDocument[m] = [np.mean(intensities), np.var(intensities)]
+            saveDocument[m] = [np.mean(intensities), np.var(intensities), np.min(intensities), np.max(intensities)]
 
         pickle.dump(saveDocument, open(scan.features_dir + 'intensity_' + str(l) + '.pkl', "wb"))
 

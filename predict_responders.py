@@ -39,6 +39,8 @@ responder_filename = 'Bravo_responders.csv'
 
 mri_list_location = datadir + 'mri_list.pkl'
 
+n_folds = 25
+
 def responder_roc(all_test_patients, activity_truth, activity_posterior, untreated_posterior, results_dir):
     with open(results_dir + 'responders.csv', 'w') as csvfile:
         responder_writer = csv.writer(csvfile)
@@ -67,8 +69,8 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
 
                 d_prob = d_prob[:, 1]                          # just consider the P(A=1|BoL, treatment)
 
-                a_range = np.linspace(0, 1, 50, endpoint=False)
-                d_range = np.linspace(0, 1, 50, endpoint=False)
+                a_range = np.linspace(0, 1, n_folds, endpoint=False)
+                d_range = np.linspace(0, 1, n_folds, endpoint=False)
 
                 fig2 = plt.figure(1, figsize=(10, 10))
                 ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
@@ -355,7 +357,7 @@ def predict_responders():
     for scan in mri_list:
         patient_results[scan.uid] = {}
 
-    kf = StratifiedKFold(25, shuffle=True, random_state=42)
+    kf = StratifiedKFold(n_folds, shuffle=True, random_state=42)
 
     bol_mixture_models = []
     random_forests = defaultdict(list)

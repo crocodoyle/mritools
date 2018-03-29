@@ -66,7 +66,7 @@ def get_outcomes(mri_list):
 
 
 def loadIntensity(mri_list):
-    numBins = 2
+    numBins = 4
     data = []
 
     for i, scan in enumerate(mri_list):
