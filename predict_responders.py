@@ -42,6 +42,15 @@ mri_list_location = datadir + 'mri_list.pkl'
 n_folds = 25
 
 def responder_roc(all_test_patients, activity_truth, activity_posterior, untreated_posterior, results_dir):
+
+    print('Untreated posteriors:', untreated_posterior['Placebo'])
+    print('Activity posteriors:', activity_posterior)
+    print('Activity truth:', activity_truth)
+
+    print('Untreated posteriors shape:', untreated_posterior['Placebo'].shape)
+    print('Activity posteriors:', activity_posterior['Avonex'].shape)
+    print('Activity truth:', activity_truth['Avonex'].shape)
+
     with open(results_dir + 'responders.csv', 'w') as csvfile:
         responder_writer = csv.writer(csvfile)
         responder_writer.writerow(
