@@ -60,7 +60,11 @@ def get_outcomes(mri_list):
     outcomes = []
 
     for scan in mri_list:
-        outcomes.append(scan.newT2)
+        new_lesions = int(scan.newT2)
+        if new_lesions > 0:
+            outcomes.append(1)
+        else:
+            outcomes.append(0)
 
     return outcomes
 

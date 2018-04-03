@@ -47,9 +47,9 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
     print('Activity posteriors:', activity_posterior)
     print('Activity truth:', activity_truth)
 
-    print('Untreated posteriors shape:', untreated_posterior['Placebo'].shape)
-    print('Activity posteriors:', activity_posterior['Avonex'].shape)
-    print('Activity truth:', activity_truth['Avonex'].shape)
+    # print('Untreated posteriors shape:', untreated_posterior['Placebo'].shape)
+    # print('Activity posteriors:', activity_posterior['Avonex'].shape)
+    # print('Activity truth:', activity_truth['Avonex'].shape)
 
     with open(results_dir + 'responders.csv', 'w') as csvfile:
         responder_writer = csv.writer(csvfile)
