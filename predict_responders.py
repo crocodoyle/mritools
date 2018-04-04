@@ -98,22 +98,26 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                         score = brier_score_loss(a_true_inferred, a_prob)
                         p_a_brier.append(score)
 
-                        if n_a%10 == 0:
+                        if n_a%5 == 0:
                             ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label="%s (%1.3f)" % (str(p_a), score))
 
+                    except:
+                        p_a_brier.append(1)
+
+                    try:
                         # tn, tp, _ = roc_curve(a_true_inferred, a_prob)
                         auc_weighted = roc_auc_score(a_true_inferred, a_prob, 'weighted')
                         auc_macro = roc_auc_score(a_true_inferred, a_prob, 'macro')
                         auc_micro = roc_auc_score(a_true_inferred, a_prob, 'micro')
                         auc_samples = roc_auc_score(a_true_inferred, a_prob, 'samples')
 
-                        # print('AUCs (weighted, macro, micro, smaples):', auc_weighted, auc_macro, auc_micro, auc_samples)
+                        # print('AUCs (weighted, macro, micro, samples):', auc_weighted, auc_macro, auc_micro, auc_samples)
 
                         p_a_auc.append(auc_macro)
                     except:
                         print('AUC undefined for:', p_a)
                         p_a_auc.append(0)
-                        p_a_brier.append(1)
+
 
                 ax2.hist(a_prob, range=(0, 1), bins=20, label='P(A|BoL, untr)', histtype="step", lw=2)
 
@@ -353,7 +357,9 @@ def predict_responders():
     mri_list = pickle.load(open(mri_list_location, 'rb'))
 
     features = load_data.loadAllData(mri_list)
-    n_lesion_types = choose_clusters(features, results_dir)
+    # n_lesion_types = choose_clusters(features, results_dir)
+
+    n_lesion_types = 26
 
     mri_list, without_clinical = load_data.loadClinical(mri_list)
 
