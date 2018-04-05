@@ -249,20 +249,21 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
 
         for lesion_type_centre, type_weight in zip(mixture_model.means_, mixture_model.weights_):
             all_lesion_types[idx, :] = lesion_type_centre
-            all_type_weights[idx, :] = type_weight
+            all_type_weights[idx] = type_weight
 
             idx += 1
 
-    lesion_type_labels = np.arange(lesion_type_dims)
+    n_lesion_types_first_fold = len(bol_mixtures[0].weights_)
+    lesion_type_labels = np.arange(n_lesion_types_first_fold)
 
     knn = KNeighborsClassifier(n_neighbors=1, metric='seuclidean')
-    knn.fit(all_lesion_types[idx, 0], lesion_type_labels)
+    knn.fit(all_lesion_types[0:n_lesion_types_first_fold, :], lesion_type_labels)
 
     corresponding_lesion_types = knn.predict(all_lesion_types)
     print('corresponding lesion types:', corresponding_lesion_types.shape)
 
     embedded = TSNE.fit_transform(all_lesion_types)
-    print(embedded.shape)
+    print('t-sne embedded shape:', embedded.shape)
 
     plt.figure(figsize=(6, 6))
 
