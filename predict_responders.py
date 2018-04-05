@@ -234,7 +234,7 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
     lesion_type_dims = bol_mixtures[0].means_.shape[1]
 
     for k in range(n_folds):
-        n_lesion_types_all_folds += len(bol_mixtures.weights_)
+        n_lesion_types_all_folds += len(bol_mixtures[k].weights_)
 
     all_lesion_types = np.zeros((n_lesion_types_all_folds, lesion_type_dims))
     all_type_weights = np.zeros((n_lesion_types_all_folds))
@@ -264,7 +264,7 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
     embedded = TSNE.fit_transform(all_lesion_types)
     print(embedded.shape)
 
-    fig = plt.figure()
+    plt.figure(figsize=(6, 6))
 
     cmap = mpl.cm.get_cmap('Rainbow')
 
@@ -278,7 +278,6 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
 
     plt.tight_layout()
     plt.savefig(results_dir + 'tsne_embedding_of_lesion_types.png', dpi=600)
-
 
     fig, axes = plt.subplots(1, 3)
 
