@@ -256,7 +256,7 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
     n_lesion_types_first_fold = len(bol_mixtures[0].weights_)
     lesion_type_labels = np.arange(n_lesion_types_first_fold)
 
-    knn = KNeighborsClassifier(n_neighbors=1, metric='seuclidean')
+    knn = KNeighborsClassifier(n_neighbors=1)
     knn.fit(all_lesion_types[0:n_lesion_types_first_fold, :], lesion_type_labels)
 
     corresponding_lesion_types = knn.predict(all_lesion_types)
