@@ -262,7 +262,8 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
     corresponding_lesion_types = knn.predict(all_lesion_types)
     print('corresponding lesion types:', corresponding_lesion_types.shape)
 
-    embedded = TSNE.fit_transform(all_lesion_types)
+    tsne = TSNE(random_state=42)
+    embedded = tsne.fit_transform(all_lesion_types)
     print('t-sne embedded shape:', embedded.shape)
 
     plt.figure(figsize=(6, 6))
