@@ -268,7 +268,7 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
 
     plt.figure(figsize=(6, 6))
 
-    cmap = mpl.cm.get_cmap('Rainbow')
+    cmap = mpl.cm.get_cmap('rainbow')
 
     for label in lesion_type_labels:
         for predicted_label, (x, y), weight in zip(corresponding_lesion_types, embedded, all_type_weights):
