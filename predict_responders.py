@@ -11,6 +11,7 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import roc_curve, roc_auc_score, brier_score_loss, confusion_matrix
 from sklearn.calibration import calibration_curve
 
+import umap
 from sklearn.manifold import TSNE
 from sklearn.neighbors import KNeighborsClassifier
 
@@ -231,27 +232,33 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
 
     n_lesion_types_all_folds = 0
 
-    lesion_type_dims = bol_mixtures[0].means_.shape[1]
+    feature_dims = bol_mixtures[0].means_.shape[1]
 
     for k in range(n_folds):
         n_lesion_types_all_folds += len(bol_mixtures[k].weights_)
 
-    all_lesion_types = np.zeros((n_lesion_types_all_folds, lesion_type_dims))
+    all_lesion_types = np.zeros((n_lesion_types_all_folds, feature_dims))
     all_type_weights = np.zeros((n_lesion_types_all_folds))
 
-    n_components, importance = [], []
+    all_lesion_importances = np.zeros((n_folds, random_forests[0].feature_importances_.shape[0]))
 
-    lesion_type_means = np.zeros((n_folds, lesion_type_dims))
+    n_components = []
+
+    lesion_type_means = np.zeros((n_folds, feature_dims))
 
     idx = 0
-    for fold, mixture_model in enumerate(bol_mixtures):
+    for fold, (mixture_model, random_forest) in enumerate(zip(bol_mixtures, random_forests)):
         n_components.append(len(mixture_model.weights_))
+
+        all_lesion_importances[fold, :] = random_forest.feature_importances_
 
         for lesion_type_centre, type_weight in zip(mixture_model.means_, mixture_model.weights_):
             all_lesion_types[idx, :] = lesion_type_centre
             all_type_weights[idx] = type_weight
 
             idx += 1
+
+    all_type_weights *= (10/np.max(all_type_weights))
 
     n_lesion_types_first_fold = len(bol_mixtures[0].weights_)
     lesion_type_labels = np.arange(n_lesion_types_first_fold)
@@ -262,24 +269,52 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
     corresponding_lesion_types = knn.predict(all_lesion_types)
     print('corresponding lesion types:', corresponding_lesion_types.shape)
 
-    tsne = TSNE(random_state=42)
-    embedded = tsne.fit_transform(all_lesion_types)
-    print('t-sne embedded shape:', embedded.shape)
+    embedded_umap = umap.UMAP(metric='mahalanobis').fit_transform(all_lesion_types)
+    embedded_tsne = TSNE(random_state=42, metric='mahalanobis').fit_transform(all_lesion_types)
 
-    plt.figure(figsize=(6, 6))
+    print('t-sne embedded shape:', embedded_tsne.shape)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(6, 6), dpi=500)
 
     cmap = mpl.cm.get_cmap('rainbow')
 
     for label in lesion_type_labels:
-        for predicted_label, (x, y), weight in zip(corresponding_lesion_types, embedded, all_type_weights):
+        for predicted_label, (x_tsne, y_tsne), (x_umap, y_umap), weight in zip(corresponding_lesion_types, embedded_tsne, embedded_umap, all_type_weights):
             if label == predicted_label:
-                plt.scatter(x, y, s=weight, color=cmap((label+1)/len(lesion_type_labels)))
+                ax1.scatter(x_tsne, y_tsne, s=40**weight, color=cmap((label+1)/len(lesion_type_labels)))
+                ax2.scatter(x_umap, y_umap, s=40**weight, color=cmap((label+1)/len(lesion_type_labels)))
 
-    plt.xticks([])
-    plt.yticks([])
+    ax1.set_xticks([])
+    ax1.set_yticks([])
+
+    ax2.set_xticks([])
+    ax2.set_yticks([])
 
     plt.tight_layout()
-    plt.savefig(results_dir + 'tsne_embedding_of_lesion_types.png', dpi=600)
+    plt.savefig(results_dir + 'embedding_of_lesion_types.png', dpi=600)
+
+    # boxplot for lesion-type importance across folds
+
+    corresponding_lesion_type_importance = []
+    for n in range(n_lesion_types_first_fold):
+        corresponding_lesion_type_importance.append([])
+
+    for fold, type_importances in enumerate(all_lesion_importances):
+        #types don't correspond yet
+        fold_type_labels = corresponding_lesion_types[(fold)*n_lesion_types_first_fold:(fold+1)*n_lesion_types_first_fold, :]
+
+        for type_number in fold_type_labels:
+            corresponding_lesion_type_importance[type_number].append(type_importances[type_number])
+
+    fig, axes = plt.subplots(1, 1, figsize=(6, 6), dpi=600)
+
+    axes[0].boxplot(corresponding_lesion_type_importance)
+    axes[0].set_ylabel('Lesion-type importance', fontsize=20)
+    axes[0].set_xlabel('Lesion-type', fontsize=20)
+
+    plt.tight_layout()
+    plt.savefig(results_dir + 'corresponding_lesion_importance.png', bbox_inches='tight')
+
 
     fig, axes = plt.subplots(1, 3)
 
@@ -360,7 +395,7 @@ def predict_responders():
     features = load_data.loadAllData(mri_list)
     # n_lesion_types = choose_clusters(features, results_dir)
 
-    n_lesion_types = 26
+    n_lesion_types = 12
 
     mri_list, without_clinical = load_data.loadClinical(mri_list)
 
