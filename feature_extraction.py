@@ -141,7 +141,7 @@ def get_rift(scan, img):
         grad_x[mod], grad_y[mod], grad_z[mod] = np.gradient(img[mod])
 
         mag[mod] = np.sqrt(np.square(grad_y[mod]) + np.square(grad_z[mod]))
-        theta[mod] = np.arctan2(grad_y[mod], grad_z[mod])
+        theta[mod] = np.arctan2(grad_z[mod], grad_y[mod])
 
     for l, lesion in enumerate(scan.lesionList):
         saveDocument = {}
@@ -205,15 +205,35 @@ def get_rift(scan, img):
 
                     ax2.imshow(img[int(xc), int(yc) - 20:int(yc) + 20, int(zc) - 20:int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
                     ax2.imshow(lesionMaskPatch, cmap=plt.cm.autumn, alpha=0.25, interpolation='nearest', origin='lower')
-                    ax2.set_xticks([])
+                    ax2.plot(10, 10, 'ro')
+                    ax2.set_xticklabels(['in', 'left', 'out', 'right'])
                     ax2.set_yticks([])
 
                     mag_img = ax3.imshow(magnitude[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
                     fig.colorbar(mag_img, ax=ax3)
+
+                    max_grad = np.argmax(magnitude[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20])
+
+                    max_grad_val = magnitude[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20][max_grad]
+                    max_grad_angle = angle[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20][max_grad]
+
+                    arrow_angle = max_grad_angle + np.arctan2((max_grad[0] - yc), (max_grad[1] - zc))
+
+                    o = np.sin(arrow_angle)*(max_grad_val / 50)
+                    a = np.cos(arrow_angle)*(max_grad_val / 50)
+
+                    centre_point = (10, 10)
+
+                    arrow_begin = (max_grad[0], max_grad[1])
+                    arrow_end = arrow_begin + (a, o)
+
+                    ax3.arrow(arrow_begin[0], arrow_begin[1], arrow_end[0], arrow_end[1], head_width=0.05, head_length=0.1)
+                    ax3.plot(centre_point[0], centre_point[1], 'ro')
+
                     ax3.set_xticks([])
                     ax3.set_yticks([])
 
-                    angle_img = ax4.imshow(angle[x, int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
+                    angle_img = ax4.imshow(angle[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
                     fig.colorbar(angle_img, ax=ax4)
                     ax4.set_xticks([])
                     ax4.set_yticks([])
@@ -225,7 +245,7 @@ def get_rift(scan, img):
                     # print('Point:', x, y, z)
 
                     if not y == yc and not z == zc:
-                        relTheta = np.arctan2((y - yc), (z - zc))
+                        relTheta = np.arctan2((z - zc), (y - yc))
                         outwardTheta = (theta[mod][x, y, z] - relTheta + 2 * np.pi) % (2 * np.pi)
 
                         # print('Relative angle:', relTheta)
@@ -247,9 +267,9 @@ def get_rift(scan, img):
                     ax5.bar(bins[:-1], hist)
                     ax5.set_xticks([])
                     ax5.set_yticks([])
-                    
+
                     plt.savefig(data_dir + '/examples/' + 'RIFT_example_' + str(scan.uid) + '_lesion_' + str(l) + '.png')
-                    plt.clf()
+                    plt.close()
                     visualize_slice = False
                     visualize_lesion = False
 
