@@ -127,7 +127,7 @@ def uniformLBP(image, lesion, radius):
 
 def get_rift(scan, img):
     numBinsTheta = 4
-    example_number = 0
+    visualize = False
 
     binsTheta = np.linspace(0, 2 * np.pi, num=numBinsTheta + 1, endpoint=True)
 
