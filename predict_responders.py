@@ -240,17 +240,19 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
     all_lesion_types = np.zeros((n_lesion_types_all_folds, feature_dims))
     all_type_weights = np.zeros((n_lesion_types_all_folds))
 
-    all_lesion_importances = np.zeros((n_folds, random_forests[0].feature_importances_.shape[0]))
+    all_lesion_importances = np.zeros((n_folds, random_forests['Placebo'][0].feature_importances_.shape[0]))
 
     n_components = []
 
     lesion_type_means = np.zeros((n_folds, feature_dims))
 
     idx = 0
-    for fold, (mixture_model, random_forest) in enumerate(zip(bol_mixtures, random_forests)):
+    for fold, (mixture_model, rf_placebo, rf_avonex, rf_laquinimod) in enumerate(zip(bol_mixtures, random_forests['Placebo'], random_forests['Avonex'], random_forests['Laquinimod'])):
         n_components.append(len(mixture_model.weights_))
 
-        all_lesion_importances[fold, :] = random_forest.feature_importances_
+        all_lesion_importances[fold, :] += rf_placebo.feature_importances_
+        # all_lesion_importances[fold, :] += rf_avonex.feature_importances_
+        # all_lesion_importances[fold, :] += rf_laquinimod.feature_importances_
 
         for lesion_type_centre, type_weight in zip(mixture_model.means_, mixture_model.weights_):
             all_lesion_types[idx, :] = lesion_type_centre
