@@ -185,14 +185,14 @@ def get_rift(scan, img):
                     maskImg = np.ma.masked_where(lesionMaskImg == 0, np.ones((np.shape(lesionMaskImg))) * 5000)
 
                     maskSquare = np.zeros((np.shape(img)))
-                    maskSquare[x, yc - 20:yc + 20, zc - 20] = 1
-                    maskSquare[x, yc - 20:yc + 20, zc + 20] = 1
-                    maskSquare[x, yc - 20, zc - 20:zc + 20] = 1
-                    maskSquare[x, yc + 20, zc - 20:zc + 20] = 1
+                    maskSquare[x, int(yc) - 20:int(yc) + 20, int(zc) - 20] = 1
+                    maskSquare[x, int(yc) - 20:int(yc) + 20, int(zc) + 20] = 1
+                    maskSquare[x, int(yc) - 20, zc - 20:int(zc) + 20] = 1
+                    maskSquare[x, int(yc) + 20, zc - 20:int(zc) + 20] = 1
 
                     square = np.ma.masked_where(maskSquare == 0, np.ones(np.shape(maskSquare)) * 5000)
 
-                    lesionMaskPatch = maskImg[x, yc - 20:yc + 20, zc - 20:zc + 20]
+                    lesionMaskPatch = maskImg[x, int(yc) - 20:int(yc) + 20, int(zc) - 20:int(zc) + 20]
 
                     ax1.set_xticks([])
                     ax1.set_yticks([])
@@ -200,16 +200,16 @@ def get_rift(scan, img):
                     ax1.imshow(maskImg[x, 20:200, 20:175], cmap=plt.cm.autumn, interpolation='nearest', alpha=0.25, origin='lower')
                     ax1.imshow(square[x, 20:200, 20:175], cmap=plt.cm.autumn, interpolation='nearest', origin='lower')
 
-                    ax2.imshow(img[x, yc - 20:yc + 20, zc - 20:zc + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
+                    ax2.imshow(img[x, int(yc) - 20:int(yc) + 20, int(zc) - 20:int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
                     ax2.imshow(lesionMaskPatch, cmap=plt.cm.autumn, alpha=0.25, interpolation='nearest', origin='lower')
                     ax2.set_xticks([])
                     ax2.set_yticks([])
 
-                    ax3.imshow(magnitude[x, yc - 20: yc + 20, zc - 20: zc + 20])
+                    ax3.imshow(magnitude[x, int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20])
                     ax3.set_xticks([])
                     ax3.set_yticks([])
 
-                    ax4.imshow(angle[x, yc - 20: yc + 20, zc - 20: zc + 20])
+                    ax4.imshow(angle[x, int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20])
                     ax4.set_xticks([])
                     ax4.set_yticks([])
 
