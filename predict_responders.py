@@ -271,10 +271,11 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
     corresponding_lesion_types = knn.predict(all_lesion_types)
     print('corresponding lesion types:', corresponding_lesion_types.shape)
 
-    embedded_umap = umap.UMAP(metric='mahalanobis').fit_transform(all_lesion_types)
-    embedded_tsne = TSNE(random_state=42, metric='mahalanobis').fit_transform(all_lesion_types)
+    embedded_umap = umap.UMAP(metric='mahalanobis', metric_params={'V': np.cov(all_lesion_types)}).fit_transform(all_lesion_types)
+    embedded_tsne = TSNE(random_state=42, metric='mahalanobis', metric_params={'V': np.cov(all_lesion_types)}).fit_transform(all_lesion_types)
 
     print('t-sne embedded shape:', embedded_tsne.shape)
+    print('umap embedded shape:', embedded_umap.shape)
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(6, 6), dpi=500)
 
