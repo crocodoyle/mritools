@@ -129,7 +129,8 @@ def uniformLBP(image, lesion, radius):
 
 def get_rift(scan, img):
     numBinsTheta = 4
-    visualize = False
+    visualize_slice = False
+    visualize_lesion = False
 
     binsTheta = np.linspace(0, 2 * np.pi, num=numBinsTheta + 1, endpoint=True)
 
@@ -165,53 +166,59 @@ def get_rift(scan, img):
 
                 # print('Lesion has', len(in_plane), 'voxels in slice', xc, 'centered at', yc, zc)
 
-                if np.random.rand() > 0.95:
-                    visualize = True
+                if len(in_plane) > 10 and np.random.rand() > 0.95 and not visualize_lesion:
+                    visualize_slice = True
+                    visualize_lesion = True
 
-                if visualize:
+                if visualize_slice:
                     fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(1, 5, figsize=(12, 4))
 
                     img = nib.load(scan.images['t2w']).get_data()
                     lesionMaskImg = np.zeros((np.shape(img)))
 
-                    angle = np.copy(theta['t2w'])
-                    magnitude = np.copy(mag['t2w'])
+                    angle = np.zeros_like(theta['t2w'])
+                    magnitude = np.zeros_like(mag['t2w'])
 
                     for point in lesion:
                         lesionMaskImg[point[0], point[1], point[2]] = 1
-                        angle[point[0], point[1], point[2]] = 0
-                        magnitude[point[0], point[1], point[2]] = 0
+
+                        angle[point[0], point[1], point[2]] = theta['t2w'][point[0], point[1], point[2]]
+                        magnitude[point[0], point[1], point[2]] = mag['t2w'][point[0], point[1], point[2]]
 
                     maskImg = np.ma.masked_where(lesionMaskImg == 0, np.ones((np.shape(lesionMaskImg))) * 5000)
 
                     maskSquare = np.zeros((np.shape(img)))
-                    maskSquare[x, int(yc) - 20:int(yc) + 20, int(zc) - 20] = 1
-                    maskSquare[x, int(yc) - 20:int(yc) + 20, int(zc) + 20] = 1
-                    maskSquare[x, int(yc) - 20, int(zc) - 20:int(zc) + 20] = 1
-                    maskSquare[x, int(yc) + 20, int(zc) - 20:int(zc) + 20] = 1
+                    maskSquare[int(xc), int(yc) - 20:int(yc) + 20, int(zc) - 20] = 1
+                    maskSquare[int(xc), int(yc) - 20:int(yc) + 20, int(zc) + 20] = 1
+                    maskSquare[int(xc), int(yc) - 20, int(zc) - 20:int(zc) + 20] = 1
+                    maskSquare[int(xc), int(yc) + 20, int(zc) - 20:int(zc) + 20] = 1
 
                     square = np.ma.masked_where(maskSquare == 0, np.ones(np.shape(maskSquare)) * 5000)
 
-                    lesionMaskPatch = maskImg[x, int(yc) - 20:int(yc) + 20, int(zc) - 20:int(zc) + 20]
+                    lesionMaskPatch = maskImg[int(xc), int(yc) - 20:int(yc) + 20, int(zc) - 20:int(zc) + 20]
 
                     ax1.set_xticks([])
                     ax1.set_yticks([])
-                    ax1.imshow(img[x, 20:200, 20:175], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
-                    ax1.imshow(maskImg[x, 20:200, 20:175], cmap=plt.cm.autumn, interpolation='nearest', alpha=0.25, origin='lower')
-                    ax1.imshow(square[x, 20:200, 20:175], cmap=plt.cm.autumn, interpolation='nearest', origin='lower')
+                    ax1.imshow(img[int(xc), 20:200, 20:175], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
+                    ax1.imshow(maskImg[int(xc), 20:200, 20:175], cmap=plt.cm.autumn, interpolation='nearest', alpha=0.25, origin='lower')
+                    ax1.imshow(square[int(xc), 20:200, 20:175], cmap=plt.cm.autumn, interpolation='nearest', origin='lower')
 
-                    ax2.imshow(img[x, int(yc) - 20:int(yc) + 20, int(zc) - 20:int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
+                    ax2.imshow(img[int(xc), int(yc) - 20:int(yc) + 20, int(zc) - 20:int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
                     ax2.imshow(lesionMaskPatch, cmap=plt.cm.autumn, alpha=0.25, interpolation='nearest', origin='lower')
                     ax2.set_xticks([])
                     ax2.set_yticks([])
 
-                    ax3.imshow(magnitude[x, int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20])
+                    mag_img = ax3.imshow(magnitude[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
+                    fig.colorbar(mag_img, ax=ax3)
                     ax3.set_xticks([])
                     ax3.set_yticks([])
 
-                    ax4.imshow(angle[x, int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20])
+                    angle_img = ax4.imshow(angle[x, int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
+                    fig.colorbar(angle_img, ax=ax4)
                     ax4.set_xticks([])
                     ax4.set_yticks([])
+
+                    visualize_slice = False
 
                 gradient_direction, gradient_strength = [], []
                 for (x, y, z) in in_plane:
@@ -236,11 +243,15 @@ def get_rift(scan, img):
                 # print('Histogram values, bins:', hist, bins)
                 feature += hist / (x_max - x_min + 1)
 
-                if visualize:
+                if visualize_lesion:
                     ax5.bar(bins[:-1], hist)
+                    ax5.set_xticks([])
+                    ax5.set_yticks([])
+                    
                     plt.savefig(data_dir + '/examples/' + 'RIFT_example_' + str(scan.uid) + '_lesion_' + str(l) + '.png')
                     plt.clf()
-                    visualize = False
+                    visualize_slice = False
+                    visualize_lesion = False
 
             saveDocument[mod] = feature / 1000
 
