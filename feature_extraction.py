@@ -208,7 +208,6 @@ def get_rift(scan, img):
                     ax2.imshow(img[int(xc), int(yc) - 20:int(yc) + 20, int(zc) - 20:int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
                     ax2.imshow(lesionMaskPatch, cmap=plt.cm.autumn, alpha=0.25, interpolation='nearest', origin='lower')
                     ax2.plot(centre_point[0], centre_point[1], 'ro')
-                    ax2.set_xticklabels(['in', 'left', 'out', 'right'])
                     ax2.set_yticks([])
 
                     mag_img = ax3.imshow(magnitude[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
@@ -223,22 +222,23 @@ def get_rift(scan, img):
 
                     arrow_angle = max_grad_angle + np.arctan2((max_grad_pos[0] - yc), (max_grad_pos[1] - zc))
 
-                    o = np.sin(arrow_angle)*(max_grad_val / 100)
-                    a = np.cos(arrow_angle)*(max_grad_val / 100)
+                    o = np.sin(arrow_angle)*(max_grad_val / 1000)
+                    a = np.cos(arrow_angle)*(max_grad_val / 1000)
 
                     arrow_begin = (max_grad_pos[0], max_grad_pos[1])
                     arrow_end = arrow_begin + (a, o)
 
-                    ax3.arrow(arrow_begin[0], arrow_begin[1], arrow_end[0], arrow_end[1], head_width=0.05, head_length=0.1, color='b')
-                    ax3.plot(centre_point[0], centre_point[1], 'ro', markersize=6)
+                    ax4.arrow(arrow_begin[0], arrow_begin[1], arrow_end[0], arrow_end[1], head_width=0.05, head_length=0.1, color='b')
 
-                    ax3.plot(arrow_begin[0], arrow_begin[1], 'bo', markersize=6)
+                    ax4.plot(centre_point[0], centre_point[1], 'ro', markersize=1)
+                    ax4.plot(arrow_begin[0], arrow_begin[1], 'bo', markersize=1)
 
-                    ax3.set_xticks([])
-                    ax3.set_yticks([])
+                    ax4.set_xticks([])
+                    ax4.set_yticks([])
 
                     angle_img = ax4.imshow(angle[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
                     fig.colorbar(angle_img, ax=ax4)
+                    ax4.set_xticklabels(['in', 'left', 'out', 'right'])
                     ax4.set_xticks([])
                     ax4.set_yticks([])
 
