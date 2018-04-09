@@ -207,7 +207,6 @@ def get_rift(scan, img):
 
                     ax2.imshow(img[int(xc), int(yc) - 20:int(yc) + 20, int(zc) - 20:int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
                     ax2.imshow(lesionMaskPatch, cmap=plt.cm.autumn, alpha=0.25, interpolation='nearest', origin='lower')
-                    ax2.plot(centre_point[0], centre_point[1], 'ro')
                     ax2.set_yticks([])
 
                     mag_img = ax3.imshow(magnitude[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
@@ -222,16 +221,16 @@ def get_rift(scan, img):
 
                     arrow_angle = max_grad_angle + np.arctan2((max_grad_pos[0] - yc), (max_grad_pos[1] - zc))
 
-                    o = np.sin(arrow_angle)*(max_grad_val / 1000)
-                    a = np.cos(arrow_angle)*(max_grad_val / 1000)
+                    o = np.sin(arrow_angle)*(max_grad_val / 10000)
+                    a = np.cos(arrow_angle)*(max_grad_val / 10000)
 
                     arrow_begin = (max_grad_pos[0], max_grad_pos[1])
                     arrow_end = arrow_begin + (a, o)
 
-                    ax4.arrow(arrow_begin[0], arrow_begin[1], arrow_end[0], arrow_end[1], head_width=0.05, head_length=0.1, color='b')
+                    ax4.arrow(arrow_begin[0], arrow_begin[1], arrow_end[0], arrow_end[1], head_width=0.05, head_length=0.1, color='b', origin='lower')
 
-                    ax4.plot(centre_point[0], centre_point[1], 'ro', markersize=1)
-                    ax4.plot(arrow_begin[0], arrow_begin[1], 'bo', markersize=1)
+                    ax4.plot(centre_point[0], centre_point[1], 'ro', markersize=2, origin='lower')
+                    ax4.plot(arrow_begin[0], arrow_begin[1], 'bo', markersize=2, origin='lower')
 
                     ax4.set_xticks([])
                     ax4.set_yticks([])
