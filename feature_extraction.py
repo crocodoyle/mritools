@@ -1,6 +1,10 @@
 import nibabel as nib
 import numpy as np
 
+import matplotlib as mpl
+mpl.use('Agg')
+import matplotlib.pyplot as plt
+
 from mri import mri
 
 import pickle, csv, os, time, sys, subprocess, h5py
@@ -11,9 +15,7 @@ import skeletons
 import bitstring
 from multiprocessing import Pool, Process
 
-import matplotlib as mpl
-mpl.use('Agg')
-import matplotlib.pyplot as plt
+
 
 data_dir = '/data1/users/adoyle/MS-LAQ/MS-LAQ-302-STX/'
 icbmRoot = data_dir + 'quarantine/common/models/icbm_avg_152_'
