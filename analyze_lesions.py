@@ -170,9 +170,9 @@ def learn_bol(mri_list, feature_data, n_lesion_types, numWithClinical, results_d
     for lesion_type_idx in range(n_lesion_types):
         print('Number of lesions in type', lesion_type_idx, ':', len(type_examples[lesion_type_idx]))
 
-    print('results shape:', cluster_probabilities.shape)
+    print('Lesion-type probabilities shape:', cluster_probabilities.shape)
 
-    if fold_num%10 == 0:
+    if fold_num%1 == 0:
         n = 6
         for k in range(n_lesion_types):
             if len(type_examples[k]) > n:
@@ -287,19 +287,18 @@ def learn_bol(mri_list, feature_data, n_lesion_types, numWithClinical, results_d
                         ax4.set_ylabel('Lesion-type prob.', fontsize=24)
 
                 plt.subplots_adjust(wspace=0.01)
-                plt.savefig(results_dir +  'lesion_type_' + str(k) + '_fold_' + str(fold_num) + '.png', dpi=600, bbox_inches='tight')
+                plt.savefig(results_dir + 'fold_' + str(fold_num) + '_lesion_type_' + str(k) + '.png', dpi=600, bbox_inches='tight')
                 plt.clf()
 
     if fold_num % 10 == 0:
         try:
             fig, (ax) = plt.subplots(1, 1, figsize=(6, 4))
 
-            bins = np.linspace(0, n_lesion_types + 1)
+            bins = np.linspace(0, n_lesion_types, num=n_lesion_types+1)
             histo = np.histogram(cluster_assignments, bins=bins)
 
-            print('bins', bins)
-            print('histo', histo[0])
-
+            # print('bins', bins)
+            # print('histo', histo[0])
             ax.bar(bins[:-1], histo[0])
 
             plt.tight_layout()

@@ -11,6 +11,10 @@ import skeletons
 import bitstring
 from multiprocessing import Pool, Process
 
+import matplotlib as mpl
+mpl.use('Agg')
+import matplotlib.pyplot as plt
+
 data_dir = '/data1/users/adoyle/MS-LAQ/MS-LAQ-302-STX/'
 icbmRoot = data_dir + 'quarantine/common/models/icbm_avg_152_'
 lesion_atlas = data_dir + 'quarantine/common/models/icbm_avg_3714_t2les.mnc.gz'
@@ -123,7 +127,7 @@ def uniformLBP(image, lesion, radius):
 
 def get_rift(scan, img):
     numBinsTheta = 4
-    sigma = np.sqrt(2)
+    example_number = 0
 
     binsTheta = np.linspace(0, 2 * np.pi, num=numBinsTheta + 1, endpoint=True)
 
@@ -133,8 +137,8 @@ def get_rift(scan, img):
     for mod in modalities:
         grad_x[mod], grad_y[mod], grad_z[mod] = np.gradient(img[mod])
 
-        mag[mod] = np.sqrt(np.square(grad_x[mod]) + np.square(grad_y[mod]))
-        theta[mod] = np.arctan2(grad_y[mod], grad_x[mod])
+        mag[mod] = np.sqrt(np.square(grad_y[mod]) + np.square(grad_z[mod]))
+        theta[mod] = np.arctan2(grad_y[mod], grad_z[mod])
 
     for l, lesion in enumerate(scan.lesionList):
         saveDocument = {}
@@ -159,6 +163,54 @@ def get_rift(scan, img):
 
                 # print('Lesion has', len(in_plane), 'voxels in slice', xc, 'centered at', yc, zc)
 
+                if np.random.rand() > 0.95:
+                    visualize = True
+
+                if visualize:
+                    fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(1, 5, figsize=(12, 4))
+
+                    img = nib.load(scan.images['t2w']).get_data()
+                    lesionMaskImg = np.zeros((np.shape(img)))
+
+                    angle = np.copy(theta['t2w'])
+                    magnitude = np.copy(mag['t2w'])
+
+                    for point in lesion:
+                        lesionMaskImg[point[0], point[1], point[2]] = 1
+                        angle[point[0], point[1], point[2]] = 0
+                        magnitude[point[0], point[1], point[2]] = 0
+
+                    maskImg = np.ma.masked_where(lesionMaskImg == 0, np.ones((np.shape(lesionMaskImg))) * 5000)
+
+                    maskSquare = np.zeros((np.shape(img)))
+                    maskSquare[x, yc - 20:yc + 20, zc - 20] = 1
+                    maskSquare[x, yc - 20:yc + 20, zc + 20] = 1
+                    maskSquare[x, yc - 20, zc - 20:zc + 20] = 1
+                    maskSquare[x, yc + 20, zc - 20:zc + 20] = 1
+
+                    square = np.ma.masked_where(maskSquare == 0, np.ones(np.shape(maskSquare)) * 5000)
+
+                    lesionMaskPatch = maskImg[x, yc - 20:yc + 20, zc - 20:zc + 20]
+
+                    ax1.set_xticks([])
+                    ax1.set_yticks([])
+                    ax1.imshow(img[x, 20:200, 20:175], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
+                    ax1.imshow(maskImg[x, 20:200, 20:175], cmap=plt.cm.autumn, interpolation='nearest', alpha=0.25, origin='lower')
+                    ax1.imshow(square[x, 20:200, 20:175], cmap=plt.cm.autumn, interpolation='nearest', origin='lower')
+
+                    ax2.imshow(img[x, yc - 20:yc + 20, zc - 20:zc + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
+                    ax2.imshow(lesionMaskPatch, cmap=plt.cm.autumn, alpha=0.25, interpolation='nearest', origin='lower')
+                    ax2.set_xticks([])
+                    ax2.set_yticks([])
+
+                    ax3.imshow(magnitude[x, yc - 20: yc + 20, zc - 20: zc + 20])
+                    ax3.set_xticks([])
+                    ax3.set_yticks([])
+
+                    ax4.imshow(angle[x, yc - 20: yc + 20, zc - 20: zc + 20])
+                    ax4.set_xticks([])
+                    ax4.set_yticks([])
+
                 gradient_direction, gradient_strength = [], []
                 for (x, y, z) in in_plane:
                     # print('Point:', x, y, z)
@@ -181,6 +233,12 @@ def get_rift(scan, img):
 
                 # print('Histogram values, bins:', hist, bins)
                 feature += hist / (x_max - x_min + 1)
+
+                if visualize:
+                    ax5.bar(bins[:-1], hist)
+                    plt.savefig(data_dir + '/examples/' + 'RIFT_example_' + str(scan.uid) + '_lesion_' + str(l) + '.png')
+                    plt.clf()
+                    visualize = False
 
             saveDocument[mod] = feature / 1000
 
