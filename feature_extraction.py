@@ -223,14 +223,16 @@ def get_rift(scan, img):
 
                     arrow_angle = max_grad_angle + np.arctan2((max_grad_pos[0] - yc), (max_grad_pos[1] - zc))
 
-                    o = np.sin(arrow_angle)*(max_grad_val / 50)
-                    a = np.cos(arrow_angle)*(max_grad_val / 50)
+                    o = np.sin(arrow_angle)*(max_grad_val / 100)
+                    a = np.cos(arrow_angle)*(max_grad_val / 100)
 
                     arrow_begin = (max_grad_pos[0], max_grad_pos[1])
                     arrow_end = arrow_begin + (a, o)
 
                     ax3.arrow(arrow_begin[0], arrow_begin[1], arrow_end[0], arrow_end[1], head_width=0.05, head_length=0.1, color='b')
-                    ax3.plot(centre_point[0], centre_point[1], 'ro')
+                    ax3.plot(centre_point[0], centre_point[1], 'ro', markersize=6)
+
+                    ax3.plot(arrow_begin[0], arrow_begin[1], 'bo', markersize=6)
 
                     ax3.set_xticks([])
                     ax3.set_yticks([])
