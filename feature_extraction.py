@@ -187,8 +187,8 @@ def get_rift(scan, img):
                     maskSquare = np.zeros((np.shape(img)))
                     maskSquare[x, int(yc) - 20:int(yc) + 20, int(zc) - 20] = 1
                     maskSquare[x, int(yc) - 20:int(yc) + 20, int(zc) + 20] = 1
-                    maskSquare[x, int(yc) - 20, zc - 20:int(zc) + 20] = 1
-                    maskSquare[x, int(yc) + 20, zc - 20:int(zc) + 20] = 1
+                    maskSquare[x, int(yc) - 20, int(zc) - 20:int(zc) + 20] = 1
+                    maskSquare[x, int(yc) + 20, int(zc) - 20:int(zc) + 20] = 1
 
                     square = np.ma.masked_where(maskSquare == 0, np.ones(np.shape(maskSquare)) * 5000)
 
