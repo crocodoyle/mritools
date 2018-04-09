@@ -228,10 +228,12 @@ def get_rift(scan, img):
                     arrow_begin = (max_grad_pos[0], max_grad_pos[1])
                     arrow_end = (a, o)
 
+                    print('arrow begin:', arrow_begin, 'arrow end:', arrow_end)
+
                     angle_img = ax4.imshow(angle[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
                     fig.colorbar(angle_img, ax=ax4)
 
-                    ax4.arrow(40-arrow_begin[0], 40-arrow_begin[1], 40-arrow_end[0], 40-arrow_end[1], head_width=0.05, head_length=0.1, color='b')
+                    ax4.arrow(40-arrow_begin[0], 40-arrow_begin[1], arrow_end[0], arrow_end[1], head_width=0.05, head_length=0.1, color='b')
 
                     ax4.plot(centre_point[0], centre_point[1], 'ro', markersize=2)
                     ax4.plot(40-arrow_begin[0], 40-arrow_begin[1], 'bo', markersize=2)
