@@ -225,11 +225,11 @@ def get_rift(scan, img):
                     o = np.sin(arrow_angle)*(max_grad_val / 100)
                     a = np.cos(arrow_angle)*(max_grad_val / 100)
 
-                    print('o', o)
-                    print('a', a)
-
                     arrow_begin = (max_grad_pos[0], max_grad_pos[1])
                     arrow_end = (a, o)
+
+                    angle_img = ax4.imshow(angle[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
+                    fig.colorbar(angle_img, ax=ax4)
 
                     ax4.arrow(40-arrow_begin[0], 40-arrow_begin[1], 40-arrow_end[0], 40-arrow_end[1], head_width=0.05, head_length=0.1, color='b')
 
@@ -239,10 +239,6 @@ def get_rift(scan, img):
                     ax4.set_xticks([])
                     ax4.set_yticks([])
 
-                    angle_img = ax4.imshow(angle[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
-                    fig.colorbar(angle_img, ax=ax4)
-                    ax4.set_xticklabels(['in', 'left', 'out', 'right'])
-                    ax4.set_yticks([])
 
                     visualize_slice = False
 
@@ -271,7 +267,7 @@ def get_rift(scan, img):
 
                 if visualize_lesion:
                     ax5.bar(bins[:-1], hist)
-                    ax5.set_xticks([])
+                    ax5.set_xticklabels(['in', 'left', 'out', 'right'])
                     ax5.set_yticks([])
 
                     plt.savefig(data_dir + '/examples/' + 'RIFT_example_' + str(scan.uid) + '_lesion_' + str(l) + '.png')
