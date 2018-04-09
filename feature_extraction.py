@@ -203,9 +203,11 @@ def get_rift(scan, img):
                     ax1.imshow(maskImg[int(xc), 20:200, 20:175], cmap=plt.cm.autumn, interpolation='nearest', alpha=0.25, origin='lower')
                     ax1.imshow(square[int(xc), 20:200, 20:175], cmap=plt.cm.autumn, interpolation='nearest', origin='lower')
 
+                    centre_point = (20, 20)
+
                     ax2.imshow(img[int(xc), int(yc) - 20:int(yc) + 20, int(zc) - 20:int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
                     ax2.imshow(lesionMaskPatch, cmap=plt.cm.autumn, alpha=0.25, interpolation='nearest', origin='lower')
-                    ax2.plot(10, 10, 'ro')
+                    ax2.plot(centre_point[0], centre_point[1], 'ro')
                     ax2.set_xticklabels(['in', 'left', 'out', 'right'])
                     ax2.set_yticks([])
 
@@ -224,12 +226,10 @@ def get_rift(scan, img):
                     o = np.sin(arrow_angle)*(max_grad_val / 50)
                     a = np.cos(arrow_angle)*(max_grad_val / 50)
 
-                    centre_point = (10, 10)
-
                     arrow_begin = (max_grad_pos[0], max_grad_pos[1])
                     arrow_end = arrow_begin + (a, o)
 
-                    ax3.arrow(arrow_begin[0], arrow_begin[1], arrow_end[0], arrow_end[1], head_width=0.05, head_length=0.1)
+                    ax3.arrow(arrow_begin[0], arrow_begin[1], arrow_end[0], arrow_end[1], head_width=0.05, head_length=0.1, color='b')
                     ax3.plot(centre_point[0], centre_point[1], 'ro')
 
                     ax3.set_xticks([])
