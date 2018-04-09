@@ -225,8 +225,8 @@ def get_rift(scan, img):
                     o = np.sin(arrow_angle)*(max_grad_val / 100)*5
                     a = np.cos(arrow_angle)*(max_grad_val / 100)*5
 
-                    arrow_begin = (max_grad_pos[1], 40-max_grad_pos[0])
-                    arrow_end = (a, -o)
+                    arrow_begin = (max_grad_pos[1], max_grad_pos[0])
+                    arrow_end = (a, o)
 
                     print('arrow begin:', arrow_begin, 'arrow end:', arrow_end)
 
