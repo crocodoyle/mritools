@@ -214,17 +214,19 @@ def get_rift(scan, img):
 
                     max_grad = np.argmax(magnitude[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20])
 
-                    max_grad_val = magnitude[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20][max_grad]
-                    max_grad_angle = angle[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20][max_grad]
+                    max_grad_pos = np.unravel_index(max_grad, magnitude[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20].shape)
 
-                    arrow_angle = max_grad_angle + np.arctan2((max_grad[0] - yc), (max_grad[1] - zc))
+                    max_grad_val = magnitude[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20][max_grad_pos]
+                    max_grad_angle = angle[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20][max_grad_pos]
+
+                    arrow_angle = max_grad_angle + np.arctan2((max_grad_pos[0] - yc), (max_grad_pos[1] - zc))
 
                     o = np.sin(arrow_angle)*(max_grad_val / 50)
                     a = np.cos(arrow_angle)*(max_grad_val / 50)
 
                     centre_point = (10, 10)
 
-                    arrow_begin = (max_grad[0], max_grad[1])
+                    arrow_begin = (max_grad_pos[0], max_grad_pos[1])
                     arrow_end = arrow_begin + (a, o)
 
                     ax3.arrow(arrow_begin[0], arrow_begin[1], arrow_end[0], arrow_end[1], head_width=0.05, head_length=0.1)
