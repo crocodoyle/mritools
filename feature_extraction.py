@@ -217,8 +217,8 @@ def get_rift(scan, img):
                     cax = divider.append_axes("right", size="5%", pad=0.05)
 
                     plt.colorbar(mag_img, cax=cax)
-                    ax3.set_xticks([])
-                    ax3.set_yticks([])
+                    # ax3.set_xticks([])
+                    # ax3.set_yticks([])
 
                     max_grad = np.argmax(magnitude[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20])
 
@@ -232,7 +232,7 @@ def get_rift(scan, img):
                     o = np.sin(arrow_angle)*(max_grad_val / 100)*5
                     a = np.cos(arrow_angle)*(max_grad_val / 100)*5
 
-                    arrow_begin = (max_grad_pos[0], -max_grad_pos[1])
+                    arrow_begin = (max_grad_pos[0], 40-max_grad_pos[1])
                     arrow_end = (a, -o)
 
                     print('arrow begin:', arrow_begin, 'arrow end:', arrow_end)
