@@ -275,7 +275,7 @@ def get_rift(scan, img):
 
                 if visualize_lesion:
                     ax5.bar(bins[:-1], hist)
-                    ax5.set_xticks(np.linspace(0, 2*np.pi(), num=4, endpoint=True))
+                    ax5.set_xticks(list(np.linspace(0, 2*np.pi, num=4, endpoint=True)))
                     ax5.set_xticklabels(['inward', 'left', 'outward', 'right'])
                     ax5.set_yticks([])
 
