@@ -232,21 +232,21 @@ def get_rift(scan, img):
                     o = np.sin(arrow_angle)*(max_grad_val / 100)*5
                     a = np.cos(arrow_angle)*(max_grad_val / 100)*5
 
-                    arrow_begin = (max_grad_pos[0], 40-max_grad_pos[1])
-                    arrow_end = (a, -o)
+                    arrow_begin = (max_grad_pos[0], 40+max_grad_pos[1])
+                    arrow_end = (a, o)
 
                     print('arrow begin:', arrow_begin, 'arrow end:', arrow_end)
 
                     ax4.imshow(img[int(xc), int(yc) - 20:int(yc) + 20, int(zc) - 20:int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
                     ax4.imshow(lesionMaskPatch, cmap=plt.cm.autumn, alpha=0.25, interpolation='nearest', origin='lower')
 
-                    ax4.arrow(arrow_begin[0], arrow_begin[1], arrow_end[0], arrow_end[1], head_width=3, head_length=2, color='b')
+                    ax4.arrow(arrow_begin[0], arrow_begin[1], arrow_end[0], arrow_end[1], head_width=2, head_length=2, color='b')
 
                     ax4.plot(centre_point[0], centre_point[1], 'ro', markersize=2)
                     ax4.plot(arrow_begin[0], arrow_begin[1], 'bo', markersize=2)
 
-                    # ax4.set_xticks([])
-                    # ax4.set_yticks([])
+                    ax4.set_xticks([])
+                    ax4.set_yticks([])
 
                     visualize_slice = False
 
@@ -275,8 +275,8 @@ def get_rift(scan, img):
 
                 if visualize_lesion:
                     ax5.bar(bins[:-1], hist)
-                    ax5.set_xticks([1, 2, 3, 4])
-                    ax5.set_xticklabels(['in', 'left', 'out', 'right'])
+                    ax5.set_xticks(np.linspace(0, 2*np.pi(), num=4, endpoint=True))
+                    ax5.set_xticklabels(['inward', 'left', 'outward', 'right'])
                     ax5.set_yticks([])
 
                     plt.savefig(data_dir + '/examples/' + 'RIFT_example_' + str(scan.uid) + '_lesion_' + str(l) + '.png')
