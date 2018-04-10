@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from mri import mri
 
@@ -166,12 +167,12 @@ def get_rift(scan, img):
 
                 # print('Lesion has', len(in_plane), 'voxels in slice', xc, 'centered at', yc, zc)
 
-                if len(in_plane) > 10 and np.random.rand() > 0.95 and not visualize_lesion:
+                if len(in_plane) > 10 and np.random.rand() > 0.99 and not visualize_lesion:
                     visualize_slice = True
                     visualize_lesion = True
 
                 if visualize_slice:
-                    fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(1, 5, figsize=(12, 4))
+                    fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(1, 5, figsize=(20, 8))
 
                     img = nib.load(scan.images['t2w']).get_data()
                     lesionMaskImg = np.zeros((np.shape(img)))
@@ -211,7 +212,11 @@ def get_rift(scan, img):
                     ax2.set_yticks([])
 
                     mag_img = ax3.imshow(magnitude[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
-                    fig.colorbar(mag_img, ax=ax3)
+
+                    divider = make_axes_locatable(ax3)
+                    cax = divider.append_axes("right", size="5%", pad=0.05)
+
+                    plt.colorbar(mag_img, cax=cax)
 
                     max_grad = np.argmax(magnitude[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20])
 
@@ -225,22 +230,19 @@ def get_rift(scan, img):
                     o = np.sin(arrow_angle)*(max_grad_val / 100)*5
                     a = np.cos(arrow_angle)*(max_grad_val / 100)*5
 
-                    arrow_begin = (max_grad_pos[1], max_grad_pos[0])
-                    arrow_end = (a, o)
+                    arrow_begin = (max_grad_pos[0], -max_grad_pos[1])
+                    arrow_end = (a, -o)
 
                     print('arrow begin:', arrow_begin, 'arrow end:', arrow_end)
 
-                    angle_img = ax4.imshow(angle[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
-                    fig.colorbar(angle_img, ax=ax4)
-
-                    ax4.arrow(arrow_begin[0], arrow_begin[1], arrow_end[0], arrow_end[1], head_width=2, head_length=0.5, color='b')
+                    ax4.imshow(img[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
+                    ax4.arrow(arrow_begin[0], arrow_begin[1], arrow_end[0], arrow_end[1], head_width=5, head_length=2, color='b')
 
                     ax4.plot(centre_point[0], centre_point[1], 'ro', markersize=2)
                     ax4.plot(arrow_begin[0], arrow_begin[1], 'bo', markersize=2)
 
                     ax4.set_xticks([])
                     ax4.set_yticks([])
-
 
                     visualize_slice = False
 
