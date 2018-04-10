@@ -217,6 +217,8 @@ def get_rift(scan, img):
                     cax = divider.append_axes("right", size="5%", pad=0.05)
 
                     plt.colorbar(mag_img, cax=cax)
+                    ax3.set_xticks([])
+                    ax3.set_yticks([])
 
                     max_grad = np.argmax(magnitude[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20])
 
@@ -235,14 +237,16 @@ def get_rift(scan, img):
 
                     print('arrow begin:', arrow_begin, 'arrow end:', arrow_end)
 
-                    ax4.imshow(img[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
-                    ax4.arrow(arrow_begin[0], arrow_begin[1], arrow_end[0], arrow_end[1], head_width=5, head_length=2, color='b')
+                    ax4.imshow(img[int(xc), int(yc) - 20:int(yc) + 20, int(zc) - 20:int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
+                    ax4.imshow(lesionMaskPatch, cmap=plt.cm.autumn, alpha=0.25, interpolation='nearest', origin='lower')
+
+                    ax4.arrow(arrow_begin[0], arrow_begin[1], arrow_end[0], arrow_end[1], head_width=3, head_length=2, color='b')
 
                     ax4.plot(centre_point[0], centre_point[1], 'ro', markersize=2)
                     ax4.plot(arrow_begin[0], arrow_begin[1], 'bo', markersize=2)
 
-                    ax4.set_xticks([])
-                    ax4.set_yticks([])
+                    # ax4.set_xticks([])
+                    # ax4.set_yticks([])
 
                     visualize_slice = False
 
@@ -271,6 +275,7 @@ def get_rift(scan, img):
 
                 if visualize_lesion:
                     ax5.bar(bins[:-1], hist)
+                    ax5.set_xticks([1, 2, 3, 4])
                     ax5.set_xticklabels(['in', 'left', 'out', 'right'])
                     ax5.set_yticks([])
 
