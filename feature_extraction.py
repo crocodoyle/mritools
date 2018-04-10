@@ -232,7 +232,7 @@ def get_rift(scan, img):
                     o = np.sin(arrow_angle)*(max_grad_val / 100)*5
                     a = np.cos(arrow_angle)*(max_grad_val / 100)*5
 
-                    arrow_begin = (max_grad_pos[0], 40+max_grad_pos[1])
+                    arrow_begin = (max_grad_pos[0], max_grad_pos[1])
                     arrow_end = (a, o)
 
                     print('arrow begin:', arrow_begin, 'arrow end:', arrow_end)
@@ -275,7 +275,7 @@ def get_rift(scan, img):
 
                 if visualize_lesion:
                     ax5.bar(bins[:-1], hist)
-                    ax5.set_xticks(list(np.linspace(0, 2*np.pi, num=4, endpoint=True)))
+                    ax5.set_xticks(list(np.linspace(0, 2*np.pi, num=4, endpoint=False)))
                     ax5.set_xticklabels(['inward', 'left', 'outward', 'right'])
                     ax5.set_yticks([])
 
