@@ -13,7 +13,7 @@ from sklearn.calibration import calibration_curve
 
 import umap
 from sklearn.manifold import TSNE
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neighbors import KNeighborsClassifier, DistanceMetric
 
 import load_data
 import bol_classifiers
@@ -265,16 +265,20 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
     n_lesion_types_first_fold = len(bol_mixtures[0].weights_)
     lesion_type_labels = np.arange(n_lesion_types_first_fold)
 
+    first_fold_lesion_types = all_lesion_types[0:n_lesion_types_first_fold, :]
+    other_folds_lesion_types = all_lesion_types[n_lesion_types_first_fold:, :]
+
+    V = np.cov(all_lesion_types)
+    mahalanobis_distance = DistanceMetric.get_metric('mahalanobis', V=np.cov(V))
+
     knn = KNeighborsClassifier(n_neighbors=1)
-    knn.fit(all_lesion_types[0:n_lesion_types_first_fold, :], lesion_type_labels)
+    knn.fit(all_lesion_types[0:n_lesion_types_first_fold, :], lesion_type_labels, metric=mahalanobis_distance)
 
     corresponding_lesion_types = knn.predict(all_lesion_types)
     print('corresponding lesion types:', corresponding_lesion_types.shape)
 
-    V = np.cov(all_lesion_types)
-
-    embedded_umap = umap.UMAP(metric='mahalanobis', metric_kwds={'V': V}).fit_transform(all_lesion_types)
-    embedded_tsne = TSNE(random_state=42, metric='mahalanobis', metric_kwds={'V': V}).fit_transform(all_lesion_types)
+    embedded_umap = umap.UMAP(metric=mahalanobis_distance, random_state=42).fit_transform(all_lesion_types)
+    embedded_tsne = TSNE(random_state=42, metric=mahalanobis_distance).fit_transform(all_lesion_types)
 
     print('t-sne embedded shape:', embedded_tsne.shape)
     print('umap embedded shape:', embedded_umap.shape)
