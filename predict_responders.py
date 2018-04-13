@@ -271,8 +271,8 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
     V = np.cov(all_lesion_types)
     mahalanobis_distance = DistanceMetric.get_metric('mahalanobis', V=np.cov(V))
 
-    knn = KNeighborsClassifier(n_neighbors=1)
-    knn.fit(all_lesion_types[0:n_lesion_types_first_fold, :], lesion_type_labels, metric=mahalanobis_distance)
+    knn = KNeighborsClassifier(n_neighbors=1, metric=mahalanobis_distance)
+    knn.fit(first_fold_lesion_types, lesion_type_labels)
 
     corresponding_lesion_types = knn.predict(all_lesion_types)
     print('corresponding lesion types:', corresponding_lesion_types.shape)
