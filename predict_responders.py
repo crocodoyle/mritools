@@ -268,17 +268,17 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
     first_fold_lesion_types = all_lesion_types[0:n_lesion_types_first_fold, :]
     other_folds_lesion_types = all_lesion_types[n_lesion_types_first_fold:, :]
 
-    V = np.cov(all_lesion_types)
-    mahalanobis_distance = DistanceMetric.get_metric('mahalanobis', V=np.cov(V))
+    # V = np.cov(all_lesion_types)
+    # mahalanobis_distance = DistanceMetric.get_metric('mahalanobis', V=np.cov(V))
 
-    knn = KNeighborsClassifier(n_neighbors=1, algorithm='auto', metric=mahalanobis_distance)
+    knn = KNeighborsClassifier(n_neighbors=1)
     knn.fit(first_fold_lesion_types, lesion_type_labels)
 
     corresponding_lesion_types = knn.predict(all_lesion_types)
     print('corresponding lesion types:', corresponding_lesion_types.shape)
 
-    embedded_umap = umap.UMAP(metric=mahalanobis_distance, random_state=42).fit_transform(all_lesion_types)
-    embedded_tsne = TSNE(random_state=42, metric=mahalanobis_distance).fit_transform(all_lesion_types)
+    embedded_umap = umap.UMAP(metric='euclidean', random_state=42).fit_transform(all_lesion_types)
+    embedded_tsne = TSNE(random_state=42, metric='euclidean').fit_transform(all_lesion_types)
 
     print('t-sne embedded shape:', embedded_tsne.shape)
     print('umap embedded shape:', embedded_umap.shape)
@@ -527,6 +527,12 @@ def predict_responders():
     activity_posteriors = [activity_posterior, euclidean_knn_posterior, linear_svm_posterior, chi2_svm_posterior, rbf_svm_posterior]
     classifier_names = ['Random Forest', '1-NN (Euclidean)', 'SVM (linear)', 'SVM ($\\chi^2$)', 'SVM (RBF)']
     colours = ['darkred', 'indianred', 'lightsalmon', 'darkorange', 'goldenrod', 'tan']
+
+    print('saving prediction results (all folds test cases)...')
+    pickle.dump(activity_posteriors, open(results_dir + 'posteriors.pkl', 'wb'))
+    pickle.dump(all_test_patients, open(results_dir + 'all_test_patients.pkl', 'wb'))
+    pickle.dump(activity_truth, open(results_dir + 'untreated_posterior.pkl', 'wb'))
+    print('saved!')
 
     for treatment in treatments:
         # print('GT:', np.asarray(activity_truth[treatment][0]).shape, np.asarray(activity_truth[treatment][1]).shape)
