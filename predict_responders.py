@@ -13,7 +13,7 @@ from sklearn.calibration import calibration_curve
 
 import umap
 from sklearn.manifold import TSNE
-from sklearn.neighbors import KNeighborsClassifier, DistanceMetric
+from sklearn.neighbors import NearestNeighbors, DistanceMetric
 
 import load_data
 import bol_classifiers
@@ -271,7 +271,7 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
     V = np.cov(all_lesion_types)
     mahalanobis_distance = DistanceMetric.get_metric('mahalanobis', V=np.cov(V))
 
-    knn = KNeighborsClassifier(n_neighbors=1, algorithm='brute', metric=mahalanobis_distance)
+    knn = KNeighborsClassifier(n_neighbors=1, algorithm='auto', metric=mahalanobis_distance)
     knn.fit(first_fold_lesion_types, lesion_type_labels)
 
     corresponding_lesion_types = knn.predict(all_lesion_types)
