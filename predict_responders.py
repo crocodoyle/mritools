@@ -13,7 +13,7 @@ from sklearn.calibration import calibration_curve
 
 import umap
 from sklearn.manifold import TSNE
-from sklearn.neighbors import NearestNeighbors, DistanceMetric
+from sklearn.neighbors import KNeighborsClassifier, DistanceMetric
 
 import load_data
 import bol_classifiers
