@@ -363,11 +363,11 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
         for type_number in fold_type_labels:
             corresponding_lesion_type_importance[type_number].append(type_importances[type_number])
 
-    fig, axes = plt.subplots(1, 1, figsize=(6, 6), dpi=600)
+    fig, ax = plt.subplots(1, 1, figsize=(6, 6), dpi=600)
 
-    axes[0].boxplot(corresponding_lesion_type_importance)
-    axes[0].set_ylabel('Lesion-type importance', fontsize=20)
-    axes[0].set_xlabel('Lesion-type', fontsize=20)
+    ax.boxplot(corresponding_lesion_type_importance)
+    ax.set_ylabel('Lesion-type importance', fontsize=20)
+    ax.set_xlabel('Lesion-type', fontsize=20)
 
     plt.tight_layout()
     plt.savefig(results_dir + 'corresponding_lesion_importance.png', bbox_inches='tight')
