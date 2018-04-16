@@ -120,8 +120,6 @@ def loadContext(mri_list):
     return np.asarray(data)
 
 def loadLBP(mri_list):
-    #786 is 256*3
-#    data = np.zeros((numLesions, len(modalities), len(lbpRadii), 8, 2**8), dtype='float')
     data = []
             
     for i, scan in enumerate(mri_list):

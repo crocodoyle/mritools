@@ -6,6 +6,8 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 
+import argparse
+
 from sklearn.mixture import GMM
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import roc_curve, roc_auc_score, brier_score_loss, confusion_matrix
@@ -18,6 +20,7 @@ from sklearn.neighbors import KNeighborsClassifier, DistanceMetric
 import load_data
 import bol_classifiers
 from analyze_lesions import learn_bol, project_to_bol, separatePatientsByTreatment, choose_clusters
+from feature_extraction import write_features
 
 from mri import mri
 
@@ -40,13 +43,11 @@ responder_filename = 'Bravo_responders.csv'
 
 mri_list_location = datadir + 'mri_list.pkl'
 
-n_folds = 25
+def responder_roc(all_test_patients, activity_truth, activity_posterior, untreated_posterior, n_folds, results_dir):
 
-def responder_roc(all_test_patients, activity_truth, activity_posterior, untreated_posterior, results_dir):
-
-    print('Untreated posteriors:', untreated_posterior['Placebo'])
-    print('Activity posteriors:', activity_posterior)
-    print('Activity truth:', activity_truth)
+    # print('Untreated posteriors:', untreated_posterior['Placebo'])
+    # print('Activity posteriors:', activity_posterior)
+    # print('Activity truth:', activity_truth)
 
     # print('Untreated posteriors shape:', untreated_posterior['Placebo'].shape)
     # print('Activity posteriors:', activity_posterior['Avonex'].shape)
@@ -55,7 +56,7 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
     with open(results_dir + 'responders.csv', 'w') as csvfile:
         responder_writer = csv.writer(csvfile)
         responder_writer.writerow(
-            ['Subject ID', 'Treatment', '# T2 Lesions', 'P(A=1|BoL, untr)', 'P(A=0|BoL, tr)', 'Responder'])
+            ['Subject ID', 'Treatment', '# T2 Lesions', 'P(A=1|BoL, untr)', 'P(A=1|BoL, tr)', 'Responder'])
         mri_list = defaultdict(list)
         for treatment in treatments:
             for sublists in all_test_patients[treatment]:
@@ -82,11 +83,7 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                 a_range = np.linspace(0, 1, n_folds, endpoint=False)
                 d_range = np.linspace(0, 1, n_folds, endpoint=False)
 
-                fig2 = plt.figure(1, figsize=(10, 10))
-                ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
-                ax2 = plt.subplot2grid((3, 1), (2, 0))
-
-                ax1.plot(a_range, a_range, "k:", label="Perfectly calibrated")
+                fig2, ax1 = plt.subplots(1, 1)
 
                 for n_a, p_a in enumerate(a_range):
                     try:
@@ -120,19 +117,19 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                         p_a_auc.append(0)
 
 
-                ax2.hist(a_prob, range=(0, 1), bins=20, label='P(A|BoL, untr)', histtype="step", lw=2)
+                ax1.hist(a_prob, range=(0, 1), bins=20, label='P(A=1|BoL, untr)', histtype="step", lw=2)
+                if 'Laq' in treatment:
+                    treat = 'Drug B'
+                else:
+                    treat = 'Drug A'
+                ax1.hist(d_prob, range=(0, 1), bins=20, label='P(A=1|BoL, ' + treat + ')', histtype='step', lw=2)
 
-                ax1.set_ylabel("Fraction of positives")
-                ax1.set_ylim([-0.05, 1.05])
-                ax1.legend(loc="lower right", shadow=True)
-                ax1.set_title('Calibration plots  (reliability curve)')
-
-                ax2.set_xlabel("Mean predicted value")
-                ax2.set_ylabel("Count")
-                ax2.legend(loc="upper center", ncol=2, shadow=True)
+                ax1.set_xlabel("Mean predicted value")
+                ax1.set_ylabel("Count")
+                ax1.legend(loc="upper center", ncol=2, shadow=True)
 
                 plt.tight_layout()
-                plt.savefig(results_dir + treatment + '_calibration_curve.png')
+                plt.savefig(results_dir + treatment + '_prediction_distribution.png')
 
                 best_p_a = a_range[np.argmin(p_a_brier)]
                 a_true = np.ones(a_prob.shape)
@@ -149,8 +146,9 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
 
                         tn, fp, fn, tp = confusion_matrix(d_true, d_predicted).ravel()
 
-                        sens = tp/(tp + fn)
-                        spec = tn/(tn + fp)
+                        epsilon = 1e-6
+                        sens = tp/(tp + fn + epsilon)
+                        spec = tn/(tn + fp + epsilon)
 
                         distance = np.sqrt( (1 - sens)**2 + (1 - spec)**2 )
                         harmonic_mean = 2*sens*spec / (sens + spec)
@@ -197,14 +195,64 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                 plt.figure(0)
                 lw = 2
                 if 'Laquinimod' in treatment:
-                    ax.plot(fpr, tpr, color='darkorange', lw=lw, label=treatment + ' ROC (AUC = %0.2f)' % roc_auc)
+                    ax.plot(fpr, tpr, color='darkorange', lw=lw, label=treat + ' ROC (AUC = %0.2f)' % roc_auc)
                     ax.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
                 else:
-                    ax.plot(fpr, tpr, color='darkred', lw=lw, label=treatment + ' ROC (AUC = %0.2f)' % roc_auc)
+                    ax.plot(fpr, tpr, color='darkred', lw=lw, label=treat + ' ROC (AUC = %0.2f)' % roc_auc)
 
                 # plt.title('Receiver operating characteristic example', fontsize=24)
 
                 print(treatment + ' optimal thresholds (activity, drug_activity): ', best_p_a, best_p_d)
+
+                # untreated_threshold, treated_threshold = 0.8, 0.2
+
+                untreated_thresholds = np.linspace(0, 1)
+                treated_thresholds = np.linspace(0, 1)
+
+                responder_results = np.zeros((untreated_thresholds.shape[0], treated_thresholds.shape[0]), 4)
+
+                for i, untreated_threshold in enumerate(untreated_thresholds):
+                    for j, treated_threshold in enumerate(treated_thresholds):
+                        responder_list, actual_outcome_list = []
+
+                        for p_activity_untreated, p_activity_treated, activity in zip(a_prob, d_prob, d_true):
+                            if p_activity_untreated > untreated_threshold and p_activity_treated < treated_threshold:
+                                responder_list.append(1)
+                                actual_outcome_list.append(activity)
+
+                        tn, fp, fn, tp = confusion_matrix(np.asarray(responder_list), np.asarray(actual_outcome_list)).ravel()
+
+                        epsilon = 1e-6
+
+                        sens = tp/(tp + fn + epsilon)
+                        spec = tn/(tn + fp + epsilon)
+
+                        responder_results[i, j, 0] = sens
+                        responder_results[i, j, 1] = spec
+                        responder_results[i, j, 2] = 2*sens*spec / (sens + spec) # harmonic mean!
+                        responder_results[i, j, 3] = len(responder_list)
+
+                flat_index = np.argmax(responder_results[:, :, 2])
+                unflat_indices = np.unravel_index(flat_index, (responder_results.shape[0], responder_results.shape[1]))
+
+                best_untreated_threshold = untreated_thresholds[unflat_indices[0]]
+                best_treated_threshold = treated_thresholds[unflat_indices[1]]
+
+                for p_activity_untreated, p_activity_treated, activity in zip(a_prob, d_prob, d_true):
+                    if p_activity_untreated > best_untreated_threshold and p_activity_treated < best_treated_threshold:
+                        responder_list.append(1)
+                        actual_outcome_list.append(activity)
+
+                    tn, fp, fn, tp = confusion_matrix(np.asarray(responder_list), np.asarray(actual_outcome_list)).ravel()
+                    epsilon = 1e-6
+
+                    sens = tp / (tp + fn + epsilon)
+                    spec = tn / (tn + fp + epsilon)
+
+                    print('Best thresholds for', treatment, '(', treat, '):')
+                    print('Untreated threshold:', best_untreated_threshold)
+                    print('Treated threshold:', best_treated_threshold)
+                    print('Sensitivity/specificity:', sens, spec, len(responder_list))
 
                 for i in range(len(mri_list[treatment])):
                     scan = mri_list[treatment][i]
@@ -382,162 +430,11 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
     plt.savefig(results_dir + 'cluster_numbers_lesion_centres.png', bbox_inches='tight')
 
 
-def predict_responders():
-    start = time.time()
-
-    try:
-        experiment_number = pickle.load(open(datadir + 'experiment_number.pkl', 'rb'))
-        experiment_number += 1
-    except:
-        print('Couldnt find the file to load experiment number')
-        experiment_number = 0
-
-    print('This is experiment number:', experiment_number)
-
-    results_dir = datadir + '/experiment-' + str(experiment_number) + '/'
-    os.makedirs(results_dir)
-
-    pickle.dump(experiment_number, open(datadir + 'experiment_number.pkl', 'wb'))
-
-    mri_list = pickle.load(open(mri_list_location, 'rb'))
-
-    features = load_data.loadAllData(mri_list)
-    # n_lesion_types = choose_clusters(features, results_dir)
-
-    n_lesion_types = 12
-
-    mri_list, without_clinical = load_data.loadClinical(mri_list)
-
-    print('We have ' + str(len(mri_list)) + ' patients who finished the study and ' + str(len(without_clinical)) + ' who did not')
-    outcomes = load_data.get_outcomes(mri_list)
-
-    mri_list = load_data.load_responders(datadir + responder_filename, mri_list)
-
-    patient_results = {}
-    for scan in mri_list:
-        patient_results[scan.uid] = {}
-
-    kf = StratifiedKFold(n_folds, shuffle=True, random_state=42)
-
-    bol_mixture_models = []
-    random_forests = defaultdict(list)
-
-    all_test_patients, activity_posterior, activity_truth, untreated_posterior = defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list)
-    euclidean_knn_posterior, mahalanobis_knn_posterior, chi2_svm_posterior, rbf_svm_posterior, linear_svm_posterior, naive_bayes_posterior =  defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list)
-
-    # initialization of result structures complete
-    # start learning BoL, predicting activity
-    for foldNum, (train_index, test_index) in enumerate(kf.split(range(len(mri_list)), outcomes)):
-        print(foldNum+1, '/', kf.get_n_splits())
-
-        mri_train, mri_test = np.asarray(mri_list)[train_index], np.asarray(mri_list)[test_index]
-
-        # incorporate patients with no clinical data
-        train_patients = []
-        for scan in mri_train:
-            train_patients.append(scan)
-        for scan in without_clinical:
-            train_patients.append(scan)
-
-        # print('loading feature data...')
-        # startLoad = time.time()
-        raw_train_data = load_data.loadAllData(train_patients)
-        raw_test_data = load_data.loadAllData(mri_test)
-
-        print('learning bag of lesions...')
-
-        startBol = time.time()
-        bol_train_data, mixture_model = learn_bol(train_patients, raw_train_data, n_lesion_types, len(mri_train), results_dir, foldNum)
-
-        bol_mixture_models.append(mixture_model)
-
-        elapsedBol = time.time() - startBol
-        print(str(elapsedBol / 60), 'minutes to learn BoL.')
-
-        print('transforming test data to bag of lesions representation...')
-        bol_test_data = project_to_bol(mri_test, raw_test_data, mixture_model)
-
-        print('train BoL shape:', bol_train_data.shape)
-        print('test BoL shape:', bol_test_data.shape)
-
-        trainingPatientsByTreatment, testingPatientsByTreatment, trainingData, testingData = separatePatientsByTreatment(mri_train, mri_test, bol_train_data, bol_test_data)
-
-        # feature selection
-        for treatment in treatments:
-            train_data, test_data = trainingData[treatment], testingData[treatment]
-            train_outcomes, test_outcomes = load_data.get_outcomes(trainingPatientsByTreatment[treatment]), load_data.get_outcomes(
-                testingPatientsByTreatment[treatment])
-
-            all_test_patients[treatment].append(testingPatientsByTreatment[treatment])
-
-            if treatment == "Placebo":
-                (bestFeaturePredictions, placebo_rf, probPredicted) = bol_classifiers.random_forest(train_data, test_data, train_outcomes)
-
-                random_forests[treatment].append(placebo_rf)
-                activity_truth[treatment].append(test_outcomes)
-                activity_posterior[treatment].append(probPredicted)
-
-                svm_linear_posterior, svm_rbf_posterior, chi2svm_posterior = bol_classifiers.svms(train_data, test_data, train_outcomes)
-                knn_euclid_posterior, knn_maha_posterior = bol_classifiers.knn(train_data, train_outcomes, test_data)
-
-                chi2_svm_posterior[treatment].append(chi2svm_posterior)
-                rbf_svm_posterior[treatment].append(svm_rbf_posterior)
-                linear_svm_posterior[treatment].append(svm_linear_posterior)
-
-                euclidean_knn_posterior[treatment].append(knn_euclid_posterior)
-                mahalanobis_knn_posterior[treatment].append(knn_maha_posterior)
-
-                naive_bayes_posterior[treatment].append([])   # FIX IT
-
-            # drugged patients
-            else:
-                # project onto untreated MS model (don't train)
-                (bestPreTrainedFeaturePredictions, meh, pretrainedProbPredicted) = bol_classifiers.random_forest(
-                    train_data, test_data, train_outcomes, placebo_rf)
-
-                # new model on drugged patients
-                (bestFeaturePredictions, drug_rf, probDrugPredicted) = bol_classifiers.random_forest(train_data, test_data, train_outcomes)
-
-                random_forests[treatment].append(drug_rf)
-                svm_linear_posterior, svm_rbf_posterior, chi2svm_posterior = bol_classifiers.svms(train_data, test_data, train_outcomes)
-                knn_euclid_posterior, knn_maha_posterior = bol_classifiers.knn(train_data, train_outcomes, test_data)
-
-                activity_truth[treatment].append(test_outcomes)
-                activity_posterior[treatment].append(np.asarray(probDrugPredicted))
-                untreated_posterior[treatment].append(np.asarray(pretrainedProbPredicted))
-
-                chi2_svm_posterior[treatment].append(chi2svm_posterior)
-                rbf_svm_posterior[treatment].append(svm_rbf_posterior)
-                linear_svm_posterior[treatment].append(svm_linear_posterior)
-                euclidean_knn_posterior[treatment].append(knn_euclid_posterior)
-                mahalanobis_knn_posterior[treatment].append(knn_maha_posterior)
-
-                # right, wrong, r1_score, r2_score, r3_score, r4_score, responders_this_fold = showWhereTreatmentHelped(
-                #     pretrainedProbPredicted, probDrugPredicted, train_data, test_data, train_outcomes,
-                #     test_outcomes, trainingPatientsByTreatment[treatment],
-                #     testingPatientsByTreatment[treatment], results_dir)
-                #
-                # (responderScore, responderProbs), responderHighProbScore = bol_classifiers.identify_responders(
-                #     train_data, test_data, train_outcomes, test_outcomes, trainCounts[treatment],
-                #     testCounts[treatment], drug_rf, placebo_rf)
-
-
-    best_p_a, best_p_d = responder_roc(all_test_patients, activity_truth, activity_posterior, untreated_posterior, results_dir)
-
-    activity_posteriors = [activity_posterior, euclidean_knn_posterior, linear_svm_posterior, chi2_svm_posterior, rbf_svm_posterior]
+def plot_activity_prediction_results(activity_truth, activity_posteriors, results_dir):
     classifier_names = ['Random Forest', '1-NN (Euclidean)', 'SVM (linear)', 'SVM ($\\chi^2$)', 'SVM (RBF)']
     colours = ['darkred', 'indianred', 'lightsalmon', 'darkorange', 'goldenrod', 'tan']
 
-    print('saving prediction results (all folds test cases)...')
-    pickle.dump(activity_posteriors, open(results_dir + 'posteriors.pkl', 'wb'))
-    pickle.dump(all_test_patients, open(results_dir + 'all_test_patients.pkl', 'wb'))
-    pickle.dump(activity_truth, open(results_dir + 'untreated_posterior.pkl', 'wb'))
-    print('saved!')
-
     for treatment in treatments:
-        # print('GT:', np.asarray(activity_truth[treatment][0]).shape, np.asarray(activity_truth[treatment][1]).shape)
-        # print('Predictions:', np.asarray(activity_posterior[treatment][0]).shape, np.asarray(activity_posterior[treatment][1]).shape)
-
         plt.figure(figsize=(8,8))
         lw = 2
         plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
@@ -558,6 +455,158 @@ def predict_responders():
         plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., shadow=True, fontsize=20)
         plt.savefig(results_dir + 'activity_prediction_' + treatment + '_roc.png', bbox_inches='tight')
 
+    return
+
+
+def predict_responders(args):
+    start = time.time()
+
+    try:
+        experiment_number = pickle.load(open(datadir + 'experiment_number.pkl', 'rb'))
+        experiment_number += 1
+    except:
+        print('Couldnt find the file to load experiment number')
+        experiment_number = 0
+
+    print('This is experiment number:', experiment_number)
+
+    results_dir = datadir + '/experiment-' + str(experiment_number) + '/'
+    os.makedirs(results_dir)
+
+    pickle.dump(experiment_number, open(datadir + 'experiment_number.pkl', 'wb'))
+
+    mri_list = pickle.load(open(mri_list_location, 'rb'))
+
+    if args.choose_k:
+        features = load_data.loadAllData(mri_list)
+        n_lesion_types = choose_clusters(features, results_dir)
+    else:
+        n_lesion_types = 12
+
+    if args.predict_activity:
+        mri_list, without_clinical = load_data.loadClinical(mri_list)
+
+        print('We have ' + str(len(mri_list)) + ' patients who finished the study and ' + str(len(without_clinical)) + ' who did not')
+        outcomes = load_data.get_outcomes(mri_list)
+
+        mri_list = load_data.load_responders(datadir + responder_filename, mri_list)
+
+        patient_results = {}
+        for scan in mri_list:
+            patient_results[scan.uid] = {}
+
+        kf = StratifiedKFold(args.n_folds, shuffle=True, random_state=42)
+
+        bol_mixture_models = []
+        random_forests = defaultdict(list)
+
+        all_test_patients, activity_posterior, activity_truth, untreated_posterior = defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list)
+        euclidean_knn_posterior, mahalanobis_knn_posterior, chi2_svm_posterior, rbf_svm_posterior, linear_svm_posterior, naive_bayes_posterior =  defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list)
+
+        # initialization of result structures complete
+        # start learning BoL, predicting activity
+        for foldNum, (train_index, test_index) in enumerate(kf.split(range(len(mri_list)), outcomes)):
+            print(foldNum+1, '/', kf.get_n_splits())
+
+            mri_train, mri_test = np.asarray(mri_list)[train_index], np.asarray(mri_list)[test_index]
+
+            # incorporate patients with no clinical data
+            train_patients = []
+            for scan in mri_train:
+                train_patients.append(scan)
+            for scan in without_clinical:
+                train_patients.append(scan)
+
+            # print('loading feature data...')
+            # startLoad = time.time()
+            raw_train_data = load_data.loadAllData(train_patients)
+            raw_test_data = load_data.loadAllData(mri_test)
+
+            print('learning bag of lesions...')
+
+            startBol = time.time()
+            bol_train_data, mixture_model = learn_bol(train_patients, raw_train_data, n_lesion_types, len(mri_train), results_dir, foldNum)
+
+            bol_mixture_models.append(mixture_model)
+
+            elapsedBol = time.time() - startBol
+            print(str(elapsedBol / 60), 'minutes to learn BoL.')
+
+            print('transforming test data to bag of lesions representation...')
+            bol_test_data = project_to_bol(mri_test, raw_test_data, mixture_model)
+
+            print('train BoL shape:', bol_train_data.shape)
+            print('test BoL shape:', bol_test_data.shape)
+
+            trainingPatientsByTreatment, testingPatientsByTreatment, trainingData, testingData = separatePatientsByTreatment(mri_train, mri_test, bol_train_data, bol_test_data)
+
+            for treatment in treatments:
+                train_data, test_data = trainingData[treatment], testingData[treatment]
+                train_outcomes, test_outcomes = load_data.get_outcomes(trainingPatientsByTreatment[treatment]), load_data.get_outcomes(
+                    testingPatientsByTreatment[treatment])
+
+                all_test_patients[treatment].append(testingPatientsByTreatment[treatment])
+
+                if treatment == "Placebo":
+                    (bestFeaturePredictions, placebo_rf, probPredicted) = bol_classifiers.random_forest(train_data, test_data, train_outcomes)
+
+                    random_forests[treatment].append(placebo_rf)
+                    activity_truth[treatment].append(test_outcomes)
+                    activity_posterior[treatment].append(probPredicted)
+
+                    svm_linear_posterior, svm_rbf_posterior, chi2svm_posterior = bol_classifiers.svms(train_data, test_data, train_outcomes)
+                    knn_euclid_posterior, knn_maha_posterior = bol_classifiers.knn(train_data, train_outcomes, test_data)
+
+                    chi2_svm_posterior[treatment].append(chi2svm_posterior)
+                    rbf_svm_posterior[treatment].append(svm_rbf_posterior)
+                    linear_svm_posterior[treatment].append(svm_linear_posterior)
+
+                    euclidean_knn_posterior[treatment].append(knn_euclid_posterior)
+                    mahalanobis_knn_posterior[treatment].append(knn_maha_posterior)
+
+                    naive_bayes_posterior[treatment].append([])   # FIX IT
+
+                # drugged patients
+                else:
+                    # project onto untreated MS model (don't train)
+                    (bestPreTrainedFeaturePredictions, meh, pretrainedProbPredicted) = bol_classifiers.random_forest(
+                        train_data, test_data, train_outcomes, placebo_rf)
+
+                    # new model on drugged patients
+                    (bestFeaturePredictions, drug_rf, probDrugPredicted) = bol_classifiers.random_forest(train_data, test_data, train_outcomes)
+
+                    random_forests[treatment].append(drug_rf)
+                    svm_linear_posterior, svm_rbf_posterior, chi2svm_posterior = bol_classifiers.svms(train_data, test_data, train_outcomes)
+                    knn_euclid_posterior, knn_maha_posterior = bol_classifiers.knn(train_data, train_outcomes, test_data)
+
+                    activity_truth[treatment].append(test_outcomes)
+                    activity_posterior[treatment].append(np.asarray(probDrugPredicted))
+                    untreated_posterior[treatment].append(np.asarray(pretrainedProbPredicted))
+
+                    chi2_svm_posterior[treatment].append(chi2svm_posterior)
+                    rbf_svm_posterior[treatment].append(svm_rbf_posterior)
+                    linear_svm_posterior[treatment].append(svm_linear_posterior)
+                    euclidean_knn_posterior[treatment].append(knn_euclid_posterior)
+                    mahalanobis_knn_posterior[treatment].append(knn_maha_posterior)
+
+        activity_posteriors = [activity_posterior, euclidean_knn_posterior, linear_svm_posterior, chi2_svm_posterior, rbf_svm_posterior]
+
+        print('saving prediction results (all folds test cases)...')
+        pickle.dump(activity_posteriors, open(datadir + 'posteriors.pkl', 'wb'))
+        pickle.dump(all_test_patients, open(datadir + 'all_test_patients.pkl', 'wb'))
+        pickle.dump(untreated_posterior, open(datadir + 'untreated_posterior.pkl', 'wb'))
+        pickle.dump(activity_truth, open(datadir + 'activity_truth.pkl', 'wb'))
+        print('saved!')
+    else:
+        activity_posteriors = pickle.load(open(datadir + 'posteriors.pkl', 'rb'))
+        all_test_patients = pickle.load(open(datadir + 'all_test_patients.pkl', 'rb'))
+        untreated_posterior = pickle.load(open(datadir + 'untreated_posterior.pkl', 'rb'))
+        activity_truth = pickle.load(open(datadir + 'activity_truth.pkl', 'rb'))
+
+    best_p_a, best_p_d = responder_roc(all_test_patients, activity_truth, activity_posteriors[0], untreated_posterior, args.n_folds, results_dir)
+
+    plot_activity_prediction_results(activity_truth, activity_posteriors, results_dir)
+
     end = time.time()
     elapsed = end - start
 
@@ -567,5 +616,21 @@ def predict_responders():
     return experiment_number
 
 if __name__ == "__main__":
-    experiment_number = predict_responders()
-    print('This experiment was brought to you by the number:', )
+    parser = argparse.ArgumentParser(description='MS Drug Responder Prediction.')
+    parser.add_argument('--choose-k', type=bool, default=False, metavar='N',
+                        help='choose the number of lesion-types (default: True)')
+    parser.add_argument('--predict-activity', type=bool, default=False, metavar='N',
+                        help='predict activity. if false, loads pre-computed results from previous run (default: True')
+    parser.add_argument('--n-folds', type=int, default=25, metavar='N',
+                        help='number of folds for cross-validation (default: 25)')
+    parser.add_argument('--get-features', type=int, default=False, metavar='N',
+                        help='extract features from the imaging data (default: False)')
+
+    args = parser.parse_args()
+
+    if args.get_features:
+        print('Extracting features from imaging data and writing to disk')
+        write_features()
+
+    experiment_number = predict_responders(args)
+    print('This experiment was brought to you by the number:', experiment_number)

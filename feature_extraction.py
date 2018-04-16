@@ -366,6 +366,8 @@ def get_lbp(scan, images):
         feature = np.zeros((len(lbpRadii), 9))
 
         for j, mod in enumerate(modalities):
+            print('LBP for', mod)
+            print('image statistics (min, max, mean, var):', np.min(images[mod]), np.max(images[mod]), np.mean(images[mod]), np.var(images[mod]))
             for r, radius in enumerate(lbpRadii):
                 feature[r, ...] = uniformLBP(images[mod], lesion, radius)
             saveDocument[mod] = feature
@@ -422,7 +424,7 @@ def chunks(l, n):
         yield l[i:i + n]
 
 
-def main():
+def write_features():
     startTime = time.time()
 
     print('Loading MRI file list...')
@@ -451,7 +453,8 @@ def main():
 
     elapsed = endTime - startTime
     print("Total time elapsed:", elapsed / 3600, 'hours', elapsed / 60, 'minutes')
+    return
 
 
 if __name__ == "__main__":
-    main()
+    write_features()
