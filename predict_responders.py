@@ -358,7 +358,7 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
 
     for fold, type_importances in enumerate(all_lesion_importances):
         #types don't correspond yet
-        fold_type_labels = corresponding_lesion_types[(fold)*n_lesion_types_first_fold:(fold+1)*n_lesion_types_first_fold, :]
+        fold_type_labels = corresponding_lesion_types[(fold)*n_lesion_types_first_fold:(fold+1)*n_lesion_types_first_fold]
 
         for type_number in fold_type_labels:
             corresponding_lesion_type_importance[type_number].append(type_importances[type_number])
