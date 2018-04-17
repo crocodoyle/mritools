@@ -222,6 +222,8 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                                 responder_list.append(1)
                                 actual_outcome_list.append(activity)
 
+                        print('responder list', responder_list)
+                        print('actual list', actual_outcome_list)
                         if len(responder_list) > 0:
                             tn, fp, fn, tp = confusion_matrix(np.asarray(responder_list), np.asarray(actual_outcome_list)).ravel()
 
