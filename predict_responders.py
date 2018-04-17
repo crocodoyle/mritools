@@ -5,6 +5,8 @@ import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
+from mpl_toolkits import mplot3d
+
 
 import argparse
 
@@ -220,17 +222,27 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                                 responder_list.append(1)
                                 actual_outcome_list.append(activity)
 
-                        tn, fp, fn, tp = confusion_matrix(np.asarray(responder_list), np.asarray(actual_outcome_list)).ravel()
+                        if len(responder_list) > 0:
+                            tn, fp, fn, tp = confusion_matrix(np.asarray(responder_list), np.asarray(actual_outcome_list)).ravel()
 
-                        epsilon = 1e-6
+                            epsilon = 1e-6
 
-                        sens = tp/(tp + fn + epsilon)
-                        spec = tn/(tn + fp + epsilon)
+                            sens = tp/(tp + fn + epsilon)
+                            spec = tn/(tn + fp + epsilon)
 
-                        responder_results[i, j, 0] = sens
-                        responder_results[i, j, 1] = spec
-                        responder_results[i, j, 2] = 2*sens*spec / (sens + spec) # harmonic mean!
-                        responder_results[i, j, 3] = len(responder_list)
+                            responder_results[i, j, 0] = sens
+                            responder_results[i, j, 1] = spec
+                            responder_results[i, j, 2] = 2*sens*spec / (sens + spec) # harmonic mean!
+                            responder_results[i, j, 3] = len(responder_list)
+
+                X, Y, Z = np.meshgrid(untreated_thresholds, treated_thresholds, responder_results[:, :, 3])
+
+                plt.figure(1, dpi=500)
+                ax_thresholds = plt.axes(projection='3d')
+                ax_thresholds.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap='rainbow', edgecolor='none')
+                ax_thresholds.set_xlabel('P(A=1|BoL, untr) threshold')
+                ax_thresholds.set_ylabel('P(A=0|BoL, ' + treat + ') threshold')
+                plt.savefig(results_dir + treatment + '_thresholds.png', bbox_inches='tight')
 
                 flat_index = np.argmax(responder_results[:, :, 2])
                 unflat_indices = np.unravel_index(flat_index, (responder_results.shape[0], responder_results.shape[1]))
