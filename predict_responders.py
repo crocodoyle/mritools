@@ -235,7 +235,7 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                             responder_results[i, j, 2] = 2*sens*spec / (sens + spec) # harmonic mean!
                             responder_results[i, j, 3] = len(responder_list)
 
-
+                            print(untreated_threshold, treated_threshold, sens, spec)
                 X, Y = np.meshgrid(untreated_thresholds, treated_thresholds)
 
                 plt.figure(1, dpi=500)
@@ -243,6 +243,7 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                 ax_thresholds.plot_surface(X, Y, responder_results[:, :, 2], rstride=1, cstride=1, cmap='rainbow', edgecolor='none')
                 ax_thresholds.set_xlabel('P(A=1|BoL, untr) threshold')
                 ax_thresholds.set_ylabel('P(A=0|BoL, ' + treat + ') threshold')
+                ax_thresholds.zaxis.set_scale('log')
                 plt.savefig(results_dir + treatment + '_thresholds.png', bbox_inches='tight')
 
                 flat_index = np.argmax(responder_results[:, :, 2])
