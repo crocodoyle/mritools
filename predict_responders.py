@@ -219,6 +219,7 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                         responder_list, actual_outcome_list = [], []
 
                         for p_activity_untreated, p_activity_treated, activity in zip(a_prob, d_prob, d_true):
+                            print('P(A=1|BoL, untr), P(A=1|BoL, tr), A', p_activity_untreated, p_activity_treated, activity)
                             if p_activity_untreated > untreated_threshold and p_activity_treated <= treated_threshold:
                                 responder_list.append(1)
                                 actual_outcome_list.append(activity)
