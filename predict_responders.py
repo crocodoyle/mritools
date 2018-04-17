@@ -223,9 +223,9 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                             if p_activity_untreated > untreated_threshold and p_activity_treated <= treated_threshold:
                                 responder_list.append(1)
                                 actual_outcome_list.append(activity)
-                            elif p_activity_untreated < untreated_threshold:
-                                responder_list.append(0)
-                                actual_outcome_list.append(activity)
+                            # elif p_activity_untreated < untreated_threshold:
+                            #     responder_list.append(0)
+                            #     actual_outcome_list.append(activity)
                             elif p_activity_untreated > untreated_threshold and p_activity_treated >= treated_threshold:
                                 responder_list.append(0)
                                 actual_outcome_list.append(activity)
