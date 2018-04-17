@@ -225,7 +225,6 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                                 responder_list.append(0)
                                 actual_outcome_list.append(activity)
 
-
                         if len(responder_list) > 0:
                             tn, fp, fn, tp = confusion_matrix(np.asarray(responder_list), np.asarray(actual_outcome_list), labels=[0, 1]).ravel()
 
@@ -239,7 +238,7 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                             responder_results[i, j, 2] = 2*sens*spec / (sens + spec) # harmonic mean!
                             responder_results[i, j, 3] = len(responder_list)
 
-                            print(untreated_threshold, treated_threshold, sens, spec)
+                            # print(untreated_threshold, treated_threshold, sens, spec)
                 X, Y = np.meshgrid(untreated_thresholds, treated_thresholds)
 
                 plt.figure(2, dpi=500)
@@ -265,7 +264,7 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
 
                     responder_writer.writerow([scan.uid, treatment, t2_les, p_a_untr, p_a_tr, respond])
 
-
+        plt.figure(1)
         ax1.set_xlabel("Mean predicted value")
         ax1.set_ylabel("Count")
         ax1.legend(loc="upper center", ncol=2, shadow=True)
