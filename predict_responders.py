@@ -126,7 +126,7 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                         p_a_auc.append(0)
 
 
-                ax1.hist(a_prob, range=(0, 1), bins=20, label='P(A=1|BoL, untr) for' + treat + 'subjects', histtype="step", lw=2)
+                ax1.hist(a_prob, range=(0, 1), bins=20, label='P(A=1|BoL, untr) for ' + treat + ' subjs', histtype="step", lw=2)
                 ax1.hist(d_prob, range=(0, 1), bins=20, label='P(A=1|BoL, ' + treat + ')', histtype='step', lw=2)
 
                 best_p_a = a_range[np.argmin(p_a_brier)]
@@ -271,7 +271,7 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
         plt.figure(1)
         ax1.set_xlabel("Mean predicted value")
         ax1.set_ylabel("Count")
-        ax1.legend(loc="upper center", ncol=2, shadow=True)
+        ax1.legend(loc='center left', bbox_to_anchor=(1, 0.5), shadow=True)
 
         plt.tight_layout()
         plt.savefig(results_dir + 'prediction_distribution.png')
