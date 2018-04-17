@@ -209,7 +209,7 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                 untreated_thresholds = np.linspace(0, 1)
                 treated_thresholds = np.linspace(0, 1)
 
-                responder_results = np.zeros((untreated_thresholds.shape[0], treated_thresholds.shape[0]), 4)
+                responder_results = np.zeros((untreated_thresholds.shape[0], treated_thresholds.shape[0], 4))
 
                 for i, untreated_threshold in enumerate(untreated_thresholds):
                     for j, treated_threshold in enumerate(treated_thresholds):
