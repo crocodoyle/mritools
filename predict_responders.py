@@ -240,7 +240,7 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
 
                             # print(untreated_threshold, treated_threshold, sens, spec)
                 X, Y = np.meshgrid(untreated_thresholds, treated_thresholds)
-                z = responder_results[i, j, 2]
+                z = responder_results[:, :, 2]
 
                 plt.figure(2, dpi=500)
                 ax_thresholds = plt.axes(projection='3d')
