@@ -213,7 +213,7 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
 
                 for i, untreated_threshold in enumerate(untreated_thresholds):
                     for j, treated_threshold in enumerate(treated_thresholds):
-                        responder_list, actual_outcome_list = []
+                        responder_list, actual_outcome_list = [], []
 
                         for p_activity_untreated, p_activity_treated, activity in zip(a_prob, d_prob, d_true):
                             if p_activity_untreated > untreated_threshold and p_activity_treated < treated_threshold:
@@ -596,12 +596,16 @@ def predict_responders(args):
         pickle.dump(all_test_patients, open(datadir + 'all_test_patients.pkl', 'wb'))
         pickle.dump(untreated_posterior, open(datadir + 'untreated_posterior.pkl', 'wb'))
         pickle.dump(activity_truth, open(datadir + 'activity_truth.pkl', 'wb'))
+        pickle.dump(bol_mixture_models, open(datadir + 'mixture_models.pkl', 'wb'))
+        pickle.dump(random_forests, open(datadir + 'random_forests.pkl', 'wb'))
         print('saved!')
     else:
         activity_posteriors = pickle.load(open(datadir + 'posteriors.pkl', 'rb'))
         all_test_patients = pickle.load(open(datadir + 'all_test_patients.pkl', 'rb'))
         untreated_posterior = pickle.load(open(datadir + 'untreated_posterior.pkl', 'rb'))
         activity_truth = pickle.load(open(datadir + 'activity_truth.pkl', 'rb'))
+        # bol_mixture_models = pickle.load(open(datadir + 'mixture_models.pkl', 'rb'))
+        # random_forests = pickle.load(open(datadir + 'random_forests.pkl', 'rb'))
 
     best_p_a, best_p_d = responder_roc(all_test_patients, activity_truth, activity_posteriors[0], untreated_posterior, args.n_folds, results_dir)
 
