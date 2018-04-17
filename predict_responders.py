@@ -242,12 +242,14 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                 X, Y = np.meshgrid(untreated_thresholds, treated_thresholds)
                 z = responder_results[:, :, 2]
 
-                plt.figure(2, dpi=500)
+                fig = plt.figure(2, dpi=500)
                 ax_thresholds = plt.axes(projection='3d')
-                ax_thresholds.plot_surface(X, Y, z, vmin=np.nanmin(z), vmax=np.nanmax(z), rstride=1, cstride=1, cmap='Spectral_r', edgecolor='none')
+                surf = ax_thresholds.plot_surface(X, Y, z, vmin=np.nanmin(z), vmax=np.nanmax(z), rstride=1, cstride=1, cmap='Spectral_r', edgecolor='none')
                 ax_thresholds.set_xlabel('P(A=1|BoL, untr) threshold')
                 ax_thresholds.set_ylabel('P(A=0|BoL, ' + treat + ') threshold')
                 ax_thresholds.set_zlabel('Sens/Spec\n(harmonic mean)')
+
+                fig.colorbar(surf, shrink=0.5, aspect=5)
                 plt.savefig(results_dir + treatment + '_thresholds.png')
 
                 flat_index = np.argmax(responder_results[:, :, 2])
