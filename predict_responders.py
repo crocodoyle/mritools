@@ -222,8 +222,6 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                                 responder_list.append(1)
                                 actual_outcome_list.append(activity)
 
-                        print('responder list', responder_list)
-                        print('actual list', actual_outcome_list)
                         if len(responder_list) > 0:
                             tn, fp, fn, tp = confusion_matrix(np.asarray(responder_list), np.asarray(actual_outcome_list), labels=[0, 1]).ravel()
 
@@ -238,11 +236,11 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                             responder_results[i, j, 3] = len(responder_list)
 
 
-                X, Y, Z = np.meshgrid(untreated_thresholds, treated_thresholds, responder_results[:, :, 3])
+                X, Y = np.meshgrid(untreated_thresholds, treated_thresholds)
 
                 plt.figure(1, dpi=500)
                 ax_thresholds = plt.axes(projection='3d')
-                ax_thresholds.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap='rainbow', edgecolor='none')
+                ax_thresholds.plot_surface(X, Y, responder_results[:, :, 3], rstride=1, cstride=1, cmap='rainbow', edgecolor='none')
                 ax_thresholds.set_xlabel('P(A=1|BoL, untr) threshold')
                 ax_thresholds.set_ylabel('P(A=0|BoL, ' + treat + ') threshold')
                 plt.savefig(results_dir + treatment + '_thresholds.png', bbox_inches='tight')
