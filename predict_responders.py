@@ -6,6 +6,7 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
+from matplotlib import cm
 
 
 import argparse
@@ -244,10 +245,10 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
 
                 plt.figure(1, dpi=500)
                 ax_thresholds = plt.axes(projection='3d')
-                ax_thresholds.plot_surface(X, Y, responder_results[:, :, 2], rstride=1, cstride=1, cmap='rainbow', edgecolor='none')
+                ax_thresholds.plot_surface(X, Y, responder_results[:, :, 2], rstride=1, cstride=1, cmap=cm.coolwarm, edgecolor='none')
                 ax_thresholds.set_xlabel('P(A=1|BoL, untr) threshold')
                 ax_thresholds.set_ylabel('P(A=0|BoL, ' + treat + ') threshold')
-                plt.savefig(results_dir + treatment + '_thresholds.png', bbox_inches='tight')
+                plt.savefig(results_dir + treatment + '_thresholds.png')
 
                 flat_index = np.argmax(responder_results[:, :, 2])
                 unflat_indices = np.unravel_index(flat_index, (responder_results.shape[0], responder_results.shape[1]))
