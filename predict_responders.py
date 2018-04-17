@@ -73,8 +73,12 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
         ax1 = fig2.add_subplot(1, 1, 1)
 
         for treatment in treatments:
-            p_a_auc, p_d_distance, p_d_harmonic_mean, p_d_anti_harmonic_mean = [], [], [], []
-            p_a_brier = []
+            if 'Laq' in treatment:
+                treat = 'Drug B'
+            else:
+                treat = 'Drug A'
+
+            p_a_auc, p_d_distance, p_d_harmonic_mean, p_d_anti_harmonic_mean, p_a_brier = [], [], [], [], []
 
             if 'Placebo' not in treatment:
                 a_prob = np.concatenate(tuple(untreated_posterior[treatment]), axis=0) # must use predictions for untreated
@@ -123,10 +127,6 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
 
 
                 ax1.hist(a_prob, range=(0, 1), bins=20, label='P(A=1|BoL, untr) for' + treat + 'subjects', histtype="step", lw=2)
-                if 'Laq' in treatment:
-                    treat = 'Drug B'
-                else:
-                    treat = 'Drug A'
                 ax1.hist(d_prob, range=(0, 1), bins=20, label='P(A=1|BoL, ' + treat + ')', histtype='step', lw=2)
 
                 best_p_a = a_range[np.argmin(p_a_brier)]
