@@ -240,7 +240,7 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
 
                 plt.figure(1, dpi=500)
                 ax_thresholds = plt.axes(projection='3d')
-                ax_thresholds.plot_surface(X, Y, responder_results[:, :, 3], rstride=1, cstride=1, cmap='rainbow', edgecolor='none')
+                ax_thresholds.plot_surface(X, Y, responder_results[:, :, 2], rstride=1, cstride=1, cmap='rainbow', edgecolor='none')
                 ax_thresholds.set_xlabel('P(A=1|BoL, untr) threshold')
                 ax_thresholds.set_ylabel('P(A=0|BoL, ' + treat + ') threshold')
                 plt.savefig(results_dir + treatment + '_thresholds.png', bbox_inches='tight')
@@ -250,22 +250,6 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
 
                 best_untreated_threshold = untreated_thresholds[unflat_indices[0]]
                 best_treated_threshold = treated_thresholds[unflat_indices[1]]
-
-                for p_activity_untreated, p_activity_treated, activity in zip(a_prob, d_prob, d_true):
-                    if p_activity_untreated > best_untreated_threshold and p_activity_treated < best_treated_threshold:
-                        responder_list.append(1)
-                        actual_outcome_list.append(activity)
-
-                    tn, fp, fn, tp = confusion_matrix(np.asarray(responder_list), np.asarray(actual_outcome_list)).ravel()
-                    epsilon = 1e-6
-
-                    sens = tp / (tp + fn + epsilon)
-                    spec = tn / (tn + fp + epsilon)
-
-                    print('Best thresholds for', treatment, '(', treat, '):')
-                    print('Untreated threshold:', best_untreated_threshold)
-                    print('Treated threshold:', best_treated_threshold)
-                    print('Sensitivity/specificity:', sens, spec, len(responder_list))
 
                 for i in range(len(mri_list[treatment])):
                     scan = mri_list[treatment][i]
