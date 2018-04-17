@@ -221,6 +221,10 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                             if p_activity_untreated > untreated_threshold and p_activity_treated < treated_threshold:
                                 responder_list.append(1)
                                 actual_outcome_list.append(activity)
+                            elif p_activity_untreated < untreated_threshold and p_activity_treated < treated_threshold:
+                                responder_list.append(0)
+                                actual_outcome_list.append(activity)
+
 
                         if len(responder_list) > 0:
                             tn, fp, fn, tp = confusion_matrix(np.asarray(responder_list), np.asarray(actual_outcome_list), labels=[0, 1]).ravel()
