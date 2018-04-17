@@ -218,10 +218,10 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                         responder_list, actual_outcome_list = [], []
 
                         for p_activity_untreated, p_activity_treated, activity in zip(a_prob, d_prob, d_true):
-                            if p_activity_untreated > untreated_threshold and p_activity_treated < treated_threshold:
+                            if p_activity_untreated > untreated_threshold and p_activity_treated <= treated_threshold:
                                 responder_list.append(1)
                                 actual_outcome_list.append(activity)
-                            elif p_activity_untreated < untreated_threshold and p_activity_treated < treated_threshold:
+                            elif p_activity_untreated > untreated_threshold and p_activity_treated >= treated_threshold:
                                 responder_list.append(0)
                                 actual_outcome_list.append(activity)
 
@@ -247,7 +247,6 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                 ax_thresholds.plot_surface(X, Y, responder_results[:, :, 2], rstride=1, cstride=1, cmap='rainbow', edgecolor='none')
                 ax_thresholds.set_xlabel('P(A=1|BoL, untr) threshold')
                 ax_thresholds.set_ylabel('P(A=0|BoL, ' + treat + ') threshold')
-                ax_thresholds.zaxis.set_scale('log')
                 plt.savefig(results_dir + treatment + '_thresholds.png', bbox_inches='tight')
 
                 flat_index = np.argmax(responder_results[:, :, 2])
