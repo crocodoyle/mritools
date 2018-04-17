@@ -216,7 +216,7 @@ def get_rift(scan, img):
                     divider = make_axes_locatable(ax3)
                     cax = divider.append_axes("right", size="5%", pad=0.05)
 
-                    plt.colorbar(mag_img, cax=cax)
+                    plt.colorbar(mag_img, shrink=0.5, cax=cax)
                     # ax3.set_xticks([])
                     # ax3.set_yticks([])
 
