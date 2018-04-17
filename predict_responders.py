@@ -66,8 +66,12 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                 for mri in sublists:
                     mri_list[treatment].append(mri)
 
-        fig1 = plt.figure(0)
+        fig1 = plt.figure(0, dpi=500) # roc
+        fig2 = plt.figure(1, dpi=500) # predictions distribution
+
         ax = fig1.add_subplot(1, 1, 1)
+        ax1 = fig2.add_subplot(1, 1, 1)
+
         for treatment in treatments:
             p_a_auc, p_d_distance, p_d_harmonic_mean, p_d_anti_harmonic_mean = [], [], [], []
             p_a_brier = []
@@ -86,8 +90,6 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                 a_range = np.linspace(0, 1, n_folds, endpoint=False)
                 d_range = np.linspace(0, 1, n_folds, endpoint=False)
 
-                fig2, ax1 = plt.subplots(1, 1)
-
                 for n_a, p_a in enumerate(a_range):
                     try:
                         a_true_inferred = np.zeros(a_prob.shape)
@@ -99,8 +101,8 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                         score = brier_score_loss(a_true_inferred, a_prob)
                         p_a_brier.append(score)
 
-                        if n_a%5 == 0:
-                            ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label="%s (%1.3f)" % (str(p_a), score))
+                        # if n_a%5 == 0:
+                        #     ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label="%s (%1.3f)" % (str(p_a), score))
 
                     except:
                         p_a_brier.append(1)
@@ -120,19 +122,12 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                         p_a_auc.append(0)
 
 
-                ax1.hist(a_prob, range=(0, 1), bins=20, label='P(A=1|BoL, untr)', histtype="step", lw=2)
+                ax1.hist(a_prob, range=(0, 1), bins=20, label='P(A=1|BoL, untr) for' + treat + 'subjects', histtype="step", lw=2)
                 if 'Laq' in treatment:
                     treat = 'Drug B'
                 else:
                     treat = 'Drug A'
                 ax1.hist(d_prob, range=(0, 1), bins=20, label='P(A=1|BoL, ' + treat + ')', histtype='step', lw=2)
-
-                ax1.set_xlabel("Mean predicted value")
-                ax1.set_ylabel("Count")
-                ax1.legend(loc="upper center", ncol=2, shadow=True)
-
-                plt.tight_layout()
-                plt.savefig(results_dir + treatment + '_prediction_distribution.png')
 
                 best_p_a = a_range[np.argmin(p_a_brier)]
                 a_true = np.ones(a_prob.shape)
@@ -247,7 +242,7 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                             print(untreated_threshold, treated_threshold, sens, spec)
                 X, Y = np.meshgrid(untreated_thresholds, treated_thresholds)
 
-                plt.figure(1, dpi=500)
+                plt.figure(2, dpi=500)
                 ax_thresholds = plt.axes(projection='3d')
                 ax_thresholds.plot_surface(X, Y, responder_results[:, :, 2], rstride=1, cstride=1, cmap=cm.coolwarm, edgecolor='none')
                 ax_thresholds.set_xlabel('P(A=1|BoL, untr) threshold')
@@ -269,6 +264,15 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                     respond = str(r_predicted[i])
 
                     responder_writer.writerow([scan.uid, treatment, t2_les, p_a_untr, p_a_tr, respond])
+
+
+        ax1.set_xlabel("Mean predicted value")
+        ax1.set_ylabel("Count")
+        ax1.legend(loc="upper center", ncol=2, shadow=True)
+
+        plt.tight_layout()
+        plt.savefig(results_dir + 'prediction_distribution.png')
+
 
         plt.figure(0)
         ax.set_xlabel('False Positive Rate', fontsize=20)
