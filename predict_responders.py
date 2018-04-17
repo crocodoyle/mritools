@@ -225,9 +225,7 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                         print('responder list', responder_list)
                         print('actual list', actual_outcome_list)
                         if len(responder_list) > 0:
-                            confusion = confusion_matrix(np.asarray(responder_list), np.asarray(actual_outcome_list))
-                            print(confusion)
-                            tn, fp, fn, tp = confusion.ravel()
+                            tn, fp, fn, tp = confusion_matrix(np.asarray(responder_list), np.asarray(actual_outcome_list), labels=['non-responder', 'responder']).ravel()
 
                             epsilon = 1e-6
 
@@ -238,6 +236,7 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                             responder_results[i, j, 1] = spec
                             responder_results[i, j, 2] = 2*sens*spec / (sens + spec) # harmonic mean!
                             responder_results[i, j, 3] = len(responder_list)
+
 
                 X, Y, Z = np.meshgrid(untreated_thresholds, treated_thresholds, responder_results[:, :, 3])
 
