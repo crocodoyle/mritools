@@ -347,7 +347,7 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
 
     for label in lesion_type_labels:
         for predicted_label, (x_tsne, y_tsne), (x_umap, y_umap), weight in zip(corresponding_lesion_types, embedded_tsne, embedded_umap, all_type_weights):
-            # if label == predicted_label:
+            if label == predicted_label:
             #     ax1.scatter(x_tsne, y_tsne, s=4**weight, color=cmap((label+1)/len(lesion_type_labels)))
             #     ax2.scatter(x_umap, y_umap, s=4**weight, color=cmap((label+1)/len(lesion_type_labels)))
 
