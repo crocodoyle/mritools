@@ -361,9 +361,8 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
     ax2.set_xticks([])
     ax2.set_yticks([])
     ax2.set_xlabel('UMAP', fontsize=24)
-    plt.colorbar(shrink=0.75)
 
-    # plt.tight_layout()
+    plt.tight_layout()
     plt.savefig(results_dir + 'embedding_of_lesion_types.png', dpi=600)
 
     # boxplot for lesion-type importance across folds
