@@ -361,10 +361,7 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
     ax2.set_xticks([])
     ax2.set_yticks([])
     ax2.set_xlabel('UMAP', fontsize=24)
-
-    divider = make_axes_locatable(ax2)
-    cax = divider.append_axes("right", size="5%", pad=0.05)
-    plt.colorbar(ax2, shrink=0.75, cax=cax)
+    plt.colorbar(shrink=0.75)
 
     # plt.tight_layout()
     plt.savefig(results_dir + 'embedding_of_lesion_types.png', dpi=600)
