@@ -344,21 +344,23 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
     print('t-sne embedded shape:', embedded_tsne.shape)
     print('umap embedded shape:', embedded_umap.shape)
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(6, 6), dpi=500)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6), dpi=500)
 
     cmap = mpl.cm.get_cmap('rainbow')
 
     for label in lesion_type_labels:
         for predicted_label, (x_tsne, y_tsne), (x_umap, y_umap), weight in zip(corresponding_lesion_types, embedded_tsne, embedded_umap, all_type_weights):
             if label == predicted_label:
-                ax1.scatter(x_tsne, y_tsne, s=40**weight, color=cmap((label+1)/len(lesion_type_labels)))
-                ax2.scatter(x_umap, y_umap, s=40**weight, color=cmap((label+1)/len(lesion_type_labels)))
+                ax1.scatter(x_tsne, y_tsne, s=4**weight, color=cmap((label+1)/len(lesion_type_labels)))
+                ax2.scatter(x_umap, y_umap, s=4**weight, color=cmap((label+1)/len(lesion_type_labels)))
 
     ax1.set_xticks([])
     ax1.set_yticks([])
+    ax1.set_xlabel('t-SNE')
 
     ax2.set_xticks([])
     ax2.set_yticks([])
+    ax2.set_xlabel('UMAP')
 
     plt.tight_layout()
     plt.savefig(results_dir + 'embedding_of_lesion_types.png', dpi=600)
@@ -376,7 +378,7 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
         for type_number in fold_type_labels:
             corresponding_lesion_type_importance[type_number].append(type_importances[type_number])
 
-    fig, ax = plt.subplots(1, 1, figsize=(6, 6), dpi=600)
+    fig, ax = plt.subplots(1, 1, figsize=(12, 6), dpi=600)
 
     ax.boxplot(corresponding_lesion_type_importance)
     ax.set_ylabel('Lesion-type importance', fontsize=20)
@@ -427,7 +429,6 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
         diffs.append(diff_normalized)
 
     data2 = [diffs]
-    print(data2)
 
     axes[1].boxplot(data2)
     axes[1].set_xlabel('Lesion size', fontsize=20)
