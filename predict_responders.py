@@ -7,7 +7,7 @@ mpl.use('Agg')
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 from matplotlib import cm
-
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import argparse
 
@@ -272,10 +272,7 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
         ax1.set_xlabel("Mean predicted value")
         ax1.set_ylabel("Count")
         ax1.legend(loc='center left', bbox_to_anchor=(1, 0.5), shadow=True)
-
-        plt.tight_layout()
         plt.savefig(results_dir + 'prediction_distribution.png')
-
 
         plt.figure(0)
         ax.set_xlabel('False Positive Rate', fontsize=20)
@@ -350,19 +347,26 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
 
     for label in lesion_type_labels:
         for predicted_label, (x_tsne, y_tsne), (x_umap, y_umap), weight in zip(corresponding_lesion_types, embedded_tsne, embedded_umap, all_type_weights):
-            if label == predicted_label:
-                ax1.scatter(x_tsne, y_tsne, s=4**weight, color=cmap((label+1)/len(lesion_type_labels)))
-                ax2.scatter(x_umap, y_umap, s=4**weight, color=cmap((label+1)/len(lesion_type_labels)))
+            # if label == predicted_label:
+            #     ax1.scatter(x_tsne, y_tsne, s=4**weight, color=cmap((label+1)/len(lesion_type_labels)))
+            #     ax2.scatter(x_umap, y_umap, s=4**weight, color=cmap((label+1)/len(lesion_type_labels)))
+
+                ax1.scatter(x_tsne, y_tsne, color=cmap((label+1)/len(lesion_type_labels)))
+                ax2.scatter(x_umap, y_umap, color=cmap((label+1)/len(lesion_type_labels)))
 
     ax1.set_xticks([])
     ax1.set_yticks([])
-    ax1.set_xlabel('t-SNE')
+    ax1.set_xlabel('t-SNE', fontsize=24)
 
     ax2.set_xticks([])
     ax2.set_yticks([])
-    ax2.set_xlabel('UMAP')
+    ax2.set_xlabel('UMAP', fontsize=24)
 
-    plt.tight_layout()
+    divider = make_axes_locatable(ax2)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    plt.colorbar(ax2, shrink=0.75, cax=cax)
+
+    # plt.tight_layout()
     plt.savefig(results_dir + 'embedding_of_lesion_types.png', dpi=600)
 
     # boxplot for lesion-type importance across folds
