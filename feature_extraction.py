@@ -215,8 +215,8 @@ def get_rift(scan, img):
                     cax = divider.append_axes("right", size="5%", pad=0.05)
 
                     plt.colorbar(mag_img, cax=cax)
-                    # ax3.set_xticks([])
-                    # ax3.set_yticks([])
+                    ax3.set_xticks([])
+                    ax3.set_yticks([])
 
                     max_grad = np.argmax(magnitude[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20])
 
@@ -242,6 +242,11 @@ def get_rift(scan, img):
 
                     ax4.plot(centre_point[0], centre_point[1], 'ro', markersize=2)
                     ax4.plot(arrow_begin[0], arrow_begin[1], 'bo', markersize=2)
+
+                    radial_line_x = [centre_point[0], arrow_begin[0]]
+                    radial_line_y = [centre_point[1], arrow_begin[1]]
+
+                    ax4.plot(radial_line_y, radial_line_x, color='r')
 
                     ax4.set_xticks([])
                     ax4.set_yticks([])
@@ -366,7 +371,7 @@ def get_lbp(scan, images):
 
             for r, radius in enumerate(lbpRadii):
                 feature[r, ...] = uniformLBP(images[mod], lesion, radius)
-            print(mod, feature)
+            # print(mod, feature)
             saveDocument[mod] = feature
 
         pickle.dump(saveDocument, open(scan.features_dir + 'lbp_' + str(l) + '.pkl', "wb"))
