@@ -91,13 +91,13 @@ def separate_lesions(scan):
 
 
 def uniformLBP(image, lesion, radius):
-    lbp = bitstring.BitArray('0b00000000')
-
     r = radius
     uniformPatterns = np.zeros(9, dtype='float32')
 
     for i, [x, y, z] in enumerate(lesion):
         threshold = image[x, y, z]
+
+        lbp = bitstring.BitArray('0b00000000')
 
         lbp.set(image[x, y - r, z] > threshold, 0)
         lbp.set(image[x, y - r, z + r] > threshold, 1)
@@ -361,13 +361,12 @@ def get_lbp(scan, images):
         saveDocument = {}
         saveDocument['_id'] = scan.uid + '_' + str(l)
 
-        feature = np.zeros((len(lbpRadii), 9))
-
         for j, mod in enumerate(modalities):
-            print('LBP for', mod)
-            print('image statistics (min, max, mean, var):', np.min(images[mod]), np.max(images[mod]), np.mean(images[mod]), np.var(images[mod]))
+            feature = np.zeros((len(lbpRadii), 9))
+
             for r, radius in enumerate(lbpRadii):
                 feature[r, ...] = uniformLBP(images[mod], lesion, radius)
+            print(mod, feature)
             saveDocument[mod] = feature
 
         pickle.dump(saveDocument, open(scan.features_dir + 'lbp_' + str(l) + '.pkl', "wb"))
