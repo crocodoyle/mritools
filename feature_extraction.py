@@ -16,8 +16,6 @@ import skeletons
 import bitstring
 from multiprocessing import Pool, Process
 
-
-
 data_dir = '/data1/users/adoyle/MS-LAQ/MS-LAQ-302-STX/'
 icbmRoot = data_dir + 'quarantine/common/models/icbm_avg_152_'
 lesion_atlas = data_dir + 'quarantine/common/models/icbm_avg_3714_t2les.mnc.gz'

@@ -72,12 +72,7 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
         ax = fig1.add_subplot(1, 1, 1)
         ax1 = fig2.add_subplot(1, 1, 1)
 
-        for treatment in treatments:
-            if 'Laq' in treatment:
-                treat = 'Drug B'
-            else:
-                treat = 'Drug A'
-
+        for treatment, treat in zip(treatments, treatment_labels):
             p_a_auc, p_d_distance, p_d_harmonic_mean, p_d_anti_harmonic_mean, p_a_brier = [], [], [], [], []
 
             if 'Placebo' not in treatment:
@@ -269,9 +264,9 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                     responder_writer.writerow([scan.uid, treatment, t2_les, p_a_untr, p_a_tr, respond])
 
         plt.figure(1)
-        ax1.set_xlabel("Mean predicted value")
-        ax1.set_ylabel("Count")
-        ax1.legend(loc='center left', bbox_to_anchor=(1, 0.5), shadow=True)
+        ax1.set_xlabel("Mean predicted value", fontsize=24)
+        ax1.set_ylabel("Count", fontsize=24)
+        ax1.legend(loc='upper left', shadow=True, fancybox=True, fontsize=20)
         plt.savefig(results_dir + 'prediction_distribution.png')
 
         plt.figure(0)
@@ -495,7 +490,7 @@ def predict_responders(args):
         features = load_data.loadAllData(mri_list)
         n_lesion_types = choose_clusters(features, results_dir)
     else:
-        n_lesion_types = 19
+        n_lesion_types = args.k
 
     if args.predict_activity:
         mri_list, without_clinical = load_data.loadClinical(mri_list)
@@ -637,11 +632,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='MS Drug Responder Prediction.')
     parser.add_argument('--choose-k', type=bool, default=False, metavar='N',
                         help='choose the number of lesion-types (default: True)')
-    parser.add_argument('--predict-activity', type=bool, default=False, metavar='N',
+    parser.add_argument('--k', type=True, default=36, metavar='N',
+                        help='if choose-k is \'False\', number of lesion-types (default: 36)')
+    parser.add_argument('--predict-activity', type=bool, default=True, metavar='N',
                         help='predict activity. if false, loads pre-computed results from previous run (default: True')
     parser.add_argument('--n-folds', type=int, default=25, metavar='N',
                         help='number of folds for cross-validation (default: 25)')
-    parser.add_argument('--get-features', type=int, default=False, metavar='N',
+    parser.add_argument('--get-features', type=bool, default=False, metavar='N',
                         help='extract features from the imaging data (default: False)')
 
     args = parser.parse_args()
