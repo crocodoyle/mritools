@@ -245,22 +245,24 @@ def lesion_type_selection(trainData, testData, trainOutcomes, testOutcomes, minT
         testScores.append(rf.score(test, testOutcomes))
         numFeatures.append(typesLeft)
 
-    print(numFeatures[np.argmax(oobScores)], 'is the optimal number of features')
+    best_number = numFeatures[np.argmax(np.asarray(oobScores))]
+
+    print(best_number, 'is the optimal number of features')
     
     plt.figure()
     plt.plot(numFeatures, oobScores, label="Out-of-Bag Score")
     plt.plot(numFeatures, trainScores, label="Training Score")
     plt.plot(numFeatures, testScores, label="Test Score")
-    plt.xlabel('Number of codewords in BoL')
-    plt.ylabel('Mean Accuracy')
-    plt.legend(shadow=True)
+    plt.xlabel('Number of codewords in BoL', fontsize=20)
+    plt.ylabel('Mean Accuracy', fontsize=20)
+    plt.legend(shadow=True, fontsize=20)
     plt.tight_layout()
     plt.savefig(results_dir + 'feature_selection.png', dpi=500)
     plt.close()
 
     train = trainData
     test = testData
-    finalRemove = np.shape(testData)[1] - numFeatures[np.argmax(oobScores)]
+    finalRemove = np.shape(testData)[1] - best_number
     
     removeThisRound = []
     for r in range(finalRemove):
@@ -277,9 +279,9 @@ def lesion_type_selection(trainData, testData, trainOutcomes, testOutcomes, minT
     for remove in removeThisRound:
         train = np.delete(train, remove, 1)
         test = np.delete(test, remove, 1)
-    
         
     return train, test, removeThisRound
+
 
 def apply_lesion_type_selection(train_data, test_data, types_to_remove):
     for remove in types_to_remove:
