@@ -246,7 +246,7 @@ def get_rift(scan, img):
                     radial_line_x = [centre_point[0], arrow_begin[0]]
                     radial_line_y = [centre_point[1], arrow_begin[1]]
 
-                    ax4.plot(radial_line_y, radial_line_x, color='r')
+                    ax4.plot(radial_line_x, radial_line_y, color='r')
 
                     ax4.set_xticks([])
                     ax4.set_yticks([])

@@ -205,7 +205,7 @@ def knn(trainData, trainOutcomes, testData):
     return knn_euclid_posterior, knn_maha_posterior
 
 
-def randomForestFeatureSelection(trainData, testData, trainOutcomes, testOutcomes, minTypes):
+def lesion_type_selection(trainData, testData, trainOutcomes, testOutcomes, minTypes, results_dir):
     train = trainData
     test = testData    
     
@@ -217,9 +217,9 @@ def randomForestFeatureSelection(trainData, testData, trainOutcomes, testOutcome
  
     typesLeft = len(featureImportance)
     
-    trainScores, oobScores, testScores, numFeatures = [], [], [] ,[]
+    trainScores, oobScores, testScores, numFeatures = [], [], [], []
 
-    while True:
+    while typesLeft < minTypes:
         removeThisRound = []
         
         for r in range(int(np.ceil(0.2*typesLeft))):
@@ -244,9 +244,6 @@ def randomForestFeatureSelection(trainData, testData, trainOutcomes, testOutcome
         oobScores.append(rf.oob_score_)
         testScores.append(rf.score(test, testOutcomes))
         numFeatures.append(typesLeft)
-        
-        if typesLeft < minTypes:
-            break
 
     print(numFeatures[np.argmax(oobScores)], 'is the optimal number of features')
     
@@ -256,9 +253,9 @@ def randomForestFeatureSelection(trainData, testData, trainOutcomes, testOutcome
     plt.plot(numFeatures, testScores, label="Test Score")
     plt.xlabel('Number of codewords in BoL')
     plt.ylabel('Mean Accuracy')
-    plt.legend()
+    plt.legend(shadow=True)
     plt.tight_layout()
-#        plt.show()
+    plt.savefig(results_dir, 'feature_selection.png', dpi=500)
         
     train = trainData
     test = testData
@@ -283,3 +280,9 @@ def randomForestFeatureSelection(trainData, testData, trainOutcomes, testOutcome
         
     return train, test, removeThisRound
 
+def apply_lesion_type_selection(train_data, test_data, types_to_remove):
+    for remove in types_to_remove:
+        train_data = np.delete(train_data, remove, 1)
+        test_data = np.delete(test_data, remove, 1)
+
+    return train_data, test_data

@@ -557,6 +557,9 @@ def predict_responders(args):
                 all_test_patients[treatment].append(testingPatientsByTreatment[treatment])
 
                 if treatment == "Placebo":
+                    if args.feature_selection:
+                        train_data, test_data, bad_types = bol_classifiers.lesion_type_selection(train_data, test_data, train_outcomes, test_outcomes, 2)
+
                     (bestFeaturePredictions, placebo_rf, probPredicted) = bol_classifiers.random_forest(train_data, test_data, train_outcomes)
 
                     random_forests[treatment].append(placebo_rf)
@@ -577,6 +580,8 @@ def predict_responders(args):
 
                 # drugged patients
                 else:
+                    if args.feature_selection:
+                        train_data = bol_classifiers.apply_lesion_type_selection(train_data, test_data, bad_types, results_dir)
                     # project onto untreated MS model (don't train)
                     (bestPreTrainedFeaturePredictions, meh, pretrainedProbPredicted) = bol_classifiers.random_forest(
                         train_data, test_data, train_outcomes, placebo_rf)
@@ -640,6 +645,8 @@ if __name__ == "__main__":
                         help='number of folds for cross-validation (default: 25)')
     parser.add_argument('--get-features', type=bool, default=False, metavar='N',
                         help='extract features from the imaging data (default: False)')
+    parser.add_argument('--feature-selection', type=bool, default=False, metavar='N',
+                        help='remove lesion types that have no information (default: False)')
 
     args = parser.parse_args()
 
