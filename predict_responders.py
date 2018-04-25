@@ -558,7 +558,7 @@ def predict_responders(args):
 
                 if treatment == "Placebo":
                     if args.feature_selection:
-                        train_data, test_data, bad_types = bol_classifiers.lesion_type_selection(train_data, test_data, train_outcomes, test_outcomes, 2)
+                        train_data, test_data, bad_types = bol_classifiers.lesion_type_selection(train_data, test_data, train_outcomes, test_outcomes, 8, results_dir)
 
                     (bestFeaturePredictions, placebo_rf, probPredicted) = bol_classifiers.random_forest(train_data, test_data, train_outcomes)
 
@@ -632,6 +632,7 @@ def predict_responders(args):
     print(str(elapsed / 60), 'minutes elapsed.')
 
     return experiment_number
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='MS Drug Responder Prediction.')

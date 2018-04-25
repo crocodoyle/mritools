@@ -222,7 +222,7 @@ def lesion_type_selection(trainData, testData, trainOutcomes, testOutcomes, minT
     while typesLeft < minTypes:
         removeThisRound = []
         
-        for r in range(int(np.ceil(0.2*typesLeft))):
+        for r in range(int(np.ceil(0.1*typesLeft))):
             remove = np.argmin(featureImportance)
             removeThisRound.append(remove)
             
