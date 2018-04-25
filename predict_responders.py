@@ -637,7 +637,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='MS Drug Responder Prediction.')
     parser.add_argument('--choose-k', type=bool, default=False, metavar='N',
                         help='choose the number of lesion-types (default: True)')
-    parser.add_argument('--k', type=int, default=36, metavar='N',
+    parser.add_argument('--k', type=int, default=47, metavar='N',
                         help='if choose-k is \'False\', number of lesion-types (default: 36)')
     parser.add_argument('--predict-activity', type=bool, default=True, metavar='N',
                         help='predict activity. if false, loads pre-computed results from previous run (default: True')
