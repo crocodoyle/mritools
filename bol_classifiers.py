@@ -255,8 +255,9 @@ def lesion_type_selection(trainData, testData, trainOutcomes, testOutcomes, minT
     plt.ylabel('Mean Accuracy')
     plt.legend(shadow=True)
     plt.tight_layout()
-    plt.savefig(results_dir, 'feature_selection.png', dpi=500)
-        
+    plt.savefig(results_dir + 'feature_selection.png', dpi=500)
+    plt.close()
+
     train = trainData
     test = testData
     finalRemove = np.shape(testData)[1] - numFeatures[np.argmax(oobScores)]
