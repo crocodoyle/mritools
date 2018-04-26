@@ -245,6 +245,8 @@ def lesion_type_selection(trainData, testData, trainOutcomes, testOutcomes, minT
         testScores.append(rf.score(test, testOutcomes))
         numFeatures.append(typesLeft)
 
+        print("out of bag scores", oobScores)
+
     best_number = numFeatures[np.argmax(np.asarray(oobScores))]
 
     print(best_number, 'is the optimal number of features')

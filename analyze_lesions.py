@@ -902,10 +902,8 @@ def beforeAndAfter():
         lesionImg = np.zeros(np.shape(t2))
         newLesionImg = np.zeros(np.shape(newT2))
 
-
         for i, (x, y, z) in enumerate(lesionList):
             lesionImg[x,y,z] = 1
-            
             
         for i, (x, y, z) in enumerate(newLesionList):
             newLesionImg[x,y,z] = 1
