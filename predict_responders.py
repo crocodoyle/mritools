@@ -586,7 +586,7 @@ def predict_responders(args):
                 # drugged patients
                 else:
                     if args.feature_selection:
-                        train_data = bol_classifiers.apply_lesion_type_selection(train_data, test_data, bad_types, results_dir)
+                        train_data, test_data = bol_classifiers.apply_lesion_type_selection(train_data, test_data, bad_types)
                     # project onto untreated MS model (don't train)
                     (bestPreTrainedFeaturePredictions, meh, pretrainedProbPredicted) = bol_classifiers.random_forest(
                         train_data, test_data, train_outcomes, placebo_rf)
