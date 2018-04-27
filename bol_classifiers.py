@@ -219,7 +219,7 @@ def lesion_type_selection(trainData, testData, trainOutcomes, testOutcomes, minT
     
     trainScores, oobScores, testScores, numFeatures = [], [], [], []
 
-    while typesLeft < minTypes:
+    while typesLeft > minTypes:
         removeThisRound = []
         
         for r in range(int(np.ceil(0.1*typesLeft))):

@@ -339,6 +339,11 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6), dpi=500)
 
     cmap = mpl.cm.get_cmap('rainbow')
+    markers = ['o', 'v', '^', '<', '>', '8', 's', 'p', 'P', '*', 'x', 'D']
+    type_markers = []
+
+    for n in range(n_lesion_types_first_fold):
+        type_markers.append(markers[np.random.randint(len(markers))])
 
     for label in lesion_type_labels:
         for predicted_label, (x_tsne, y_tsne), (x_umap, y_umap), weight in zip(corresponding_lesion_types, embedded_tsne, embedded_umap, all_type_weights):
@@ -346,8 +351,8 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
             #     ax1.scatter(x_tsne, y_tsne, s=4**weight, color=cmap((label+1)/len(lesion_type_labels)))
             #     ax2.scatter(x_umap, y_umap, s=4**weight, color=cmap((label+1)/len(lesion_type_labels)))
 
-                ax1.scatter(x_tsne, y_tsne, color=cmap((label+1)/len(lesion_type_labels)))
-                ax2.scatter(x_umap, y_umap, color=cmap((label+1)/len(lesion_type_labels)))
+                ax1.scatter(x_tsne, y_tsne, color=cmap((label+1)/len(lesion_type_labels)), marker=type_markers[label])
+                ax2.scatter(x_umap, y_umap, color=cmap((label+1)/len(lesion_type_labels)), marker=type_markers[label])
 
     ax1.set_xticks([])
     ax1.set_yticks([])
