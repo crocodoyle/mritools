@@ -221,11 +221,18 @@ def learn_bol(mri_list, feature_data, n_lesion_types, numWithClinical, results_d
                     ax3 = plt.subplot(4, n, i + 1 + 2*n)
                     # ax3.bar(x, feature_val, color='darkred')
 
-                    x_context = np.arange(44)
-                    x_rift = np.arange(44, 60)
-                    x_lbp = np.arange(60, 96)
-                    x_intensity = np.arange(96, 104)
-                    x_size = 104
+                    if len(feature_val) > 100:
+                        x_context = np.arange(44)
+                        x_rift = np.arange(44, 60)
+                        x_lbp = np.arange(60, 96)
+                        x_intensity = np.arange(96, 104)
+                        x_size = 104
+                    else:
+                        x_context = np.arange(44) - 17*2
+                        x_rift = np.arange(44, 60)- 17*2
+                        x_lbp = np.arange(60, 96)- 17*2
+                        x_intensity = np.arange(96, 104)- 17*2
+                        x_size = 104- 17*2
 
                     ticks = [x_context[-1] / 2, ((x_rift[-1] - x_rift[0]) / 2) + x_rift[0], ((x_lbp[-1] - x_lbp[0]) / 2) + x_lbp[0], ((x_intensity[-1] - x_intensity[0]) / 2) + x_intensity[0], x_size]
                     tick_labels = ['C', 'RIFT', 'LBP', 'I', 'S']
