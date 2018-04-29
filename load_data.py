@@ -169,7 +169,7 @@ def loadClinical(mri_list):
     for i, scan in enumerate(mri_list):
         try:
             clinicalData = pickle.load(open(scan.features_dir + 'clinical.pkl', 'rb'))
-            print(scan.uid, clinicalData)
+            # print(scan.uid, clinicalData)
 
             scan.newT2 = int(clinicalData['newT2'])
             scan.newGad = int(clinicalData['gad'])
