@@ -492,7 +492,7 @@ def predict_responders(args):
     mri_list = pickle.load(open(mri_list_location, 'rb'))
 
     if args.choose_k:
-        features = load_data.loadAllData(mri_list)
+        features = load_data.loadAllData(mri_list, args.include_catani)
         n_lesion_types = choose_clusters(features, results_dir)
     else:
         n_lesion_types = args.k
@@ -653,6 +653,8 @@ if __name__ == "__main__":
                         help='extract features from the imaging data (default: False)')
     parser.add_argument('--feature-selection', type=bool, default=False, metavar='N',
                         help='remove lesion types that have no information (default: False)')
+    parser.add_argument('-include-catani', type=bool, default=False, metavar='N',
+                        help='include the Catani context priors in the features for determining lesion-types (default: False)')
 
     args = parser.parse_args()
 

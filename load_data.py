@@ -102,7 +102,7 @@ def loadRIFT(mri_list):
     return np.asarray(data)
 
 
-def loadContext(mri_list):
+def loadContext(mri_list, include_catani):
     numBins = 2
     
     data = []
@@ -111,9 +111,13 @@ def loadContext(mri_list):
         for j, lesion in enumerate(scan.lesionList):
             lesion_feature = pickle.load(open(scan.features_dir + 'context_' + str(j) + '.pkl', 'rb'))
 
-            feature = np.zeros((len(tissues) + len(wm_tracts), numBins))
+            context_priors = scan.tissues
+            if include_catani:
+                context_priors += wm_tracts
 
-            for k, tissue in enumerate(scan.tissues + wm_tracts):
+            feature = np.zeros((len(context_priors), numBins))
+
+            for k, tissue in enumerate(context_priors):
                 feature[k, ...] = lesion_feature[tissue]
             data.append(np.ndarray.flatten(feature))
             
@@ -134,9 +138,9 @@ def loadLBP(mri_list):
     return np.asarray(np.asarray(data))
 
 
-def loadAllData(mri_list):
+def loadAllData(mri_list, include_catani):
 
-    context = loadContext(mri_list)
+    context = loadContext(mri_list, include_catani)
     rift = loadRIFT(mri_list)
     lbp = loadLBP(mri_list)
     intensity = loadIntensity(mri_list)
