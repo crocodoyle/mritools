@@ -88,8 +88,6 @@ def random_forest(trainData, testData, trainOutcomes, rf=None):
         print('training random forest...')
         rf = RandomForestClassifier(class_weight='balanced', n_estimators=3000, n_jobs=-1)
         rf.fit(trainData, trainOutcomes)
-    else:
-        print('Using previously trained model')
 
     predictions = rf.predict(testData)
     probabilities = rf.predict_proba(testData)

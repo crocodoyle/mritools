@@ -170,7 +170,7 @@ def get_rift(scan, img):
                     visualize_lesion = True
 
                 if visualize_slice:
-                    fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(1, 5, figsize=(20, 8))
+                    fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(1, 5, figsize=(16, 8))
 
                     img = nib.load(scan.images['t2w']).get_data()
                     lesionMaskImg = np.zeros((np.shape(img)))
@@ -233,7 +233,7 @@ def get_rift(scan, img):
                     arrow_begin = (max_grad_pos[1], max_grad_pos[0])
                     arrow_end = (a, o)
 
-                    print('arrow begin:', arrow_begin, 'arrow end:', arrow_end)
+                    # print('arrow begin:', arrow_begin, 'arrow end:', arrow_end)
 
                     ax4.imshow(img[int(xc), int(yc) - 20:int(yc) + 20, int(zc) - 20:int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
                     ax4.imshow(lesionMaskPatch, cmap=plt.cm.autumn, alpha=0.25, interpolation='nearest', origin='lower')
@@ -327,7 +327,7 @@ def loadMRIList():
     return mri_list_lesions
 
 
-def get_context(scan, images):
+def get_context(scan, images, include_catani):
     # contextMin = {"csf": -0.001, "wm": -0.001, "gm": -0.001, "pv": -0.001, "lesion": -0.001}
     # contextMax = {'csf': 1.001, 'wm': 1.001, 'gm': 1.001, 'pv': 1.001, 'lesion': 0.348}
     #
@@ -350,7 +350,11 @@ def get_context(scan, images):
         saveDocument = {}
         saveDocument['_id'] = scan.uid + '_' + str(l)
 
-        for tissue in scan.tissues + wm_tracts:
+        context_priors = scan.tissues
+        if include_catani:
+            context_priors += wm_tracts
+
+        for tissue in context_priors:
             context = []
 
             for p in lesion:
@@ -402,7 +406,7 @@ def get_intensity(scan, images):
         pickle.dump(saveDocument, open(scan.features_dir + 'intensity_' + str(l) + '.pkl', "wb"))
 
 
-def getFeaturesOfList(mri_list):
+def getFeaturesOfList(mri_list, include_catani):
     for i, scan in enumerate(mri_list):
         images = {}
         for j, m in enumerate(modalities):
@@ -411,7 +415,7 @@ def getFeaturesOfList(mri_list):
         print('Patient:', scan.uid, i + 1, '/', len(mri_list) + 1)
         startTime = time.time()
 
-        get_context(scan, images)
+        get_context(scan, images, include_catani)
         get_lbp(scan, images)
         get_rift(scan, images)
         get_intensity(scan, images)
@@ -426,7 +430,7 @@ def chunks(l, n):
         yield l[i:i + n]
 
 
-def write_features():
+def write_features(include_catani=True):
     startTime = time.time()
 
     print('Loading MRI file list...')
@@ -445,7 +449,7 @@ def write_features():
     print('MRI list loaded')
 
     print('extracting imaging ')
-    getFeaturesOfList(mri_list)
+    getFeaturesOfList(mri_list, include_catani)
 
     print('writing clinical outputs...')
     write_clinical_outputs(mri_list)

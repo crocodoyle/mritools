@@ -562,8 +562,8 @@ def predict_responders(args):
                 all_test_patients[treatment].append(testingPatientsByTreatment[treatment])
 
                 if treatment == "Placebo":
-                    if args.feature_selection:
-                        train_data, test_data, bad_types = bol_classifiers.lesion_type_selection(train_data, test_data, train_outcomes, test_outcomes, 8, results_dir)
+                    # if args.feature_selection:
+                    #     train_data, test_data, bad_types = bol_classifiers.lesion_type_selection(train_data, test_data, train_outcomes, test_outcomes, 8, results_dir)
 
                     (bestFeaturePredictions, placebo_rf, probPredicted) = bol_classifiers.random_forest(train_data, test_data, train_outcomes)
 
@@ -585,8 +585,8 @@ def predict_responders(args):
 
                 # drugged patients
                 else:
-                    if args.feature_selection:
-                        train_data, test_data = bol_classifiers.apply_lesion_type_selection(train_data, test_data, bad_types)
+                    # if args.feature_selection:
+                    #     train_data, test_data = bol_classifiers.apply_lesion_type_selection(train_data, test_data, bad_types)
                     # project onto untreated MS model (don't train)
                     (bestPreTrainedFeaturePredictions, meh, pretrainedProbPredicted) = bol_classifiers.random_forest(
                         train_data, test_data, train_outcomes, placebo_rf)
@@ -658,7 +658,7 @@ if __name__ == "__main__":
 
     if args.get_features:
         print('Extracting features from imaging data and writing to disk')
-        write_features()
+        write_features(include_catani=False)
 
     experiment_number = predict_responders(args)
     print('This experiment was brought to you by the number:', experiment_number)
