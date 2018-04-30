@@ -114,7 +114,8 @@ def choose_clusters(feature_data, results_dir):
 
         labels = clust_search[k].predict(feature_data)
 
-        silhouettes.append(silhouette_score(feature_data, labels))
+
+        silhouettes.append(silhouette_score(feature_data, labels, random_state=42, sample_size=feature_data.shape[0] / 4))
 
         print('it took ' + str(time_taken[-1]) + ' minutes')
 
