@@ -6,6 +6,7 @@ from sklearn.mixture import GaussianMixture
 
 from sklearn.decomposition import PCA, FastICA
 from sklearn.model_selection import StratifiedKFold, train_test_split
+from sklearn.metrics import silhouette_score
 
 from scipy.spatial.distance import euclidean
 
@@ -90,7 +91,7 @@ def getNClosestMahalanobis(candidate, n, allLesionFeatures):
 
 def choose_clusters(feature_data, results_dir):
 
-    n_clusters, bics, aics, clust_search, time_taken = [], [], [], [], []
+    n_clusters, bics, aics, silhouettes, clust_search, time_taken = [], [], [], [], [], []
 
     cluster_range = range(2, 50)
     clust_search.append('')
@@ -111,26 +112,38 @@ def choose_clusters(feature_data, results_dir):
         bics.append(clust_search[k].bic(feature_data))
         aics.append(clust_search[k].aic(feature_data))
 
+        labels = clust_search[k].predict(feature_data)
+
+        silhouettes.append(silhouette_score(feature_data, labels))
+
         print('it took ' + str(time_taken[-1]) + ' minutes')
 
-    n_lesion_types = n_clusters[np.argmin(bics)]
+    # n_lesion_types = n_clusters[np.argmin(bics)]
+    n_lesion_types = n_clusters[np.argmax(silhouettes)]
     print(n_lesion_types, 'is the optimal number of lesion-types!')
     print('total time taken for clustering:', str(np.sum(time_taken)))
 
-    fig, (ax) = plt.subplots(1, 1, figsize=(6, 4))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
 
-    ax.plot(n_clusters, bics, lw=2, label='Bayesian')
-    ax.plot(n_clusters, aics, lw=2, label='Akaike')
+    ax1.plot(n_clusters, bics, lw=2, label='Bayesian')
+    ax1.plot(n_clusters, aics, lw=2, label='Akaike')
 
-    ax.set_xlabel("Lesion-types in model", fontsize=24)
-    ax.set_ylabel("Information Criterion", fontsize=24)
+    ax1.set_xlabel("Lesion-types in model", fontsize=24)
+    ax1.set_ylabel("Information Criterion", fontsize=24)
 
-    radius = np.var(np.asarray(bics, dtype='float32'))*4
+    # radius = np.var(np.asarray(bics, dtype='float32'))*4
+    radius = 4
 
-    circle = plt.Circle((n_lesion_types, bics[n_lesion_types]), radius, color='k', lw=4, fill=False)
-    ax.add_artist(circle)
+    circle1 = plt.Circle((n_lesion_types, bics[n_lesion_types]), radius, color='k', lw=2, fill=False)
+    ax1.add_patch(circle1)
+    circle2 = plt.Circle((n_lesion_types, silhouettes[n_lesion_types]), radius, color='k', lw=2, fill=False)
 
-    ax.legend(shadow=True, fancybox=True, fontsize=16)
+    ax1.legend(shadow=True, fancybox=True, fontsize=20)
+
+    ax2.plot(n_clusters, silhouettes, color='r')
+    ax2.set_xlabel("Lesion-types in model", fontsize=24)
+    ax2.set_ylabel("Silhouette Score", fontsize=24)
+
     plt.tight_layout()
     plt.savefig(results_dir + 'choosing_clusters.png', bbox_inches='tight')
     plt.close()
@@ -297,22 +310,22 @@ def learn_bol(mri_list, feature_data, n_lesion_types, numWithClinical, results_d
                 plt.savefig(results_dir + 'fold_' + str(fold_num) + '_lesion_type_' + str(k) + '.png', dpi=600, bbox_inches='tight')
                 plt.clf()
 
-    if fold_num % 10 == 0:
-        try:
-            fig, (ax) = plt.subplots(1, 1, figsize=(6, 4))
+    try:
+        fig, (ax) = plt.subplots(1, 1, figsize=(6, 4))
 
-            bins = np.linspace(0, n_lesion_types, num=n_lesion_types+1)
-            histo = np.histogram(cluster_assignments, bins=bins)
+        bins = np.linspace(0, n_lesion_types, num=n_lesion_types+1)
+        histo = np.histogram(cluster_assignments, bins=bins)
 
-            # print('bins', bins)
-            # print('histo', histo[0])
-            ax.bar(bins[:-1], histo[0])
+        # print('bins', bins)
+        # print('histo', histo[0])
+        ax.bar(bins[:-1], histo[0])
 
-            plt.tight_layout()
-            plt.savefig(results_dir + 'lesion-types-hist_fold_' + str(fold_num) + '.png', bbox_inches='tight')
-        except Exception as e:
-            print(e)
-            print('Error generating lesion-type histogram for this fold')
+        plt.tight_layout()
+        plt.savefig(results_dir + 'lesion-types-hist_fold_' + str(fold_num) + '.png', bbox_inches='tight')
+        plt.close()
+    except Exception as e:
+        print(e)
+        print('Error generating lesion-type histogram for this fold')
 
     return bol_representation[0:numWithClinical, :], c
 
