@@ -228,10 +228,10 @@ def learn_bol(mri_list, feature_data, n_lesion_types, numWithClinical, results_d
                         x_intensity = np.arange(96, 104)
                         x_size = 104
                     else:
-                        x_context = np.arange(44) - 17*2
-                        x_rift = np.arange(44, 60)- 17*2
-                        x_lbp = np.arange(60, 96)- 17*2
-                        x_intensity = np.arange(96, 104)- 17*2
+                        x_context = np.arange(44- 17*2)
+                        x_rift = np.arange(44- 17*2, 60- 17*2)
+                        x_lbp = np.arange(60- 17*2, 96- 17*2)
+                        x_intensity = np.arange(96- 17*2, 104- 17*2)
                         x_size = 104- 17*2
 
                     ticks = [x_context[-1] / 2, ((x_rift[-1] - x_rift[0]) / 2) + x_rift[0], ((x_lbp[-1] - x_lbp[0]) / 2) + x_lbp[0], ((x_intensity[-1] - x_intensity[0]) / 2) + x_intensity[0], x_size]
