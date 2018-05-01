@@ -445,11 +445,11 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
 
 
 def plot_activity_prediction_results(activity_truth, activity_posteriors, results_dir):
-    classifier_names = ['Random Forest', '1-NN (Euclidean)', 'SVM (linear)', 'SVM ($\\chi^2$)', 'SVM (RBF)']
-    colours = ['darkred', 'indianred', 'lightsalmon', 'darkorange', 'goldenrod', 'tan']
+    classifier_names = ['Random Forest', '1-NN (Euclidean)', 'SVM (linear)', 'SVM ($\\chi^2$)', 'SVM (RBF)', 'MLP']
+    colours = ['darkred', 'indianred', 'lightsalmon', 'darkorange', 'goldenrod', 'tan', 'k']
 
     for treatment in treatments:
-        plt.figure(figsize=(8,8))
+        plt.figure(figsize=(8, 8))
         lw = 2
         plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
 
@@ -513,9 +513,10 @@ def predict_responders(args):
 
         bol_mixture_models = []
         random_forests = defaultdict(list)
+        deep_models = defaultdict(list)
 
         all_test_patients, activity_posterior, activity_truth, untreated_posterior = defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list)
-        euclidean_knn_posterior, mahalanobis_knn_posterior, chi2_svm_posterior, rbf_svm_posterior, linear_svm_posterior, naive_bayes_posterior =  defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list)
+        euclidean_knn_posterior, mahalanobis_knn_posterior, chi2_svm_posterior, rbf_svm_posterior, linear_svm_posterior, naive_bayes_posterior, deep_posterior =  defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list)
 
         # initialization of result structures complete
         # start learning BoL, predicting activity
@@ -566,8 +567,10 @@ def predict_responders(args):
                     #     train_data, test_data, bad_types = bol_classifiers.lesion_type_selection(train_data, test_data, train_outcomes, test_outcomes, 8, results_dir)
 
                     (bestFeaturePredictions, placebo_rf, probPredicted) = bol_classifiers.random_forest(train_data, test_data, train_outcomes)
+                    deep_probs, mlp_model = bol_classifiers.mlp(train_data, test_data, train_outcomes, test_outcomes, results_dir)
 
                     random_forests[treatment].append(placebo_rf)
+                    deep_models[treatment].append(mlp_model)
                     activity_truth[treatment].append(test_outcomes)
                     activity_posterior[treatment].append(probPredicted)
 
@@ -580,6 +583,8 @@ def predict_responders(args):
 
                     euclidean_knn_posterior[treatment].append(knn_euclid_posterior)
                     mahalanobis_knn_posterior[treatment].append(knn_maha_posterior)
+
+                    deep_posterior[treatment].append(deep_probs)
 
                     naive_bayes_posterior[treatment].append([])   # FIX IT
 
@@ -594,10 +599,15 @@ def predict_responders(args):
                     # new model on drugged patients
                     (bestFeaturePredictions, drug_rf, probDrugPredicted) = bol_classifiers.random_forest(train_data, test_data, train_outcomes)
 
+                    deep_probs, mlp_model = bol_classifiers.mlp(train_data, test_data, train_outcomes, test_outcomes, results_dir)
+
                     random_forests[treatment].append(drug_rf)
+                    deep_models[treatment].append(mlp_model)
+
                     svm_linear_posterior, svm_rbf_posterior, chi2svm_posterior = bol_classifiers.svms(train_data, test_data, train_outcomes)
                     knn_euclid_posterior, knn_maha_posterior = bol_classifiers.knn(train_data, train_outcomes, test_data)
 
+                    deep_posterior[treatment].append(np.asarray(deep_probs))
                     activity_truth[treatment].append(test_outcomes)
                     activity_posterior[treatment].append(np.asarray(probDrugPredicted))
                     untreated_posterior[treatment].append(np.asarray(pretrainedProbPredicted))
@@ -608,7 +618,7 @@ def predict_responders(args):
                     euclidean_knn_posterior[treatment].append(knn_euclid_posterior)
                     mahalanobis_knn_posterior[treatment].append(knn_maha_posterior)
 
-        activity_posteriors = [activity_posterior, euclidean_knn_posterior, linear_svm_posterior, chi2_svm_posterior, rbf_svm_posterior]
+        activity_posteriors = [activity_posterior, euclidean_knn_posterior, linear_svm_posterior, chi2_svm_posterior, rbf_svm_posterior, deep_posterior]
 
         print('saving prediction results (all folds test cases)...')
         pickle.dump(activity_posteriors, open(datadir + 'posteriors.pkl', 'wb'))
@@ -617,6 +627,7 @@ def predict_responders(args):
         pickle.dump(activity_truth, open(datadir + 'activity_truth.pkl', 'wb'))
         pickle.dump(bol_mixture_models, open(datadir + 'mixture_models.pkl', 'wb'))
         pickle.dump(random_forests, open(datadir + 'random_forests.pkl', 'wb'))
+        pickle.dump(deep_models, open(datadir + 'deep_models.pkl', 'wb'))
         print('saved!')
     else:
         activity_posteriors = pickle.load(open(datadir + 'posteriors.pkl', 'rb'))
@@ -625,6 +636,7 @@ def predict_responders(args):
         activity_truth = pickle.load(open(datadir + 'activity_truth.pkl', 'rb'))
         bol_mixture_models = pickle.load(open(datadir + 'mixture_models.pkl', 'rb'))
         random_forests = pickle.load(open(datadir + 'random_forests.pkl', 'rb'))
+        deep_models = pickle.load(open(datadir + 'deep_models', 'rb'))
 
     best_p_a, best_p_d = responder_roc(all_test_patients, activity_truth, activity_posteriors[0], untreated_posterior, args.n_folds, results_dir)
 

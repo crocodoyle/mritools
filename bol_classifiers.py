@@ -13,9 +13,13 @@ from scipy import stats
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
-import nibabel as nib
 
-import random
+from keras.layers import Dense, Dropout, BatchNormalization
+from keras.models import Model, Sequential, load_model
+from keras.callbacks import ModelCheckpoint
+from keras.optimizers import Adam
+
+from keras import backend as K
 
 modalities = ['t1p', 't2w', 'pdw', 'flr']
 tissues = ['csf', 'wm', 'gm', 'pv', 'lesion']
@@ -157,6 +161,34 @@ def identify_responders(trainData, testData, trainOutcomes, testOutcomes, train_
     high_prob_scores = calculateScores(high_prob_responder_predictions, high_prob_responder_actual)
 
     return (responder_score, responder_predictions), high_prob_scores
+
+
+def mlp(train_data, test_data, train_outcomes, test_outcomes, results_dir):
+    model = Sequential()
+    model.add(Dense(512, activation='relu', input_shape=(train_data)))
+    model.add(BatchNormalization())
+    model.add(Dropout())
+    model.add(Dense(512, activation='relu'))
+    model.add(BatchNormalization())
+    model.add(Dropout())
+    model.add(Dense(512, activation='relu'))
+    model.add(BatchNormalization())
+    model.add(Dropout())
+    model.add(Dense(2, activation='sigmoid'))
+
+    model_checkpoint = ModelCheckpoint(results_dir + "best_weights.hdf5", monitor="val_binary_crossentropy", save_best_only=True)
+
+    adam = Adam(lr=0.0001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=1e-5, amsgrad=False)
+    model.compile(optimizer=adam, loss='binary_crossentropy')
+
+    hist = model.fit(train_data, train_outcomes, batch_size=512, epochs=200, validation_data=(test_data, test_outcomes), callbacks=[model_checkpoint])
+
+    model.load_weights(results_dir + "best_weights.hdf5")
+    model.save(results_dir + 'best_bol_model.hdf5')
+
+    deep_probabilities = model.predict_proba(test_data)
+
+    return deep_probabilities, model
 
 
 def svms(trainData, testData, trainOutcomes):
