@@ -457,8 +457,12 @@ def plot_activity_prediction_results(activity_truth, activity_posteriors, result
         for p, (probabilities, colour) in enumerate(zip(activity_posteriors, colours)):
             y_prob = np.concatenate(tuple(probabilities[treatment]), axis=0)
 
-            roc_auc = roc_auc_score(y_true, y_prob[:, 1], 'weighted')
-            fpr, tpr, _ = roc_curve(y_true, y_prob[:, 1])
+            if 'MLP' in classifier_names[p]:
+                roc_auc = roc_auc_score(y_true, y_prob, 'weighted')
+                fpr, tpr, _ = roc_curve(y_true, y_prob)
+            else:
+                roc_auc = roc_auc_score(y_true, y_prob[:, 1], 'weighted')
+                fpr, tpr, _ = roc_curve(y_true, y_prob[:, 1])
             plt.plot(fpr, tpr, color=colour, lw=lw, label=classifier_names[p] + ' ROC (area = %0.2f)' % roc_auc)
 
         plt.xlim([0.0, 1.0])
