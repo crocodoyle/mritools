@@ -395,53 +395,53 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
     axes[0].boxplot(data)
     axes[0].set_ylabel('Number of lesion-types', fontsize=20)
 
-    importance = np.zeros((n_folds, np.max(n_components)))
-
-    for fold, mixture_models in enumerate(bol_mixtures):
-        importance_start_idx = 0
-
-        rfs = random_forests['Placebo']
-        lesion_importance = rfs[fold].feature_importances_
-
-        sorted_indices = np.argsort(mixture_models.weights_)
-
-        for c, cluster_idx in enumerate(sorted_indices):
-            lesion_type_means[fold, :] = mixture_models.means_[cluster_idx, :]
-            importance[fold, c] = lesion_importance[importance_start_idx+c]
-
-        importance_start_idx += len(sorted_indices)
-
-
-    dim_mean = np.mean(lesion_type_means, axis=0)
-    dim_var = np.var(lesion_type_means, axis=0)
-
-    print('cluster centre means:', dim_mean.shape)
-    print('cluster centre variances:', dim_var.shape)
-
-    diffs = []
-
-    for fold, lesion_type_centre in enumerate(lesion_type_means):
-        print('lesion type centre:', lesion_type_centre.size)
-
-        diff = np.subtract(lesion_type_centre, dim_mean)
-        diff_normalized = np.divide(diff, dim_var)
-
-        diffs.append(diff_normalized)
-
-    data2 = [diffs]
-
-    axes[1].boxplot(data2)
-    axes[1].set_xlabel('Lesion size', fontsize=20)
-    axes[1].set_ylabel('Diff. from mean', fontsize=20)
-
-
-    data3 = [importance[:, 0], importance[:, 1], importance[:, 2], importance[:,3]]
-    axes[2].boxplot(data3)
-    axes[2].set_xlabel('Lesion size', fontsize=20)
-    axes[2].set_ylabel('P(A|BoL) Importance', fontsize=20)
-
-    plt.tight_layout()
-    plt.savefig(results_dir + 'cluster_numbers_lesion_centres.png', bbox_inches='tight')
+    # importance = np.zeros((n_folds, np.max(n_components)))
+    # 
+    # for fold, mixture_models in enumerate(bol_mixtures):
+    #     importance_start_idx = 0
+    # 
+    #     rfs = random_forests['Placebo']
+    #     lesion_importance = rfs[fold].feature_importances_
+    # 
+    #     sorted_indices = np.argsort(mixture_models.weights_)
+    # 
+    #     for c, cluster_idx in enumerate(sorted_indices):
+    #         lesion_type_means[fold, :] = mixture_models.means_[cluster_idx, :]
+    #         importance[fold, c] = lesion_importance[importance_start_idx+c]
+    # 
+    #     importance_start_idx += len(sorted_indices)
+    # 
+    # 
+    # dim_mean = np.mean(lesion_type_means, axis=0)
+    # dim_var = np.var(lesion_type_means, axis=0)
+    # 
+    # print('cluster centre means:', dim_mean.shape)
+    # print('cluster centre variances:', dim_var.shape)
+    # 
+    # diffs = []
+    # 
+    # for fold, lesion_type_centre in enumerate(lesion_type_means):
+    #     print('lesion type centre:', lesion_type_centre.size)
+    # 
+    #     diff = np.subtract(lesion_type_centre, dim_mean)
+    #     diff_normalized = np.divide(diff, dim_var)
+    # 
+    #     diffs.append(diff_normalized)
+    # 
+    # data2 = [diffs]
+    # 
+    # axes[1].boxplot(data2)
+    # axes[1].set_xlabel('Lesion size', fontsize=20)
+    # axes[1].set_ylabel('Diff. from mean', fontsize=20)
+    # 
+    # 
+    # data3 = [importance[:, 0], importance[:, 1], importance[:, 2], importance[:,3]]
+    # axes[2].boxplot(data3)
+    # axes[2].set_xlabel('Lesion size', fontsize=20)
+    # axes[2].set_ylabel('P(A|BoL) Importance', fontsize=20)
+    # 
+    # plt.tight_layout()
+    # plt.savefig(results_dir + 'cluster_numbers_lesion_centres.png', bbox_inches='tight')
 
 
 def plot_activity_prediction_results(activity_truth, activity_posteriors, results_dir):
