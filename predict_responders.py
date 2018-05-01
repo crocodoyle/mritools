@@ -659,6 +659,17 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print('Arguments:', args)
 
+    if 'False' in args.choose_k:
+        args.choose_k = False
+    if 'False' in args.predict_activity:
+        args.predict_activity = False
+    if 'False' in args.get_features:
+        args.get_features = False
+    if 'False' in args.feature_selection:
+        args.feature_selection = False
+    if 'False' in args.include_catani:
+        args.include_catani = False
+
     if args.get_features:
         print('Extracting features from imaging data and writing to disk')
         write_features(include_catani=False)
