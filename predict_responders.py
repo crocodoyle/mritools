@@ -509,7 +509,7 @@ def predict_responders(args):
         for scan in mri_list:
             patient_results[scan.uid] = {}
 
-        kf = StratifiedKFold(args.n_folds, shuffle=True, random_state=42)
+        kf = StratifiedKFold(args.n_folds, shuffle=True, random_state=50)
 
         bol_mixture_models = []
         random_forests = defaultdict(list)
