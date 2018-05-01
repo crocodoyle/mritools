@@ -645,7 +645,7 @@ if __name__ == "__main__":
                         help='choose the number of lesion-types (default: False)')
     parser.add_argument('--k', type=int, default=47, metavar='N',
                         help='if choose-k is \'False\', number of lesion-types (default: 47)')
-    parser.add_argument('--predict-activity', type=bool, default=True, metavar='N',
+    parser.add_argument('--predict-activity', type=bool, default=False, metavar='N',
                         help='predict activity. if false, loads pre-computed results from previous run (default: True')
     parser.add_argument('--n-folds', type=int, default=25, metavar='N',
                         help='number of folds for cross-validation (default: 25)')
@@ -658,17 +658,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     print('Arguments:', args)
-
-    if 'False' in args.choose_k:
-        args.choose_k = False
-    if 'False' in args.predict_activity:
-        args.predict_activity = False
-    if 'False' in args.get_features:
-        args.get_features = False
-    if 'False' in args.feature_selection:
-        args.feature_selection = False
-    if 'False' in args.include_catani:
-        args.include_catani = False
 
     if args.get_features:
         print('Extracting features from imaging data and writing to disk')
