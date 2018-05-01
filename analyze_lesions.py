@@ -2,7 +2,7 @@ import numpy as np
 import pickle as pkl
 
 from sklearn.cluster import KMeans
-from sklearn.mixture import GaussianMixture
+from sklearn.mixture import GaussianMixture, BayesianGaussianMixture
 
 from sklearn.decomposition import PCA, FastICA
 from sklearn.model_selection import StratifiedKFold, train_test_split
@@ -100,7 +100,7 @@ def choose_clusters(feature_data, results_dir):
     for k in cluster_range:
         print('trying ' + str(k) + ' clusters...')
 
-        clust_search.append(GaussianMixture(n_components=k, covariance_type='full'))
+        clust_search.append(BayesianGaussianMixture(n_components=k, covariance_type='full'))
 
         start_cluster_time = time.time()
         clust_search[k].fit(feature_data)
@@ -155,7 +155,7 @@ def choose_clusters(feature_data, results_dir):
 def learn_bol(mri_list, feature_data, n_lesion_types, numWithClinical, results_dir, fold_num):
     type_examples = []
 
-    c = GaussianMixture(n_components=n_lesion_types, covariance_type='full')
+    c = BayesianGaussianMixture(n_components=n_lesion_types, covariance_type='full')
     c.fit(feature_data)
 
     cluster_assignments = c.predict(feature_data)
