@@ -640,7 +640,7 @@ def predict_responders(args):
         activity_truth = pickle.load(open(datadir + 'activity_truth.pkl', 'rb'))
         bol_mixture_models = pickle.load(open(datadir + 'mixture_models.pkl', 'rb'))
         random_forests = pickle.load(open(datadir + 'random_forests.pkl', 'rb'))
-        deep_models = pickle.load(open(datadir + 'deep_models', 'rb'))
+        deep_models = pickle.load(open(datadir + 'deep_models.pkl', 'rb'))
 
     best_p_a, best_p_d = responder_roc(all_test_patients, activity_truth, activity_posteriors[0], untreated_posterior, args.n_folds, results_dir)
 
