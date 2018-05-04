@@ -165,16 +165,16 @@ def identify_responders(trainData, testData, trainOutcomes, testOutcomes, train_
 
 def mlp(train_data, test_data, train_outcomes, test_outcomes, results_dir):
     model = Sequential()
-    model.add(Dense(512, activation='relu', input_shape=(train_data)))
+    model.add(Dense(64, activation='relu', input_shape=(train_data.shape[1],)))
     model.add(BatchNormalization())
     model.add(Dropout())
-    model.add(Dense(512, activation='relu'))
+    model.add(Dense(64, activation='relu'))
     model.add(BatchNormalization())
     model.add(Dropout())
-    model.add(Dense(512, activation='relu'))
+    model.add(Dense(64, activation='relu'))
     model.add(BatchNormalization())
     model.add(Dropout())
-    model.add(Dense(2, activation='sigmoid'))
+    model.add(Dense(1, activation='sigmoid'))
 
     model_checkpoint = ModelCheckpoint(results_dir + "best_weights.hdf5", monitor="val_binary_crossentropy", save_best_only=True)
 
