@@ -106,6 +106,9 @@ def choose_clusters(feature_data, results_dir):
         clust_search[k].fit(feature_data)
         end_cluster_time = time.time()
 
+        if not clust_search[k].converged_:
+            print('WARNING: Gaussian Mixture fitting did not converge')
+
         time_taken.append((end_cluster_time - start_cluster_time) / 60)
         n_clusters.append(k)
 
@@ -157,7 +160,7 @@ def learn_bol(mri_list, feature_data, n_lesion_types, numWithClinical, results_d
     c = BayesianGaussianMixture(n_components=n_lesion_types, covariance_type='full')
     c.fit(feature_data)
 
-    if not c.converved_:
+    if not c.converged_:
         print('WARNING: Learning the Bag of Lesions did not converge.')
 
     cluster_assignments = c.predict(feature_data)
