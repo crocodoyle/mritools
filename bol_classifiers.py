@@ -176,7 +176,7 @@ def mlp(train_data, test_data, train_outcomes, test_outcomes, results_dir):
     model.add(Dropout(0.5))
     model.add(Dense(1, activation='sigmoid'))
 
-    model_checkpoint = ModelCheckpoint(results_dir + "best_weights.hdf5", monitor="binary_accuracy", save_best_only=True)
+    model_checkpoint = ModelCheckpoint(results_dir + "best_weights.hdf5", monitor="val_binary_accuracy", save_best_only=True)
 
     adam = Adam(lr=0.0002, beta_1=0.9, beta_2=0.999, epsilon=None, decay=1e-5, amsgrad=False)
     model.compile(optimizer=adam, loss='binary_crossentropy')
