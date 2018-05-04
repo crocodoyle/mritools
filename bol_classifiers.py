@@ -179,7 +179,7 @@ def mlp(train_data, test_data, train_outcomes, test_outcomes, results_dir):
     model_checkpoint = ModelCheckpoint(results_dir + "best_weights.hdf5", monitor="val_binary_accuracy", save_best_only=True)
 
     adam = Adam(lr=0.0002, beta_1=0.9, beta_2=0.999, epsilon=None, decay=1e-5, amsgrad=False)
-    model.compile(optimizer=adam, loss='binary_crossentropy', metrics=['binary_accuracy', ''])
+    model.compile(optimizer=adam, loss='binary_crossentropy', metrics=['binary_accuracy'])
     model.summary()
 
     hist = model.fit(train_data, train_outcomes, batch_size=128, epochs=1200, validation_data=(test_data, test_outcomes), callbacks=[model_checkpoint], verbose=False)
