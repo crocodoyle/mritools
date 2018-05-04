@@ -188,6 +188,8 @@ def mlp(train_data, test_data, train_outcomes, test_outcomes, results_dir):
 
     deep_probabilities = model.predict_proba(test_data)
 
+    K.clear_session()
+    
     return deep_probabilities, model
 
 

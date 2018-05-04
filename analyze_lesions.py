@@ -114,7 +114,6 @@ def choose_clusters(feature_data, results_dir):
 
         labels = clust_search[k].predict(feature_data)
 
-
         silhouettes.append(silhouette_score(feature_data, labels, random_state=42, sample_size=feature_data.shape[0] // 4))
 
         print('it took ' + str(time_taken[-1]) + ' minutes')
@@ -157,6 +156,9 @@ def learn_bol(mri_list, feature_data, n_lesion_types, numWithClinical, results_d
 
     c = BayesianGaussianMixture(n_components=n_lesion_types, covariance_type='full')
     c.fit(feature_data)
+
+    if not c.converved_:
+        print('WARNING: Learning the Bag of Lesions did not converge.')
 
     cluster_assignments = c.predict(feature_data)
     cluster_probabilities = c.predict_proba(feature_data)
