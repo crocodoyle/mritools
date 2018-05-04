@@ -184,7 +184,7 @@ def mlp(train_data, test_data, train_outcomes, test_outcomes, results_dir):
     print(model.summary)
     print(model.metrics_names)
 
-    hist = model.fit(train_data, train_outcomes, batch_size=128, epochs=1200, validation_data=(test_data, test_outcomes), callbacks=[model_checkpoint])
+    hist = model.fit(train_data, train_outcomes, batch_size=128, epochs=1200, validation_data=(test_data, test_outcomes), callbacks=[model_checkpoint], verbose=False)
 
     model.load_weights(results_dir + "best_weights.hdf5")
     model.save(results_dir + 'best_bol_model.hdf5')
