@@ -631,7 +631,7 @@ def predict_responders(args):
         pickle.dump(activity_truth, open(datadir + 'activity_truth.pkl', 'wb'))
         pickle.dump(bol_mixture_models, open(datadir + 'mixture_models.pkl', 'wb'))
         pickle.dump(random_forests, open(datadir + 'random_forests.pkl', 'wb'))
-        pickle.dump(deep_models, open(datadir + 'deep_models.pkl', 'wb'))
+        # pickle.dump(deep_models, open(datadir + 'deep_models.pkl', 'wb'))
         print('saved!')
     else:
         activity_posteriors = pickle.load(open(datadir + 'posteriors.pkl', 'rb'))
@@ -640,7 +640,7 @@ def predict_responders(args):
         activity_truth = pickle.load(open(datadir + 'activity_truth.pkl', 'rb'))
         bol_mixture_models = pickle.load(open(datadir + 'mixture_models.pkl', 'rb'))
         random_forests = pickle.load(open(datadir + 'random_forests.pkl', 'rb'))
-        deep_models = pickle.load(open(datadir + 'deep_models.pkl', 'rb'))
+        # deep_models = pickle.load(open(datadir + 'deep_models.pkl', 'rb'))
 
     best_p_a, best_p_d = responder_roc(all_test_patients, activity_truth, activity_posteriors[0], untreated_posterior, args.n_folds, results_dir)
 
