@@ -458,7 +458,7 @@ def write_features(include_catani=True):
     endTime = time.time()
 
     elapsed = endTime - startTime
-    print("Total time elapsed:", elapsed / 3600, 'hours', elapsed / 60, 'minutes')
+    print("Total time elapsed:", elapsed / 60, 'minutes')
     return
 
 

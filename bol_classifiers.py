@@ -18,8 +18,12 @@ from keras.layers import Dense, Dropout, BatchNormalization
 from keras.models import Model, Sequential, load_model
 from keras.callbacks import ModelCheckpoint
 from keras.optimizers import Adam
+from keras.utils import to_categorical
 
 from keras import backend as K
+
+import lime
+import lime.lime_tabular
 
 modalities = ['t1p', 't2w', 'pdw', 'flr']
 tissues = ['csf', 'wm', 'gm', 'pv', 'lesion']
@@ -28,8 +32,6 @@ feats = ["Context", "RIFT", "LBP", "Intensity"]
 
 scoringMetrics = ['TP', 'FP', 'TN', 'FN']
 
-lbpRadii = [1,2,3]
-riftRadii = [1,2,3]
 selectK = False
 visualizeAGroup = False
 
@@ -163,20 +165,20 @@ def identify_responders(trainData, testData, trainOutcomes, testOutcomes, train_
     return (responder_score, responder_predictions), high_prob_scores
 
 
-def mlp(train_data, test_data, train_outcomes, test_outcomes, results_dir):
+def mlp(train_data, test_data, train_outcomes, test_outcomes, fold_num, results_dir):
     model = Sequential()
     model.add(Dense(64, activation='relu', input_shape=(train_data.shape[1],)))
     model.add(BatchNormalization())
     model.add(Dropout(0.5))
     model.add(Dense(64, activation='relu'))
-    model.add(BatchNormalization())
+    # model.add(BatchNormalization())
     model.add(Dropout(0.5))
     model.add(Dense(64, activation='relu'))
-    model.add(BatchNormalization())
+    # model.add(BatchNormalization())
     model.add(Dropout(0.5))
     model.add(Dense(1, activation='sigmoid'))
 
-    model_checkpoint = ModelCheckpoint(results_dir + "best_weights.hdf5", monitor="val_binary_accuracy", save_best_only=True)
+    model_checkpoint = ModelCheckpoint(results_dir + "fold_" + str(fold_num) + "_best_weights.hdf5", monitor="val_binary_accuracy", save_best_only=True)
 
     adam = Adam(lr=0.0002, beta_1=0.9, beta_2=0.999, epsilon=None, decay=1e-5, amsgrad=False)
     model.compile(optimizer=adam, loss='binary_crossentropy', metrics=['binary_accuracy'])
@@ -186,14 +188,33 @@ def mlp(train_data, test_data, train_outcomes, test_outcomes, results_dir):
 
     # print(model.metrics_names)
 
-    model.load_weights(results_dir + "best_weights.hdf5")
-    model.save(results_dir + 'best_bol_model.hdf5')
+    model.load_weights(results_dir + "fold_" + str(fold_num) + "_best_weights.hdf5")
+    model.save(results_dir + 'best_bol_model' + str(fold_num) + '.hdf5')
 
     deep_probabilities = model.predict_proba(test_data)
 
+    explainer = lime.lime_tabular.LimeTabularExplainer(train_data, train_labels=to_categorical(train_outcomes), discretize_continuous=True, discretizer='entropy', class_names=["Inactive", "Active"])
+
+    lime_type_importance = np.zeros((train_data.shape[1]))
+
+    for i in range(test_data.shape[0]):
+        prediction = model.predict(test_data[i, ...])
+        if prediction > 0.5:
+            prediction = 1
+        else:
+            prediction = 0
+
+        if test_outcomes[i] == prediction:
+            exp = explainer.explain_instance(test_data[i, ...], model.predict_proba, num_features=10, top_labels=1)
+            exp.save_to_file(results_dir + 'explanation' + str(i) + '.png')
+            important_types = exp.as_list()
+
+            for lesion_type in important_types:
+                lime_type_importance[lesion_type[0]] += lesion_type[1]
+
     K.clear_session()
 
-    return deep_probabilities, model
+    return deep_probabilities, model, lime_type_importance
 
 
 def svms(trainData, testData, trainOutcomes):

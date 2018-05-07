@@ -244,7 +244,9 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
                 ax_thresholds.set_ylabel('P(A=0|BoL, ' + treat + ')\nthreshold')
                 ax_thresholds.set_zlabel('Sens/Spec\n(harmonic mean)')
 
-                fig.colorbar(surf, shrink=0.5, aspect=4)
+                ax_thresholds.invert_xaxis()
+
+                fig.colorbar(surf, shrink=0.4, aspect=4)
                 plt.savefig(results_dir + treatment + '_thresholds.png')
 
                 flat_index = np.argmax(responder_results[:, :, 2])
@@ -280,7 +282,8 @@ def responder_roc(all_test_patients, activity_truth, activity_posterior, untreat
 
     return best_p_a, best_p_d
 
-def cluster_stability(bol_mixtures, random_forests, results_dir):
+
+def cluster_stability(bol_mixtures, random_forests, lime_importances, results_dir):
     n_folds = len(bol_mixtures)
 
     n_lesion_types_all_folds = 0
@@ -290,40 +293,43 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
     for k in range(n_folds):
         n_lesion_types_all_folds += len(bol_mixtures[k].weights_)
 
-    all_lesion_types = np.zeros((n_lesion_types_all_folds, feature_dims))
-    all_type_weights = np.zeros((n_lesion_types_all_folds))
+    all_lesion_types = np.zeros((n_lesion_types_all_folds, feature_dims + 1))
+    # all_type_weights = np.zeros((n_lesion_types_all_folds))
 
     all_lesion_importances = np.zeros((n_folds, random_forests['Placebo'][0].feature_importances_.shape[0]))
+    all_lime_importances = np.zeros((n_folds, random_forests['Placebo'][0].feature_importances_.shape[0]))
 
     n_components = []
-
-    lesion_type_means = np.zeros((n_folds, feature_dims))
 
     idx = 0
     for fold, (mixture_model, rf_placebo, rf_avonex, rf_laquinimod) in enumerate(zip(bol_mixtures, random_forests['Placebo'], random_forests['Avonex'], random_forests['Laquinimod'])):
         n_components.append(len(mixture_model.weights_))
 
         all_lesion_importances[fold, :] += rf_placebo.feature_importances_
-        # all_lesion_importances[fold, :] += rf_avonex.feature_importances_
-        # all_lesion_importances[fold, :] += rf_laquinimod.feature_importances_
+        all_lesion_importances[fold, :] += rf_avonex.feature_importances_
+        all_lesion_importances[fold, :] += rf_laquinimod.feature_importances_
+
+        all_lime_importances[fold, :] += lime_importances['Placebo'][fold]
+        all_lime_importances[fold, :] += lime_importances['Avonex'][fold]
+        all_lime_importances[fold, :] += lime_importances['Laquinimod'][fold]
 
         for lesion_type_centre, type_weight in zip(mixture_model.means_, mixture_model.weights_):
-            all_lesion_types[idx, :] = lesion_type_centre
-            all_type_weights[idx] = type_weight
+            all_lesion_types[idx, :-1] = lesion_type_centre
+            all_lesion_types[idx, -1] = type_weight
 
             idx += 1
 
-    all_type_weights *= (10/np.max(all_type_weights))
+    # all_type_weights *= (10/np.max(all_type_weights))
 
     n_lesion_types_first_fold = len(bol_mixtures[0].weights_)
     lesion_type_labels = np.arange(n_lesion_types_first_fold)
 
     first_fold_lesion_types = all_lesion_types[0:n_lesion_types_first_fold, :]
-    other_folds_lesion_types = all_lesion_types[n_lesion_types_first_fold:, :]
 
     # V = np.cov(all_lesion_types)
     # mahalanobis_distance = DistanceMetric.get_metric('mahalanobis', V=np.cov(V))
 
+    # sort lesion types by greatest cluster separation and then iterate through folds?
     knn = KNeighborsClassifier(n_neighbors=1)
     knn.fit(first_fold_lesion_types, lesion_type_labels)
 
@@ -346,7 +352,7 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
         type_markers.append(markers[np.random.randint(len(markers))])
 
     for label in lesion_type_labels:
-        for predicted_label, (x_tsne, y_tsne), (x_umap, y_umap), weight in zip(corresponding_lesion_types, embedded_tsne, embedded_umap, all_type_weights):
+        for predicted_label, (x_tsne, y_tsne), (x_umap, y_umap), weight in zip(corresponding_lesion_types, embedded_tsne, embedded_umap):
             if label == predicted_label:
             #     ax1.scatter(x_tsne, y_tsne, s=4**weight, color=cmap((label+1)/len(lesion_type_labels)))
             #     ax2.scatter(x_umap, y_umap, s=4**weight, color=cmap((label+1)/len(lesion_type_labels)))
@@ -367,22 +373,30 @@ def cluster_stability(bol_mixtures, random_forests, results_dir):
 
     # boxplot for lesion-type importance across folds
 
-    corresponding_lesion_type_importance = []
+
+    corresponding_lesion_type_importance, corresponding_lime_importance = [], []
+
     for n in range(n_lesion_types_first_fold):
         corresponding_lesion_type_importance.append([])
+        corresponding_lime_importance.append([])
 
-    for fold, type_importances in enumerate(all_lesion_importances):
+    for fold, (type_importances, lime_type_importances) in enumerate(zip(all_lesion_importances, all_lime_importances)):
         #types don't correspond yet
         fold_type_labels = corresponding_lesion_types[(fold)*n_lesion_types_first_fold:(fold+1)*n_lesion_types_first_fold]
 
         for type_number in fold_type_labels:
             corresponding_lesion_type_importance[type_number].append(type_importances[type_number])
+            corresponding_lime_importance[type_number].append(lime_type_importances[type_number])
 
-    fig, ax = plt.subplots(1, 1, figsize=(12, 6), dpi=600)
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(24, 6), dpi=600)
 
     ax.boxplot(corresponding_lesion_type_importance)
-    ax.set_ylabel('Lesion-type importance', fontsize=20)
+    ax.set_ylabel('Lesion-type Gini importance', fontsize=20)
     ax.set_xlabel('Lesion-type', fontsize=20)
+
+    ax2.boxplot(corresponding_lime_importance)
+    ax2.set_ylabel('Lesion-type LIME importance', fontsize=20)
+    ax2.set_xlabel('Lesion-type', fontsize=20)
 
     plt.tight_layout()
     plt.savefig(results_dir + 'corresponding_lesion_importance.png', bbox_inches='tight')
@@ -518,6 +532,7 @@ def predict_responders(args):
         bol_mixture_models = []
         random_forests = defaultdict(list)
         deep_models = defaultdict(list)
+        lime_importances = defaultdict(list)
 
         all_test_patients, activity_posterior, activity_truth, untreated_posterior = defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list)
         euclidean_knn_posterior, mahalanobis_knn_posterior, chi2_svm_posterior, rbf_svm_posterior, linear_svm_posterior, naive_bayes_posterior, deep_posterior =  defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list)
@@ -571,12 +586,13 @@ def predict_responders(args):
                     #     train_data, test_data, bad_types = bol_classifiers.lesion_type_selection(train_data, test_data, train_outcomes, test_outcomes, 8, results_dir)
 
                     (bestFeaturePredictions, placebo_rf, probPredicted) = bol_classifiers.random_forest(train_data, test_data, train_outcomes)
-                    deep_probs, mlp_model = bol_classifiers.mlp(train_data, test_data, train_outcomes, test_outcomes, results_dir)
+                    deep_probs, mlp_model, lime_importance = bol_classifiers.mlp(train_data, test_data, train_outcomes, test_outcomes, foldNum, results_dir)
 
                     random_forests[treatment].append(placebo_rf)
                     deep_models[treatment].append(mlp_model)
                     activity_truth[treatment].append(test_outcomes)
                     activity_posterior[treatment].append(probPredicted)
+                    lime_importances[treatment].append(lime_importance)
 
                     svm_linear_posterior, svm_rbf_posterior, chi2svm_posterior = bol_classifiers.svms(train_data, test_data, train_outcomes)
                     knn_euclid_posterior, knn_maha_posterior = bol_classifiers.knn(train_data, train_outcomes, test_data)
@@ -603,10 +619,11 @@ def predict_responders(args):
                     # new model on drugged patients
                     (bestFeaturePredictions, drug_rf, probDrugPredicted) = bol_classifiers.random_forest(train_data, test_data, train_outcomes)
 
-                    deep_probs, mlp_model = bol_classifiers.mlp(train_data, test_data, train_outcomes, test_outcomes, results_dir)
+                    deep_probs, mlp_model, lime_importance = bol_classifiers.mlp(train_data, test_data, train_outcomes, test_outcomes, foldNum, results_dir)
 
                     random_forests[treatment].append(drug_rf)
                     deep_models[treatment].append(mlp_model)
+                    lime_importances[treatment].append(lime_importance)
 
                     svm_linear_posterior, svm_rbf_posterior, chi2svm_posterior = bol_classifiers.svms(train_data, test_data, train_outcomes)
                     knn_euclid_posterior, knn_maha_posterior = bol_classifiers.knn(train_data, train_outcomes, test_data)
@@ -642,14 +659,14 @@ def predict_responders(args):
         random_forests = pickle.load(open(datadir + 'random_forests.pkl', 'rb'))
         # deep_models = pickle.load(open(datadir + 'deep_models.pkl', 'rb'))
 
-    best_p_a, best_p_d = responder_roc(all_test_patients, activity_truth, activity_posteriors[0], untreated_posterior, args.n_folds, results_dir)
+    best_p_a, best_p_d = responder_roc(all_test_patients, activity_truth, activity_posteriors[5], untreated_posterior, args.n_folds, results_dir)
 
     plot_activity_prediction_results(activity_truth, activity_posteriors, results_dir)
 
     end = time.time()
     elapsed = end - start
 
-    cluster_stability(bol_mixture_models, random_forests, results_dir)
+    cluster_stability(bol_mixture_models, random_forests, lime_importances, results_dir)
     print(str(elapsed / 60), 'minutes elapsed.')
 
     return experiment_number
@@ -659,12 +676,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='MS Drug Responder Prediction.')
     parser.add_argument('--choose-k', type=bool, default=False, metavar='N',
                         help='choose the number of lesion-types (default: False)')
-    parser.add_argument('--k', type=int, default=47, metavar='N',
-                        help='if choose-k is \'False\', number of lesion-types (default: 47)')
+    parser.add_argument('--k', type=int, default=60, metavar='N',
+                        help='if choose-k is \'False\', number of lesion-types (default: 60)')
     parser.add_argument('--predict-activity', type=bool, default=False, metavar='N',
                         help='predict activity. if false, loads pre-computed results from previous run (default: True')
-    parser.add_argument('--n-folds', type=int, default=25, metavar='N',
-                        help='number of folds for cross-validation (default: 25)')
+    parser.add_argument('--n-folds', type=int, default=50, metavar='N',
+                        help='number of folds for cross-validation (default: 50)')
     parser.add_argument('--get-features', type=bool, default=False, metavar='N',
                         help='extract features from the imaging data (default: False)')
     parser.add_argument('--feature-selection', type=bool, default=False, metavar='N',

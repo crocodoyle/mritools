@@ -157,7 +157,7 @@ def choose_clusters(feature_data, results_dir):
 def learn_bol(mri_list, feature_data, n_lesion_types, numWithClinical, results_dir, fold_num):
     type_examples = []
 
-    c = BayesianGaussianMixture(n_components=n_lesion_types, covariance_type='full')
+    c = BayesianGaussianMixture(n_components=n_lesion_types, covariance_type='full', weight_concentration_prior_type='dirichlet_process', weight_concentration_prior=1/(n_lesion_types*2), max_iter=200)
     c.fit(feature_data)
 
     if not c.converged_:
