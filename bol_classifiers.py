@@ -193,7 +193,7 @@ def mlp(train_data, test_data, train_outcomes, test_outcomes, fold_num, results_
 
     deep_probabilities = model.predict_proba(test_data)
 
-    explainer = lime.lime_tabular.LimeTabularExplainer(train_data, training_labels=to_categorical(train_outcomes), discretize_continuous=True, discretizer='quartiles')
+    explainer = lime.lime_tabular.LimeTabularExplainer(train_data, training_labels=to_categorical(train_outcomes), discretize_continuous=True, discretizer='quartile')
 
     lime_type_importance = np.zeros((train_data.shape[1]))
 
