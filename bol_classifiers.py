@@ -198,8 +198,8 @@ def mlp(train_data, test_data, train_outcomes, test_outcomes, fold_num, results_
     lime_type_importance = np.zeros((train_data.shape[1]))
 
     for i in range(test_data.shape[0]):
-        prediction = model.predict(test_data[i, ...])
-        if prediction > 0.5:
+        prediction = model.predict(test_data[i, ...][np.newaxis, ...])
+        if prediction[0] > 0.5:
             prediction = 1
         else:
             prediction = 0
