@@ -193,7 +193,7 @@ def mlp(train_data, test_data, train_outcomes, test_outcomes, fold_num, results_
 
     deep_probabilities = model.predict_proba(test_data)
 
-    explainer = lime.lime_tabular.LimeTabularExplainer(train_data, training_labels=to_categorical(train_outcomes), discretize_continuous=True, discretizer='quartile', class_names=['Inactive', 'Active'])
+    explainer = lime.lime_tabular.LimeTabularExplainer(train_data, training_labels=train_outcomes, discretize_continuous=True, discretizer='quartile', class_names=['Inactive', 'Active'])
     print(explainer)
 
     lime_type_importance = np.zeros((train_data.shape[1]))
@@ -208,9 +208,10 @@ def mlp(train_data, test_data, train_outcomes, test_outcomes, fold_num, results_
             label = ['Inactive']
 
         if test_outcomes[i] == prediction:
-            exp = explainer.explain_instance(test_data[i, ...], model.predict_proba, num_features=10, top_labels=1, labels=label)
+            exp = explainer.explain_instance(test_data[i, ...], model.predict_proba, num_features=10, labels=label)
             exp.save_to_file(results_dir + 'explanation' + str(fold_num) + '-' + str(i) + '.png')
             important_types = exp.as_list()
+            print('types', important_types)
 
             for lesion_type in important_types:
                 lime_type_importance[lesion_type[0]] += lesion_type[1]
