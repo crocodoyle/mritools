@@ -208,7 +208,7 @@ def mlp(train_data, test_data, train_outcomes, test_outcomes, fold_num, results_
             label = ['Inactive']
 
         if test_outcomes[i] == prediction:
-            exp = explainer.explain_instance(test_data[i, ...], model.predict_proba, num_features=10, labels=prediction)
+            exp = explainer.explain_instance(test_data[i, ...], model.predict_proba, num_features=10, labels=[prediction])
             exp.save_to_file(results_dir + 'explanation' + str(fold_num) + '-' + str(i) + '.png')
             important_types = exp.as_list()
             print('types', important_types)
