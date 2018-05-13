@@ -184,7 +184,10 @@ def mlp(train_data, test_data, train_outcomes, test_outcomes, fold_num, results_
     model.compile(optimizer=adam, loss='categorical_crossentropy', metrics=['categorical_accuracy'])
     # model.summary()
 
-    hist = model.fit(train_data, train_outcomes, batch_size=128, epochs=1200, validation_data=(test_data, test_outcomes), callbacks=[model_checkpoint], verbose=False)
+    train_labels = to_categorical(train_outcomes, num_classes=2)
+    test_labels = to_categorical(test_outcomes, num_classes=2)
+
+    hist = model.fit(train_data, train_labels, batch_size=128, epochs=1200, validation_data=(test_data, test_labels), callbacks=[model_checkpoint], verbose=False)
 
     # print(model.metrics_names)
 
