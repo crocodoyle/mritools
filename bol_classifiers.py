@@ -176,12 +176,12 @@ def mlp(train_data, test_data, train_outcomes, test_outcomes, fold_num, results_
     model.add(Dense(64, activation='relu'))
     # model.add(BatchNormalization())
     model.add(Dropout(0.5))
-    model.add(Dense(1, activation='sigmoid'))
+    model.add(Dense(2, activation='softmax'))
 
-    model_checkpoint = ModelCheckpoint(results_dir + "fold_" + str(fold_num) + "_best_weights.hdf5", monitor="val_binary_accuracy", save_best_only=True)
+    model_checkpoint = ModelCheckpoint(results_dir + "fold_" + str(fold_num) + "_best_weights.hdf5", monitor="categorical_accuracy", save_best_only=True)
 
     adam = Adam(lr=0.0002, beta_1=0.9, beta_2=0.999, epsilon=None, decay=1e-5, amsgrad=False)
-    model.compile(optimizer=adam, loss='binary_crossentropy', metrics=['binary_accuracy'])
+    model.compile(optimizer=adam, loss='categorical_crossentropy', metrics=['categorical_accuracy'])
     # model.summary()
 
     hist = model.fit(train_data, train_outcomes, batch_size=128, epochs=1200, validation_data=(test_data, test_outcomes), callbacks=[model_checkpoint], verbose=False)
@@ -193,14 +193,16 @@ def mlp(train_data, test_data, train_outcomes, test_outcomes, fold_num, results_
 
     deep_probabilities = model.predict_proba(test_data)
 
-    explainer = lime.lime_tabular.LimeTabularExplainer(train_data, training_labels=train_outcomes, discretize_continuous=True, discretizer='quartile', class_names=['Inactive', 'Active'])
+    train_labels = to_categorical(train_outcomes, num_classes=2)
+
+    explainer = lime.lime_tabular.LimeTabularExplainer(train_data, training_labels=train_labels, discretize_continuous=True, discretizer='quartile', class_names=['Inactive', 'Active'])
     print(explainer)
 
     lime_type_importance = np.zeros((train_data.shape[1]))
 
     for i in range(test_data.shape[0]):
         prediction = model.predict(test_data[i, ...][np.newaxis, ...])
-        if prediction[0] > 0.5:
+        if prediction[0][1] > 0.5:
             prediction = 1
             label = ['Active']
         else:
