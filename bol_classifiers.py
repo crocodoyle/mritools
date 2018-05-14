@@ -217,7 +217,7 @@ def mlp(train_data, test_data, train_outcomes, test_outcomes, fold_num, results_
             important_types = exp.as_map()
             print('types', important_types)
 
-            fig = exp.as_pyplot_figure()
+            fig = exp.as_pyplot_figure(label=prediction)
             fig.savefig(results_dir + str(i) + '_explained.png')
 
             for lesion_type in important_types[prediction]:
