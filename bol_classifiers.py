@@ -220,7 +220,7 @@ def mlp(train_data, test_data, train_outcomes, test_outcomes, fold_num, results_
             fig = exp.as_pyplot_figure()
             fig.savefig(results_dir + str(i) + '_explained.png')
 
-            for lesion_type in important_types[1]:
+            for lesion_type in important_types[prediction]:
                 lime_type_importance[lesion_type[0]] += lesion_type[1]
 
     K.clear_session()
