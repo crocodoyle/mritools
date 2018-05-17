@@ -213,12 +213,12 @@ def mlp(train_data, test_data, train_outcomes, test_outcomes, fold_num, results_
 
         if test_outcomes[i] == prediction:
             exp = explainer.explain_instance(test_data[i, ...], model.predict_proba, num_features=10, labels=[prediction])
-            exp.save_to_file(results_dir + 'explanation' + str(fold_num) + '-' + str(i) + '.png')
+            exp.save_to_file(results_dir + 'explanation' + str(fold_num) + '-' + str(i) + '.html')
             important_types = exp.as_map()
-            print('types', important_types)
+            # print('types', important_types)
 
             fig = exp.as_pyplot_figure(label=prediction)
-            fig.savefig(results_dir + str(i) + '_explained.png')
+            fig.savefig(results_dir + str(fold_num) + '_' + str(i) + '_explained.png')
 
             for lesion_type in important_types[prediction]:
                 lime_type_importance[lesion_type[0]] += lesion_type[1]
