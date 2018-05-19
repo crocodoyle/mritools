@@ -391,12 +391,14 @@ def cluster_stability(bol_mixtures, random_forests, lime_importances, results_di
     fig, (ax, ax2) = plt.subplots(1, 2, figsize=(24, 6), dpi=600)
 
     ax.boxplot(corresponding_lesion_type_importance)
-    ax.set_ylabel('Lesion-type Gini importance', fontsize=20)
+    ax.set_ylabel('Importance', fontsize=20)
     ax.set_xlabel('Lesion-type', fontsize=20)
+    ax.set_title('Gini', fontsize=20)
 
     ax2.boxplot(corresponding_lime_importance)
-    ax2.set_ylabel('Lesion-type LIME importance', fontsize=20)
+    ax2.set_ylabel('Importance', fontsize=20)
     ax2.set_xlabel('Lesion-type', fontsize=20)
+    ax2.set_title('LIME', fontsize=20)
 
     plt.tight_layout()
     plt.savefig(results_dir + 'corresponding_lesion_importance.png', bbox_inches='tight')

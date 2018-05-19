@@ -167,13 +167,13 @@ def identify_responders(trainData, testData, trainOutcomes, testOutcomes, train_
 
 def mlp(train_data, test_data, train_outcomes, test_outcomes, fold_num, results_dir):
     model = Sequential()
-    model.add(Dense(64, activation='relu', input_shape=(train_data.shape[1],)))
+    model.add(Dense(32, activation='relu', input_shape=(train_data.shape[1],)))
     model.add(BatchNormalization())
     model.add(Dropout(0.5))
-    model.add(Dense(64, activation='relu'))
+    model.add(Dense(32, activation='relu'))
     # model.add(BatchNormalization())
     model.add(Dropout(0.5))
-    model.add(Dense(64, activation='relu'))
+    model.add(Dense(32, activation='relu'))
     # model.add(BatchNormalization())
     model.add(Dropout(0.5))
     model.add(Dense(2, activation='softmax'))
@@ -218,6 +218,7 @@ def mlp(train_data, test_data, train_outcomes, test_outcomes, fold_num, results_
             # print('types', important_types)
 
             fig = exp.as_pyplot_figure(label=prediction)
+            plt.tight_layout()
             fig.savefig(results_dir + str(fold_num) + '_' + str(i) + '_explained.png')
 
             for lesion_type in important_types[prediction]:
