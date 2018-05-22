@@ -93,14 +93,14 @@ def choose_clusters(feature_data, results_dir):
 
     n_clusters, bics, aics, silhouettes, clust_search, time_taken = [], [], [], [], [], []
 
-    cluster_range = range(2, 50)
+    cluster_range = range(2, 100)
     clust_search.append('')
     clust_search.append('')
 
     for k in cluster_range:
         print('trying ' + str(k) + ' clusters...')
 
-        clust_search.append(BayesianGaussianMixture(n_components=k, covariance_type='full'))
+        clust_search.append(GaussianMixture(n_components=k, covariance_type='full', max_iter=1000, warm_start=True, verbose=1))
 
         start_cluster_time = time.time()
         clust_search[k].fit(feature_data)
@@ -122,7 +122,7 @@ def choose_clusters(feature_data, results_dir):
         print('it took ' + str(time_taken[-1]) + ' minutes')
 
     # n_lesion_types = n_clusters[np.argmin(bics)]
-    n_lesion_types = n_clusters[np.argmax(silhouettes)]
+    n_lesion_types = n_clusters[np.argmin(bics)]
     print(n_lesion_types, 'is the optimal number of lesion-types!')
     print('total time taken for clustering:', str(np.sum(time_taken)))
 
@@ -134,12 +134,7 @@ def choose_clusters(feature_data, results_dir):
     ax1.set_xlabel("Lesion-types in model", fontsize=24)
     ax1.set_ylabel("Information Criterion", fontsize=24)
 
-    # radius = np.var(np.asarray(bics, dtype='float32'))*4
-    radius = 4
-
-    circle1 = plt.Circle((n_lesion_types, bics[n_lesion_types]), radius, color='k', lw=2, fill=False)
-    ax1.add_patch(circle1)
-    circle2 = plt.Circle((n_lesion_types, silhouettes[n_lesion_types]), radius, color='k', lw=2, fill=False)
+    ax1.plot(n_lesion_types, bics[n_lesion_types], 'ro', fillstyle='none', markersize=5)  #circle selected value
 
     ax1.legend(shadow=True, fancybox=True, fontsize=20)
 
@@ -157,17 +152,19 @@ def choose_clusters(feature_data, results_dir):
 def learn_bol(mri_list, feature_data, n_lesion_types, numWithClinical, results_dir, fold_num):
     type_examples = []
 
-    max_iterations = 200
+    max_iterations = 1000
 
-    c = BayesianGaussianMixture(n_components=n_lesion_types, covariance_type='full', weight_concentration_prior_type='dirichlet_process', weight_concentration_prior=1/(n_lesion_types*10), max_iter=max_iterations)
+    # c = BayesianGaussianMixture(n_components=n_lesion_types, covariance_type='full', weight_concentration_prior_type='dirichlet_process', weight_concentration_prior=1/(n_lesion_types*10), max_iter=max_iterations)
+    c = GaussianMixture(n_components=n_lesion_types, covariance_type='full', max_iter=max_iterations, warm_start=True, verbose=1)
     c.fit(feature_data)
 
     while not c.converged_:
         max_iterations *= 2
-        c = BayesianGaussianMixture(n_components=n_lesion_types, covariance_type='full',
-                                    weight_concentration_prior_type='dirichlet_process',
-                                    weight_concentration_prior=1 / (n_lesion_types * 10), max_iter=max_iterations)
-        print('WARNING: Learning the Bag of Lesions did not converge, trying again...')
+        # c = BayesianGaussianMixture(n_components=n_lesion_types, covariance_type='full',
+        #                             weight_concentration_prior_type='dirichlet_process',
+        #                             weight_concentration_prior=1 / (n_lesion_types * 10), max_iter=max_iterations)
+        # print('WARNING: Learning the Bag of Lesions did not converge, trying again...')
+        c = GaussianMixture(n_components=n_lesion_types, covariance_type='full', max_iter=max_iterations, warm_start=True, verbose=1)
         c.fit(feature_data)
 
     cluster_assignments = c.predict(feature_data)
