@@ -19,6 +19,9 @@ from keras.models import Model, Sequential, load_model
 from keras.callbacks import ModelCheckpoint
 from keras.optimizers import Adam
 from keras.utils import to_categorical
+from sklearn.utils import class_weight
+
+from keras.constraints import max_norm
 
 from keras import backend as K
 
@@ -167,13 +170,10 @@ def identify_responders(trainData, testData, trainOutcomes, testOutcomes, train_
 
 def mlp(train_data, test_data, train_outcomes, test_outcomes, fold_num, results_dir):
     model = Sequential()
-    model.add(Dense(32, activation='relu', input_shape=(train_data.shape[1],)))
+    model.add(Dense(32, activation='relu', kernel_constrain=max_norm(), input_shape=(train_data.shape[1],)))
     model.add(BatchNormalization())
     model.add(Dropout(0.5))
-    model.add(Dense(32, activation='relu'))
-    # model.add(BatchNormalization())
-    model.add(Dropout(0.5))
-    model.add(Dense(32, activation='relu'))
+    model.add(Dense(32, kernel_constraint=max_norm(), activation='relu'))
     # model.add(BatchNormalization())
     model.add(Dropout(0.5))
     model.add(Dense(2, activation='softmax'))
@@ -187,9 +187,20 @@ def mlp(train_data, test_data, train_outcomes, test_outcomes, fold_num, results_
     train_labels = to_categorical(train_outcomes, num_classes=2)
     test_labels = to_categorical(test_outcomes, num_classes=2)
 
-    hist = model.fit(train_data, train_labels, batch_size=128, epochs=1200, validation_data=(test_data, test_labels), callbacks=[model_checkpoint], verbose=False)
+    class_weights = class_weight.compute_class_weight('balanced', np.unique(train_outcomes), train_outcomes)
+
+    hist = model.fit(train_data, train_labels, batch_size=128, epochs=1200, validation_data=(test_data, test_labels), callbacks=[model_checkpoint], verbose=False, class_weight=class_weights)
 
     # print(model.metrics_names)
+
+    plt.figure(figsize=(6, 6))
+    plt.plot(hist['categorical_accuracy'], label='Training')
+    plt.plot(hist['val_categorical_accuracy'], label='Validation')
+    plt.legend(loc='lower right', textsize=20)
+    plt.xlabel('Epoch #', fontsize=20)
+    plt.ylabel('% accuracy', fontsize=20)
+    plt.savefig(results_dir + 'fold_' + str(fold_num) + '_mlp_accuracy.png', dpi=500)
+
 
     model.load_weights(results_dir + "fold_" + str(fold_num) + "_best_weights.hdf5")
     model.save(results_dir + 'best_bol_model' + str(fold_num) + '.hdf5')
