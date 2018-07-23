@@ -170,7 +170,7 @@ def get_rift(scan, img):
                     visualize_lesion = True
 
                 if visualize_slice:
-                    fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(1, 5, figsize=(16, 8))
+                    fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(1, 5, figsize=(12, 4))
 
                     img = nib.load(scan.images['t2w']).get_data()
                     lesionMaskImg = np.zeros((np.shape(img)))
@@ -204,17 +204,21 @@ def get_rift(scan, img):
 
                     centre_point = (20, 20)
 
-                    ax2.imshow(img[int(xc), int(yc) - 20:int(yc) + 20, int(zc) - 20:int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
+                    intensity_img = ax2.imshow(img[int(xc), int(yc) - 20:int(yc) + 20, int(zc) - 20:int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
                     ax2.imshow(lesionMaskPatch, cmap=plt.cm.autumn, alpha=0.25, interpolation='nearest', origin='lower')
                     ax2.set_xticks([])
                     ax2.set_yticks([])
 
+                    divider = make_axes_locatable(ax2)
+                    cax1 = divider.append_axes("right", size="5%", pad=0.05)
+                    plt.colorbar(intensity_img, cax=cax1)
+
                     mag_img = ax3.imshow(magnitude[int(xc), int(yc) - 20: int(yc) + 20, int(zc) - 20: int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
 
                     divider = make_axes_locatable(ax3)
-                    cax = divider.append_axes("right", size="5%", pad=0.05)
+                    cax2 = divider.append_axes("right", size="5%", pad=0.05)
+                    plt.colorbar(mag_img, cax=cax2)
 
-                    plt.colorbar(mag_img, cax=cax)
                     ax3.set_xticks([])
                     ax3.set_yticks([])
 
@@ -235,8 +239,12 @@ def get_rift(scan, img):
 
                     # print('arrow begin:', arrow_begin, 'arrow end:', arrow_end)
 
-                    ax4.imshow(img[int(xc), int(yc) - 20:int(yc) + 20, int(zc) - 20:int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
+                    intensity_img = ax4.imshow(img[int(xc), int(yc) - 20:int(yc) + 20, int(zc) - 20:int(zc) + 20], cmap=plt.cm.gray, interpolation='nearest', origin='lower')
                     ax4.imshow(lesionMaskPatch, cmap=plt.cm.autumn, alpha=0.25, interpolation='nearest', origin='lower')
+
+                    divider = make_axes_locatable(ax4)
+                    cax3 = divider.append_axes("right", size="5%", pad=0.05)
+                    plt.colorbar(intensity_img, cax=cax3)
 
                     ax4.arrow(arrow_begin[0], arrow_begin[1], arrow_end[0], arrow_end[1], head_width=2, head_length=2, color='b')
 
@@ -250,6 +258,11 @@ def get_rift(scan, img):
 
                     ax4.set_xticks([])
                     ax4.set_yticks([])
+
+                    ax1.set_xlabel('Lesion region', fontsize=20)
+                    ax2.set_xlabel('Lesion closeup', fontsize=20)
+                    ax3.set_xlabel('Gradient magnitude', fontsize=20)
+                    ax4.set_xlabel('Max grad. direction', fontsize=20)
 
                     visualize_slice = False
 
@@ -279,11 +292,12 @@ def get_rift(scan, img):
                 if visualize_lesion:
                     ax5.bar(bins[:-1], hist)
                     ax5.set_xticks(list(np.linspace(0, 2*np.pi, num=4, endpoint=False)))
-                    ax5.set_xticklabels(['inward', 'left', 'outward', 'right'])
+                    ax5.set_xticklabels(['outward', 'counter clockwise', 'inward', 'clockwise'])
                     ax5.set_yticks([])
+                    ax5.set_xlabel('RIFT feature', fontsize=20)
 
-                    plt.savefig(data_dir + '/examples/' + 'RIFT_example_' + str(scan.uid) + '_lesion_' + str(l) + '.png')
-                    plt.close()
+                    plt.savefig(data_dir + '/examples/' + 'RIFT_example_' + str(scan.uid) + '_lesion_' + str(l) + '.png', dpi=500)
+                    plt.clf()
                     visualize_slice = False
                     visualize_lesion = False
 

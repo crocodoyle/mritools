@@ -20,6 +20,8 @@ wm_tracts = ['Anterior_Segment', 'Arcuate', 'Cingulum', 'Cortico_Ponto_Cerebellu
              'Inferior_Occipito_Frontal_Fasciculus', 'Long_Segment', 'Optic_Radiations', 'Posterior_Segment',
              'Superior_Cerebelar_Pedunculus', 'Uncinate', 'Anterior_Commissure', 'Corpus_Callosum', 'Fornix', 'Internal_Capsule']
 
+wm_networks = ['Projection', 'Cerebellar', 'Optic', 'Cingulum', 'Inferior', 'Arcuate', 'Perisylvian',
+               'Anterior_Commissure', 'Fornix', 'Corpus_Callosum']
 
 lbpRadii = [1]
 
@@ -113,7 +115,7 @@ def loadContext(mri_list, include_catani):
 
             context_priors = scan.tissues
             if include_catani:
-                context_priors += wm_tracts
+                context_priors += wm_networks
 
             feature = np.zeros((len(context_priors), numBins))
 
