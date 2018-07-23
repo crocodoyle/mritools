@@ -290,9 +290,9 @@ def get_rift(scan, img):
                 feature += hist / (x_max - x_min + 1)
 
                 if visualize_lesion:
-                    ax5.bar(bins[:-1], hist / 3)
+                    ax5.bar(bins[:-1], hist / 4)
                     ax5.set_xticks(list(np.linspace(0, 2*np.pi, num=4, endpoint=False)))
-                    ax5.set_xticklabels(['outward', 'counter clockwise', 'inward', 'clockwise'])
+                    ax5.set_xticklabels(['outward', 'counter\nclockwise', 'inward', 'clockwise'])
                     ax5.set_yticks([])
                     ax5.set_xlabel('RIFT feature', fontsize=20)
 
