@@ -354,7 +354,7 @@ def get_context(scan, images, include_catani):
 
         context_priors = scan.tissues
         if include_catani:
-            context_priors += wm_tracts
+            context_priors += wm_networks
 
         for tissue in context_priors:
             context = []
