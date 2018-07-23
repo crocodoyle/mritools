@@ -339,12 +339,14 @@ def get_context(scan, images, include_catani):
                  'Superior_Cerebelar_Pedunculus', 'Uncinate', 'Anterior_Commissure', 'Corpus_Callosum', 'Fornix',
                  'Internal_Capsule']
 
+    wm_networks = ['Projection', 'Cerebellar', 'Optic', 'Cingulum', 'Inferior', 'Arcuate', 'Perisylvian', 'Anterior_Commissure', 'Fornix', 'Corpus_Callosum']
+
     for tissue in scan.tissues:
         filename = scan.priors[tissue]
         images[tissue] = nib.load(filename).get_data()
 
-    for wm_tract in wm_tracts:
-        images[wm_tract] = nib.load('/data1/users/adoyle/atlases/Catani/MSLAQ/' + wm_tract + '.nii').get_data()
+    for wm_network in wm_networks:
+        images[wm_network] = nib.load('/data1/users/adoyle/atlases/Catani/MSLAQ/' + wm_network + '.nii').get_data()
 
     for l, lesion in enumerate(scan.lesionList):
         saveDocument = {}
