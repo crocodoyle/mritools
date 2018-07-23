@@ -170,7 +170,7 @@ def get_rift(scan, img):
                     visualize_lesion = True
 
                 if visualize_slice:
-                    fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(1, 5, figsize=(12, 4))
+                    fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(1, 5, figsize=(15, 4))
 
                     img = nib.load(scan.images['t2w']).get_data()
                     lesionMaskImg = np.zeros((np.shape(img)))
@@ -259,10 +259,10 @@ def get_rift(scan, img):
                     ax4.set_xticks([])
                     ax4.set_yticks([])
 
-                    ax1.set_xlabel('Lesion region', fontsize=20)
-                    ax2.set_xlabel('Lesion closeup', fontsize=20)
-                    ax3.set_xlabel('Gradient magnitude', fontsize=20)
-                    ax4.set_xlabel('Max grad. direction', fontsize=20)
+                    ax1.set_xlabel('Lesion region', fontsize=14)
+                    ax2.set_xlabel('Lesion closeup', fontsize=14)
+                    ax3.set_xlabel('Gradient magnitude', fontsize=14)
+                    ax4.set_xlabel('Max grad. direction', fontsize=14)
 
                     visualize_slice = False
 
@@ -290,13 +290,13 @@ def get_rift(scan, img):
                 feature += hist / (x_max - x_min + 1)
 
                 if visualize_lesion:
-                    ax5.bar(bins[:-1], hist)
+                    ax5.bar(bins[:-1], hist / 3)
                     ax5.set_xticks(list(np.linspace(0, 2*np.pi, num=4, endpoint=False)))
                     ax5.set_xticklabels(['outward', 'counter clockwise', 'inward', 'clockwise'])
                     ax5.set_yticks([])
                     ax5.set_xlabel('RIFT feature', fontsize=20)
 
-                    plt.savefig(data_dir + '/examples/' + 'RIFT_example_' + str(scan.uid) + '_lesion_' + str(l) + '.png', dpi=500)
+                    plt.savefig(data_dir + '/examples/' + 'RIFT_example_' + str(scan.uid) + '_lesion_' + str(l) + '.png', dpi=500, bbox_inches='tight')
                     plt.clf()
                     visualize_slice = False
                     visualize_lesion = False
