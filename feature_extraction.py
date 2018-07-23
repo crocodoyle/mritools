@@ -170,7 +170,7 @@ def get_rift(scan, img):
                     visualize_lesion = True
 
                 if visualize_slice:
-                    fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(1, 5, figsize=(15, 4))
+                    fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(1, 5, figsize=(15, 3))
 
                     img = nib.load(scan.images['t2w']).get_data()
                     lesionMaskImg = np.zeros((np.shape(img)))
