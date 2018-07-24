@@ -120,10 +120,11 @@ def loadContext(mri_list, include_catani):
             feature = np.zeros((len(context_priors), numBins))
 
             for k, tissue in enumerate(context_priors):
-                feature[k, ...] = lesion_feature[tissue]
+                feature[k, :] = lesion_feature[tissue]
             data.append(np.ndarray.flatten(feature))
-            
-    return np.asarray(data)
+
+    data = np.asarray(data, dtype='float32')
+    return data
 
 def loadLBP(mri_list):
     data = []
