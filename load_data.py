@@ -123,8 +123,8 @@ def loadContext(mri_list, include_catani):
                 feature[k, :] = lesion_feature[tissue]
             data.append(feature.flatten())
 
-    data = np.asarray(data, dtype='float32')
-    return data
+    data_array = np.asarray(data, dtype='float32')
+    return data_array
 
 def loadLBP(mri_list):
     data = []
