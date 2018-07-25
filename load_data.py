@@ -110,12 +110,12 @@ def loadContext(mri_list, include_catani):
     data = []
         
     for i, scan in enumerate(mri_list):
+        context_priors = scan.tissues
+        if include_catani:
+            context_priors += wm_networks
+
         for j, lesion in enumerate(scan.lesionList):
             lesion_feature = pickle.load(open(scan.features_dir + 'context_' + str(j) + '.pkl', 'rb'))
-
-            context_priors = scan.tissues
-            if include_catani:
-                context_priors += wm_networks
 
             feature = np.zeros((len(context_priors), numBins), dtype='float32')
 
@@ -123,7 +123,10 @@ def loadContext(mri_list, include_catani):
                 feature[k, :] = lesion_feature[tissue]
             data.append(np.ndarray.flatten(feature))
 
-    return np.asarray(np.asarray(data))
+    data = np.asarray(np.asarray(data))
+    print('data:', data[0])
+    return data
+
 
 def loadLBP(mri_list):
     data = []
